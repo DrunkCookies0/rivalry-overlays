@@ -1,0 +1,65 @@
+{
+  "name": "rivalry-overlay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RIVALRY in-house Rocket League broadcast overlay. Bridges Rocket League's official Stats API into the browser and serves an OBS overlay + control panel. Ships as a Windows installer.",
+  "main": "main.js",
+  "author": "RIVALRY",
+  "scripts": {
+    "start": "electron .",
+    "mock": "electron . --mock",
+    "dev:bridge": "node bridge/rl-bridge.js --mock",
+    "setup": "node bridge/rl-bridge.js --setup",
+    "dist": "electron-builder --win",
+    "pack": "electron-builder --win --dir",
+    "release": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "ws": "^8.18.0",
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^31.7.6",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "gg.rivalry.overlay",
+    "productName": "RIVALRY Overlay",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "bridge/**/*",
+      "overlay/**/*",
+      "control/**/*",
+      "config/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "RIVALRY-Overlay-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RIVALRY Overlay",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "DrunkCookies0",
+        "repo": "rivalry-overlays",
+        "releaseType": "release"
+      }
+    ]
+  }
+}
