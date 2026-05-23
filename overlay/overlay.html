@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RIVALRY Overlay</title>
+<style>
+  /* RLCS-style broadcast overlay. Transparent so it composites in OBS over
+     gameplay + player webcams. Designed against a 1920x1080 canvas. */
+  :root{
+    --blue:#2f7dff;   /* team A accent */
+    --red:#e6324f;    /* team B accent */
+    --panel:rgba(10,13,18,.94);
+    --panel-solid:#0a0d12;
+    --bar:#0c1118;
+    --ink:#f3f7fc;
+    --muted:#9fb1c4;
+    --gold:#f6c64a;       /* goal text */
+    --seg-off:#26323f;
+    --shadow:0 10px 34px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;width:1920px;height:1080px;background:transparent;overflow:hidden;
+    font-family:'Segoe UI',Roboto,Arial,sans-serif;color:var(--ink);
+    -webkit-font-smoothing:antialiased;}
+  .nums{font-variant-numeric:tabular-nums;}
+
+  /* ============================ TOP SCOREBAR ============================ */
+  .top{position:fixed;top:0;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;}
+
+  /* event title strip sitting above the bar */
+  .eventbar{background:var(--panel-solid);color:var(--muted);
+    font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+    padding:5px 26px;border-radius:0 0 0 0;white-space:nowrap;
+    border-bottom:2px solid #000;box-shadow:var(--shadow);}
+  .eventbar b{color:var(--ink);}
+
+  .scorebar{display:flex;align-items:stretch;height:62px;background:var(--panel);
+    box-shadow:var(--shadow);}
+  .team{position:relative;display:flex;align-items:center;gap:14px;padding:0 20px;
+    min-width:300px;background:linear-gradient(180deg,#11161d,#0a0d12);}
+  .team.left{justify-content:flex-end;text-align:right;}
+  .team.right{flex-direction:row-reverse;justify-content:flex-end;text-align:left;}
+  .team .logo{width:42px;height:42px;flex:0 0 auto;background:center/contain no-repeat;}
+  .team .name{font-weight:800;font-size:26px;letter-spacing:.5px;text-transform:uppercase;
+    white-space:nowrap;}
+  /* colored accent line under the team's name side */
+  .team::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;}
+  .team.left::after{background:var(--blue);}
+  .team.right::after{background:var(--red);}
+
+  .score{display:flex;align-items:center;justify-content:center;min-width:64px;
+    font-size:38px;font-weight:800;}
+  .score.blue{background:var(--blue);color:#fff;}
+  .score.red{background:var(--red);color:#fff;}
+
+  .clockwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-width:120px;background:#f4f7fb;color:#11151b;}
+  .clock{font-size:30px;font-weight:800;line-height:1;}
+  .clock.ot{color:var(--red);}
+
+  /* under-bar row: region tag + segmented series pips per team */
+  .subbar{display:flex;width:100%;justify-content:space-between;
+    background:var(--panel-solid);box-shadow:var(--shadow);}
+  .subside{display:flex;align-items:center;gap:10px;padding:5px 14px;}
+  .subside.right{flex-direction:row-reverse;}
+  .tag{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);
+    background:#161d26;padding:3px 8px;border-radius:3px;}
+  .pips{display:flex;gap:4px;}
+  .seg{width:22px;height:7px;border-radius:2px;background:var(--seg-off);}
+  .seg.on.blue{background:var(--blue);box-shadow:0 0 7px var(--blue);}
+  .seg.on.red{background:var(--red);box-shadow:0 0 7px var(--red);}
+
+  /* ===================== SIDE PLAYER BOOST TAGS ====================== */
+  .col{position:fixed;top:18px;display:flex;flex-direction:column;gap:7px;width:250px;}
+  .col.left{left:18px;}
+  .col.right{right:18px;}
+  .ptag{position:relative;background:var(--panel);box-shadow:var(--shadow);
+    padding:8px 12px 10px;overflow:hidden;}
+  .ptag .prow{display:flex;align-items:center;gap:10px;}
+  .col.right .ptag .prow{flex-direction:row-reverse;text-align:right;}
+  .ptag .pname{flex:1;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.5px;}
+  .ptag .pboost{font-size:18px;font-weight:800;min-width:40px;text-align:center;}
+  /* boost fill line along the bottom of the tag */
+  .ptag .fill{position:absolute;left:0;bottom:0;height:4px;width:0;transition:width .12s linear;}
+  .col.left .ptag .fill{background:var(--blue);}
+  .col.right .ptag .fill{background:var(--red);right:0;left:auto;}
+  /* highlight the spectated player */
+  .ptag.active{outline:2px solid var(--gold);outline-offset:-2px;}
+  .col.left .ptag.active{box-shadow:0 0 0 9999px rgba(0,0,0,0),0 8px 24px rgba(47,125,255,.45);}
+
+  /* ===================== BOTTOM STATFEED BAR ====================== */
+  .statbar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    display:flex;align-items:stretch;height:40px;background:var(--bar);
+    box-shadow:var(--shadow);border-radius:4px;overflow:hidden;}
+  .statbar .who{display:flex;align-items:center;padding:0 20px;font-weight:800;
+    font-size:16px;letter-spacing:1px;text-transform:uppercase;color:#fff;}
+  .statbar .who.blue{background:var(--blue);}
+  .statbar .who.red{background:var(--red);}
+  .statbar .stat{display:flex;align-items:center;gap:7px;padding:0 18px;
+    border-right:1px solid #1c2632;}
+  .statbar .stat:last-child{border-right:none;}
+  .statbar .stat b{font-size:18px;font-weight:800;}
+  .statbar .stat span{font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+
+  /* ===================== RADIAL BOOST GAUGE ====================== */
+  .boostgauge{position:fixed;bottom:22px;right:30px;width:118px;height:118px;}
+  .boostgauge svg{transform:rotate(-90deg);}
+  .boostgauge .track{fill:none;stroke:#1a2330;stroke-width:9;}
+  .boostgauge .val{fill:none;stroke:var(--blue);stroke-width:9;stroke-linecap:round;
+    transition:stroke-dashoffset .12s linear,stroke .2s;}
+  .boostgauge .label{position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;font-size:34px;font-weight:800;}
+
+  /* ===================== GOAL BANNER ====================== */
+  /* ===================== GOAL BANNER (covers in-game "X Scored") =========== */
+  .goal-banner{position:fixed;top:44%;left:0;right:0;transform:translateY(-50%);
+    display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60;}
+  .goal-banner .gb-bg{position:absolute;left:0;right:0;top:50%;height:110px;
+    transform:translateY(-50%) scaleX(0);transform-origin:left center;
+    transition:transform .34s cubic-bezier(.7,0,.25,1);
+    background:linear-gradient(90deg,transparent,var(--goalc) 12%,var(--goalc) 88%,transparent);
+    box-shadow:0 10px 44px rgba(0,0,0,.5);}
+  .goal-banner .gb-text{position:relative;font-size:56px;font-weight:900;letter-spacing:5px;
+    text-transform:uppercase;color:#fff;text-shadow:0 3px 16px rgba(0,0,0,.7);
+    opacity:0;transform:translateY(10px);transition:opacity .3s .14s,transform .3s .14s;white-space:nowrap;}
+  .goal-banner.show .gb-bg{transform:translateY(-50%) scaleX(1);}
+  .goal-banner.show .gb-text{opacity:1;transform:translateY(0);}
+
+  /* ===================== STINGER WIPE (masks replay cut in/out) ============ */
+  .stinger{position:fixed;inset:0;overflow:hidden;pointer-events:none;display:none;z-index:120;}
+  .stinger.run{display:block;}
+  .stinger .panel{position:absolute;top:-20%;height:140%;width:170%;left:-210%;transform:skewX(-12deg);}
+  .stinger .panel.p1{background:var(--red);}
+  .stinger .panel.p2{background:#0e1218;}
+  .stinger .slogo{position:absolute;top:50%;left:50%;width:230px;height:155px;opacity:0;
+    transform:translate(-50%,-50%) scale(.55);background:center/contain no-repeat;}
+  .stinger.run .panel.p1{animation:stgSweep .9s cubic-bezier(.6,0,.2,1) forwards;}
+  .stinger.run .panel.p2{animation:stgSweep .9s cubic-bezier(.6,0,.2,1) .06s forwards;}
+  .stinger.run .slogo{animation:stgLogo .9s ease forwards;}
+  @keyframes stgSweep{0%{left:-210%;}44%{left:-22%;}56%{left:-22%;}100%{left:170%;}}
+  @keyframes stgLogo{0%,30%{opacity:0;transform:translate(-50%,-50%) scale(.55);}
+    46%,54%{opacity:1;transform:translate(-50%,-50%) scale(1);}78%,100%{opacity:0;}}
+
+  #status{position:fixed;top:2px;right:4px;font-size:10px;color:var(--muted);
+    font-family:monospace;opacity:.6;}
+</style>
+</head>
+<body>
+  <div id="status">connecting...</div>
+
+  <!-- TOP SCOREBAR -->
+  <div class="top">
+    <div class="eventbar" id="eventbar">RIVALRY</div>
+    <div class="scorebar">
+      <div class="team left">
+        <span class="name" id="nameA">BLUE</span>
+        <span class="logo" id="logoA"></span>
+      </div>
+      <div class="score blue" id="scoreA">0</div>
+      <div class="clockwrap"><div class="clock" id="clock">5:00</div></div>
+      <div class="score red" id="scoreB">0</div>
+      <div class="team right">
+        <span class="name" id="nameB">ORANGE</span>
+        <span class="logo" id="logoB"></span>
+      </div>
+    </div>
+    <div class="subbar">
+      <div class="subside left">
+        <span class="tag" id="tagA">EU</span>
+        <div class="pips" id="pipsA"></div>
+      </div>
+      <div class="subside right">
+        <span class="tag" id="tagB">EU</span>
+        <div class="pips" id="pipsB"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDE BOOST TAGS -->
+  <div class="col left" id="colA"></div>
+  <div class="col right" id="colB"></div>
+
+  <!-- BOTTOM STATFEED -->
+  <div class="statbar" id="statbar" style="display:none">
+    <div class="who blue" id="sbWho">PLAYER</div>
+    <div class="stat"><b id="sbGoals">0</b><span>Goals</span></div>
+    <div class="stat"><b id="sbShots">0</b><span>Shots</span></div>
+    <div class="stat"><b id="sbAssists">0</b><span>Assists</span></div>
+    <div class="stat"><b id="sbSaves">0</b><span>Saves</span></div>
+    <div class="stat"><b id="sbDemos">0</b><span>Demos</span></div>
+  </div>
+
+  <!-- RADIAL BOOST -->
+  <div class="boostgauge" id="boostgauge" style="display:none">
+    <svg width="118" height="118" viewBox="0 0 118 118">
+      <circle class="track" cx="59" cy="59" r="52"></circle>
+      <circle class="val" id="gaugeVal" cx="59" cy="59" r="52"></circle>
+    </svg>
+    <div class="label nums" id="gaugeLabel">0</div>
+  </div>
+
+  <!-- GOAL BANNER (sweeps across, covers RL's in-game "X Scored" text) -->
+  <div class="goal-banner" id="goalBanner">
+    <div class="gb-bg" id="gbBg"></div>
+    <div class="gb-text" id="gbText">GOAL</div>
+  </div>
+
+  <!-- STINGER WIPE (fires on replay start + end to mask the cut) -->
+  <div class="stinger" id="stinger">
+    <div class="panel p2"></div>
+    <div class="panel p1"></div>
+    <div class="slogo" id="stingerLogo" style="background-image:url('../assets/rivalry-logo.svg')"></div>
+  </div>
+
+<script>
+const GAME_WS = "ws://localhost:49124";
+const CONTROL_WS = "ws://localhost:49777";
+
+let control = {
+  teamA: { name:"BLUE",   logo:"", color:"#2f7dff", tag:"EU" },
+  teamB: { name:"ORANGE", logo:"", color:"#e6324f", tag:"EU" },
+  bestOf: 5,
+  series: { a:0, b:0 },
+  eventTitle: "RIVALRY",
+  goalSequence: true,
+  goalText: "{SCORER} SCORES"
+};
+
+const $ = (id) => document.getElementById(id);
+const GAUGE_CIRC = 2 * Math.PI * 52; // circumference of the boost ring
+
+// demos are not in UpdateState; tally them from StatfeedEvent, keyed by player.
+let demosByName = {};
+
+function applyControl(){
+  $("eventbar").innerHTML = control.eventTitle || "RIVALRY";
+  $("nameA").textContent = control.teamA.name || "BLUE";
+  $("nameB").textContent = control.teamB.name || "ORANGE";
+  $("logoA").style.backgroundImage = control.teamA.logo ? `url("${control.teamA.logo}")` : "none";
+  $("logoB").style.backgroundImage = control.teamB.logo ? `url("${control.teamB.logo}")` : "none";
+  $("tagA").textContent = control.teamA.tag || "";
+  $("tagB").textContent = control.teamB.tag || "";
+  document.documentElement.style.setProperty("--blue", control.teamA.color || "#2f7dff");
+  document.documentElement.style.setProperty("--red",  control.teamB.color || "#e6324f");
+  renderPips();
+}
+
+function renderPips(){
+  const need = Math.max(1, Math.ceil(control.bestOf / 2));
+  const build = (el, won, cls) => {
+    el.innerHTML = "";
+    for (let i=0;i<need;i++){
+      const d = document.createElement("div");
+      d.className = "seg " + cls + (i < won ? " on" : "");
+      el.appendChild(d);
+    }
+  };
+  build($("pipsA"), control.series.a, "blue");
+  build($("pipsB"), control.series.b, "red");
+}
+
+function fmtClock(sec, isOT){
+  sec = Math.max(0, Math.round(sec || 0));
+  const m = Math.floor(sec/60), s = sec%60;
+  const t = (isOT ? "+" : "") + m + ":" + String(s).padStart(2,"0");
+  return t;
+}
+
+// Find the currently spectated player across the field shapes the API may use.
+function getTargetName(data){
+  const g = data.Game || {};
+  return data.Target || g.Target || data.Spectated ||
+         (data.Spectator && (data.Spectator.PlayerName || data.Spectator.Name)) ||
+         (g.Spectator && (g.Spectator.PlayerName || g.Spectator.Name)) || null;
+}
+
+function onUpdateState(data){
+  const game = data.Game || {};
+  const teams = game.Teams || [];
+  if (teams[0]) $("scoreA").textContent = teams[0].Score ?? 0;
+  if (teams[1]) $("scoreB").textContent = teams[1].Score ?? 0;
+  const isOT = !!(game.IsOT || game.isOT || (game.TimeSeconds === 0 && game.Ball));
+  const clk = $("clock");
+  clk.textContent = fmtClock(game.TimeSeconds, isOT);
+  clk.classList.toggle("ot", isOT);
+
+  const players = data.Players || [];
+  renderBoost($("colA"), players.filter(p => p.TeamNum === 0), "blue");
+  renderBoost($("colB"), players.filter(p => p.TeamNum === 1), "red");
+
+  // focused player -> statfeed + radial boost
+  const targetName = getTargetName(data);
+  const target = players.find(p => p.Name === targetName);
+  updateFocus(target);
+  markActive(targetName);
+}
+
+function renderBoost(col, players, cls){
+  // keep DOM stable to avoid flicker; rebuild only if roster size changed
+  if (col.childElementCount !== players.length){
+    col.innerHTML = "";
+    players.forEach(() => {
+      const t = document.createElement("div");
+      t.className = "ptag";
+      t.innerHTML = `<div class="prow"><span class="pname"></span><span class="pboost nums"></span></div><div class="fill"></div>`;
+      col.appendChild(t);
+    });
+  }
+  players.forEach((p, i) => {
+    const tag = col.children[i];
+    const hasBoost = typeof p.Boost === "number";
+    tag.querySelector(".pname").textContent = p.Name || "";
+    tag.querySelector(".pboost").textContent = hasBoost ? p.Boost : "--";
+    tag.querySelector(".fill").style.width = (hasBoost ? p.Boost : 0) + "%";
+    tag.dataset.name = p.Name || "";
+  });
+}
+
+function markActive(name){
+  document.querySelectorAll(".ptag").forEach(t =>
+    t.classList.toggle("active", !!name && t.dataset.name === name));
+}
+
+function updateFocus(p){
+  const bar = $("statbar"), gauge = $("boostgauge");
+  if (!p){ bar.style.display = "none"; gauge.style.display = "none"; return; }
+  bar.style.display = "flex"; gauge.style.display = "block";
+
+  const blue = p.TeamNum === 0;
+  $("sbWho").textContent = p.Name || "";
+  $("sbWho").className = "who " + (blue ? "blue" : "red");
+  $("sbGoals").textContent   = p.Goals   ?? 0;
+  $("sbShots").textContent   = p.Shots   ?? 0;
+  $("sbAssists").textContent = p.Assists ?? 0;
+  $("sbSaves").textContent   = p.Saves   ?? 0;
+  $("sbDemos").textContent   = demosByName[p.Name] || 0;
+
+  const boost = typeof p.Boost === "number" ? p.Boost : 0;
+  const val = $("gaugeVal");
+  val.style.stroke = blue ? "var(--blue)" : "var(--red)";
+  val.style.strokeDasharray = GAUGE_CIRC;
+  val.style.strokeDashoffset = GAUGE_CIRC * (1 - boost/100);
+  $("gaugeLabel").textContent = typeof p.Boost === "number" ? boost : "--";
+}
+
+/* ---- Goal sequence -------------------------------------------------------
+ * GoalScored        -> show custom banner (covers RL's in-game "X Scored")
+ * GoalReplayStart   -> hide banner, fire stinger wipe (mask cut into replay)
+ * GoalReplayEnd     -> fire stinger wipe again (mask cut back to live)
+ * CountdownBegin /
+ * RoundStarted      -> clear everything for kickoff
+ * ------------------------------------------------------------------------- */
+let bannerTimer = null;
+
+function fillGoalText(tpl, scorer, teamName){
+  return String(tpl || "{SCORER} SCORES")
+    .replace(/\{SCORER\}/g, (scorer || "").toUpperCase())
+    .replace(/\{scorer\}/g, scorer || "")
+    .replace(/\{TEAM\}/g, (teamName || "").toUpperCase())
+    .replace(/\{team\}/g, teamName || "");
+}
+
+function showGoalBanner(scorer, teamNum){
+  const blue = teamNum === 0;
+  const teamName = blue ? control.teamA.name : control.teamB.name;
+  document.documentElement.style.setProperty("--goalc", blue ? "var(--blue)" : "var(--red)");
+  $("gbText").textContent = fillGoalText(control.goalText, scorer, teamName);
+  $("goalBanner").classList.add("show");
+  clearTimeout(bannerTimer);
+  // safety hide if replay events never arrive
+  bannerTimer = setTimeout(hideGoalBanner, 6000);
+}
+function hideGoalBanner(){ $("goalBanner").classList.remove("show"); }
+
+function playStinger(){
+  const s = $("stinger");
+  s.classList.remove("run");
+  void s.offsetWidth;        // force reflow so the animation restarts
+  s.classList.add("run");
+  clearTimeout(playStinger._t);
+  playStinger._t = setTimeout(() => s.classList.remove("run"), 950);
+}
+
+function onGoalScored(data){
+  if (!control.goalSequence) return;     // let the in-game text show if disabled
+  const scorer = (data.Scorer && data.Scorer.Name) || "";
+  const teamNum = (data.Scorer && data.Scorer.TeamNum);
+  showGoalBanner(scorer, teamNum);
+}
+function onGoalReplayStart(){
+  if (!control.goalSequence) return;
+  hideGoalBanner();
+  playStinger();
+}
+function onGoalReplayEnd(){
+  if (!control.goalSequence) return;
+  playStinger();
+}
+function clearGoalSequence(){
+  hideGoalBanner();
+  $("stinger").classList.remove("run");
+}
+
+function onStatfeed(data){
+  // Tally demolitions for the bottom statfeed counter.
+  const type = (data.Type || data.EventName || data.Event || "").toString().toLowerCase();
+  if (type.includes("demo")){
+    const name = (data.MainTarget && (data.MainTarget.Name)) ||
+                 (data.Victim && data.Victim.Name) || data.Name;
+    // RLCS counts demos dealt by the attacker
+    const attacker = (data.Attacker && data.Attacker.Name) || data.MainPlayer || data.Name;
+    if (attacker) demosByName[attacker] = (demosByName[attacker] || 0) + 1;
+  }
+}
+
+function resetMatch(){ demosByName = {}; }
+
+function connectGame(){
+  const ws = new WebSocket(GAME_WS);
+  ws.onopen = () => $("status").textContent = "live";
+  ws.onclose = () => { $("status").textContent = "reconnecting"; setTimeout(connectGame, 1500); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = (e) => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    const ev = (msg.event || "").toString();
+    const data = msg.data || {};
+    if (ev === "UpdateState") onUpdateState(data);
+    else if (ev === "GoalScored") onGoalScored(data);
+    else if (ev === "GoalReplayStart") onGoalReplayStart();
+    else if (ev === "GoalReplayEnd") onGoalReplayEnd();
+    else if (ev === "CountdownBegin" || ev === "RoundStarted") clearGoalSequence();
+    else if (ev === "StatfeedEvent") onStatfeed(data);
+    else if (ev === "MatchCreated" || ev === "MatchInitialized") resetMatch();
+  };
+}
+
+function connectControl(){
+  const ws = new WebSocket(CONTROL_WS);
+  ws.onclose = () => setTimeout(connectControl, 1500);
+  ws.onerror = () => ws.close();
+  ws.onmessage = (e) => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg.type === "control"){ control = Object.assign(control, msg.payload || {}); applyControl(); }
+  };
+}
+
+applyControl();
+connectGame();
+connectControl();
+</script>
+</body>
+</html>
