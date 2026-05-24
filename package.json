@@ -12,7 +12,7 @@
     "setup": "node bridge/rl-bridge.js --setup",
     "pack": "electron-builder --win --dir --config electron-builder.yml",
     "dist": "electron-builder --win --config electron-builder.yml",
-    "dist:beta": "electron-builder --win --config electron-builder.beta.yml",
+    "dist:beta": "electron-builder --win --config electron-builder.beta.js",
     "release": "electron-builder --win --publish always --config electron-builder.yml"
   },
   "dependencies": {

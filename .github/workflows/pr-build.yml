@@ -51,7 +51,12 @@ jobs:
           # electron-builder's GitHub publisher uses GH_TOKEN to create the
           # prerelease + upload assets + write latest.yml.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run dist:beta -- --publish always -c.extraMetadata.version=${{ steps.ver.outputs.version }} -c.extraMetadata.buildSha=${{ github.sha }}
+          # electron-builder.beta.js reads these and writes them into the
+          # built package.json via extraMetadata. We don't pass them as CLI
+          # args because PowerShell tokenizes "-c.foo.bar=value" on the dot.
+          BUILD_VERSION: ${{ steps.ver.outputs.version }}
+          BUILD_SHA: ${{ github.sha }}
+        run: npm run dist:beta -- --publish always
 
       - name: Upload installer artifact (also available on the PR)
         id: upload
