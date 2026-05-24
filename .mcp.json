@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "obs": {
+      "command": "npx",
+      "args": ["-y", "obs-mcp@latest"],
+      "env": {
+        "OBS_WEBSOCKET_URL": "ws://localhost:4455",
+        "OBS_WEBSOCKET_PASSWORD": "${OBS_WEBSOCKET_PASSWORD}"
+      }
+    }
+  }
+}

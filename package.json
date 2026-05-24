@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "ws": "^8.18.0",
-    "electron-updater": "^6.3.9"
+    "electron-updater": "^6.3.9",
+    "obs-websocket-js": "^5.0.8"
   },
   "devDependencies": {
     "electron": "^31.7.6",

@@ -137,6 +137,8 @@ function decodeEnvelope(raw) {
 function startBridge(opts = {}) {
   const mock = !!opts.mock;
   const { WebSocketServer } = require("ws");
+  const EventEmitter = require("events");
+  const events = new EventEmitter();
 
   // --- game feed: broadcast RL frames to overlay clients ---
   const gameWss = new WebSocketServer({ port: GAME_WS_PORT });
@@ -153,20 +155,28 @@ function startBridge(opts = {}) {
   function broadcastGame(payloadObj) {
     const msg = JSON.stringify(payloadObj);
     for (const ws of gameClients) if (ws.readyState === ws.OPEN) ws.send(msg);
+    // Also fan out to internal subscribers (e.g. OBS auto-switching).
+    events.emit("game", payloadObj);
   }
 
-  // --- control relay: control panel -> overlay, with last-state retention ---
+  // --- control relay: control panel -> overlay, with last-state retention.
+  // We only hydrate new clients with `type:"control"` messages so unrelated
+  // traffic (e.g. obs-settings, intended for the main process) isn't replayed
+  // to a reconnecting overlay that doesn't understand it.
   const controlWss = new WebSocketServer({ port: CONTROL_WS_PORT });
   const controlClients = new Set();
   let lastControlState = null;
   controlWss.on("connection", (ws) => {
     controlClients.add(ws);
-    if (lastControlState) ws.send(lastControlState); // hydrate new client
+    if (lastControlState) ws.send(lastControlState);
     ws.on("message", (raw) => {
       const text = raw.toString();
-      lastControlState = text;
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch { /* not JSON, just relay */ }
+      if (parsed && parsed.type === "control") lastControlState = text;
       for (const c of controlClients)
         if (c !== ws && c.readyState === c.OPEN) c.send(text);
+      if (parsed) events.emit("control", parsed, ws);
     });
     ws.on("close", () => controlClients.delete(ws));
   });
@@ -175,11 +185,16 @@ function startBridge(opts = {}) {
   );
   controlWss.on("error", (e) => console.error("[rivalry] control WS error:", e.message));
 
+  function broadcastControl(payloadObj) {
+    const msg = JSON.stringify(payloadObj);
+    for (const c of controlClients) if (c.readyState === c.OPEN) c.send(msg);
+  }
+
   // --- data source ---
   if (mock) startMockFeed(broadcastGame);
   else connectRocketLeague(broadcastGame);
 
-  return { broadcastGame };
+  return { broadcastGame, broadcastControl, events };
 }
 
 function connectRocketLeague(broadcastGame) {

@@ -128,6 +128,51 @@
       </div>
     </div>
 
+    <div class="card full">
+      <h2>OBS integration <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(optional)</span></h2>
+      <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:2px 0 10px;">
+        <input type="checkbox" id="obsEnabled" style="width:auto;" />
+        <span style="color:var(--ink);font-size:13px;">Connect to OBS via WebSocket (Tools -> WebSocket Server Settings)</span>
+      </label>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2;">
+          <label>WebSocket URL</label>
+          <input type="text" id="obsWsUrl" value="ws://localhost:4455" />
+        </div>
+        <div style="flex:1;">
+          <label>Password</label>
+          <input type="text" id="obsWsPassword" placeholder="from OBS" />
+        </div>
+      </div>
+      <div class="row" style="gap:8px;margin-top:10px;">
+        <button id="obsTest" style="background:#243040;color:var(--ink);">Test connection</button>
+        <button id="obsSetupScenes" style="background:#243040;color:var(--ink);">Create OBS scene</button>
+        <div style="flex:1;"></div>
+        <div id="obsStatus" style="font-size:12px;color:var(--muted);align-self:center;">disabled</div>
+      </div>
+      <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:14px 0 10px;">
+        <input type="checkbox" id="obsAutoSwitch" style="width:auto;" />
+        <span style="color:var(--ink);font-size:13px;">Auto-switch OBS scenes on game events (replay, post-match)</span>
+      </label>
+      <div class="row" style="gap:10px;">
+        <div style="flex:1;">
+          <label>Live scene</label>
+          <input type="text" id="obsSceneLive" placeholder="RIVALRY - Live" />
+        </div>
+        <div style="flex:1;">
+          <label>Replay scene</label>
+          <input type="text" id="obsSceneReplay" placeholder="(optional)" />
+        </div>
+        <div style="flex:1;">
+          <label>Post-match scene</label>
+          <input type="text" id="obsScenePostMatch" placeholder="(optional)" />
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px;">
+        Scene names must match exactly. Leave blank to skip auto-switching on a trigger.
+      </div>
+    </div>
+
     <div class="full">
       <button class="apply" id="apply">PUSH TO OVERLAY</button>
       <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting to bridge...</span></div>
@@ -183,6 +228,80 @@ document.querySelectorAll(".stepper button").forEach(b => {
   .forEach(id => $(id).addEventListener("input", push));
 $("goalSequence").addEventListener("change", push);
 $("apply").addEventListener("click", push);
+
+// ---- OBS integration card -------------------------------------------------
+// Bridge sends `obs-status` updates whenever settings change or the OBS
+// connection state changes. We mirror its `settings` into the inputs so a
+// fresh control-panel window hydrates correctly.
+function readObsForm(){
+  return {
+    enabled: $("obsEnabled").checked,
+    url: $("obsWsUrl").value.trim() || "ws://localhost:4455",
+    password: $("obsWsPassword").value,
+    autoSwitchEnabled: $("obsAutoSwitch").checked,
+    sceneMap: {
+      live: $("obsSceneLive").value.trim(),
+      replay: $("obsSceneReplay").value.trim(),
+      postMatch: $("obsScenePostMatch").value.trim(),
+    },
+  };
+}
+function pushObsSettings(){
+  if (!connected || ws.readyState !== ws.OPEN) return;
+  ws.send(JSON.stringify({ type: "obs-settings", payload: readObsForm() }));
+}
+function renderObsStatus(s){
+  const st = s && s.status;
+  const enabled = s && s.settings && s.settings.enabled;
+  if (!enabled) { $("obsStatus").textContent = "disabled"; return; }
+  if (st && st.connected) { $("obsStatus").textContent = "connected"; return; }
+  if (st && st.error) { $("obsStatus").textContent = "error: " + st.error; return; }
+  $("obsStatus").textContent = "connecting...";
+}
+function hydrateObsForm(settings){
+  if (!settings) return;
+  $("obsEnabled").checked = !!settings.enabled;
+  if (typeof settings.url === "string") $("obsWsUrl").value = settings.url;
+  if (typeof settings.password === "string") $("obsWsPassword").value = settings.password;
+  $("obsAutoSwitch").checked = !!settings.autoSwitchEnabled;
+  const map = settings.sceneMap || {};
+  if (typeof map.live === "string") $("obsSceneLive").value = map.live;
+  if (typeof map.replay === "string") $("obsSceneReplay").value = map.replay;
+  if (typeof map.postMatch === "string") $("obsScenePostMatch").value = map.postMatch;
+}
+["obsEnabled","obsWsUrl","obsWsPassword","obsAutoSwitch","obsSceneLive","obsSceneReplay","obsScenePostMatch"]
+  .forEach(id => {
+    const el = $(id);
+    el.addEventListener("change", pushObsSettings);
+    el.addEventListener("input", pushObsSettings);
+  });
+$("obsTest").addEventListener("click", () => {
+  // Force a settings reapply (triggers reconnect) by re-pushing the form.
+  pushObsSettings();
+});
+$("obsSetupScenes").addEventListener("click", () => {
+  if (connected && ws.readyState === ws.OPEN) {
+    ws.send(JSON.stringify({ type: "obs-action", payload: { action: "setup-scenes" } }));
+  }
+});
+
+// Override the basic connect() above to also push obs-settings on open and
+// receive obs-status broadcasts back from main.js.
+connect = function(){
+  ws = new WebSocket(CONTROL_WS);
+  ws.onopen = () => { connected = true; setStatus(); push(); pushObsSettings(); };
+  ws.onclose = () => { connected = false; setStatus(); setTimeout(connect, 1500); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = (e) => {
+    try {
+      const m = JSON.parse(e.data);
+      if (m && m.type === "obs-status") {
+        hydrateObsForm(m.payload && m.payload.settings);
+        renderObsStatus(m.payload);
+      }
+    } catch { /* ignore */ }
+  };
+};
 
 // copy the OBS overlay URL to clipboard
 $("copyUrl").addEventListener("click", async () => {

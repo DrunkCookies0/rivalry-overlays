@@ -19,13 +19,23 @@
 "use strict";
 
 const { app, BrowserWindow, Tray, Menu, nativeImage, clipboard, shell } = require("electron");
-const { autoUpdater } = require("electron-updater");
+// electron-updater is required lazily inside setupAutoUpdate() because its
+// module-load path eagerly instantiates NsisUpdater, which calls into
+// electron.app and crashes when require()'d in dev (npm start / npm run mock).
+let _autoUpdater = null;
+function getAutoUpdater() {
+  if (_autoUpdater) return _autoUpdater;
+  _autoUpdater = require("electron-updater").autoUpdater;
+  return _autoUpdater;
+}
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
 const { runSetup, startBridge } = require("./bridge/rl-bridge");
 const { startReplayCollector } = require("./bridge/replay-collector");
+const { createOBSController } = require("./bridge/obs-controller");
+const obsSettingsStore = require("./bridge/obs-settings");
 
 const HTTP_PORT = 49080;
 const OVERLAY_URL = `http://localhost:${HTTP_PORT}/overlay/overlay.html`;
@@ -69,6 +79,9 @@ function startHttpServer(rootDir) {
 let mainWindow = null;
 let tray = null;
 let collector = null;
+let obsController = null;
+let obsSettings = null;
+let bridgeHandle = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -105,6 +118,15 @@ function showWindow() {
   }
 }
 
+function obsStatusLabel() {
+  if (!obsSettings || !obsSettings.enabled) return "OBS: disabled";
+  if (!obsController) return "OBS: starting...";
+  const s = obsController.status;
+  if (s.connected) return "OBS: connected";
+  if (s.error) return `OBS: ${s.error.substring(0, 40)}`;
+  return "OBS: connecting...";
+}
+
 function buildTrayMenu() {
   const startsWithWindows = app.getLoginItemSettings().openAtLogin;
   return Menu.buildFromTemplate([
@@ -125,9 +147,16 @@ function buildTrayMenu() {
       click: () => { if (collector && collector.archiveDir) shell.openPath(collector.archiveDir); },
     },
     { type: "separator" },
+    { label: obsStatusLabel(), enabled: false },
+    {
+      label: "Set up OBS scenes",
+      enabled: !!(obsController && obsController.status.connected),
+      click: () => setupObsScenes(),
+    },
+    { type: "separator" },
     {
       label: "Check for updates",
-      click: () => { try { autoUpdater.checkForUpdates(); } catch (e) {} },
+      click: () => { try { getAutoUpdater().checkForUpdates(); } catch (e) {} },
     },
     { type: "separator" },
     {
@@ -149,6 +178,24 @@ function buildTrayMenu() {
   ]);
 }
 
+function refreshTrayMenu() {
+  if (tray) tray.setContextMenu(buildTrayMenu());
+}
+
+// Idempotent: creates a "RIVALRY - Live" scene with the overlay URL pre-wired
+// as a browser source. Producers run this once after enabling obs-websocket;
+// re-running is safe and just no-ops if scenes / sources already exist.
+async function setupObsScenes() {
+  if (!obsController || !obsController.status.connected) return;
+  const scenes = [
+    { sceneName: "RIVALRY - Live", sourceName: "RIVALRY Overlay", url: OVERLAY_URL },
+  ];
+  for (const s of scenes) {
+    try { await obsController.createSceneWithBrowserSource(s); }
+    catch (e) { console.error("[rivalry] scene setup failed:", e.message); }
+  }
+}
+
 function createTray() {
   let img = nativeImage.createFromPath(TRAY_ICON);
   if (!img.isEmpty()) img = img.resize({ width: 16, height: 16 });
@@ -158,10 +205,10 @@ function createTray() {
   tray.on("click", showWindow);
 }
 
-// Enable auto-start the first time the app ever runs (producer convenience).
 function setupAutoUpdate() {
   // Only in the packaged app; running unpacked (npm start) has no update feed.
   if (!app.isPackaged) return;
+  const autoUpdater = getAutoUpdater();
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true; // installs on full quit, never mid-broadcast
   autoUpdater.on("error", (e) => console.error("[rivalry] updater error:", e && e.message));
@@ -170,6 +217,95 @@ function setupAutoUpdate() {
   autoUpdater.checkForUpdates().catch(() => {});
   // re-check every 30 minutes in case the app stays open across a release
   setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 30 * 60 * 1000);
+}
+
+// =============================================================================
+// OBS integration: load persisted settings, drive the controller, react to
+// control-panel changes, optionally auto-switch scenes on game events.
+// =============================================================================
+function setupObsIntegration() {
+  const userDataDir = app.getPath("userData");
+  obsSettings = obsSettingsStore.load(userDataDir);
+  obsController = createOBSController();
+
+  // Push initial settings into the controller. If `enabled: false` (the
+  // default) this is a no-op and OBS is never contacted.
+  obsController.applySettings(obsSettings).catch(() => {});
+
+  // Status changes -> repaint tray menu so producers can see live state.
+  obsController.on("status", () => refreshTrayMenu());
+
+  // Control panel -> main process messages.
+  if (bridgeHandle && bridgeHandle.events) {
+    bridgeHandle.events.on("control", (msg, sourceWs) => {
+      if (msg && msg.type === "obs-settings" && msg.payload) {
+        obsSettings = { ...obsSettings, ...msg.payload };
+        obsSettingsStore.save(userDataDir, obsSettings);
+        obsController.applySettings(obsSettings).catch(() => {});
+        // Echo current settings + status back to the panel.
+        if (bridgeHandle.broadcastControl) {
+          bridgeHandle.broadcastControl({
+            type: "obs-status",
+            payload: { settings: obsSettings, status: obsController.status },
+          });
+        }
+      } else if (msg && msg.type === "obs-action") {
+        handleObsAction(msg.payload || {});
+      } else if (msg && msg.type === "obs-query") {
+        handleObsQuery(msg.payload || {}, sourceWs);
+      }
+    });
+
+    // Auto-scene-switching on game events (off by default; gated by
+    // autoSwitchEnabled + a non-empty scene name for each trigger).
+    bridgeHandle.events.on("game", (env) => onGameEventForObs(env));
+  }
+}
+
+async function handleObsAction({ action }) {
+  if (!obsController || !obsController.status.connected) return;
+  if (action === "setup-scenes") return setupObsScenes();
+}
+
+async function handleObsQuery({ query }, sourceWs) {
+  if (!obsController || !obsController.status.connected) return;
+  if (query === "list-scenes") {
+    try {
+      const scenes = await obsController.listScenes();
+      if (sourceWs && sourceWs.readyState === sourceWs.OPEN) {
+        sourceWs.send(JSON.stringify({
+          type: "obs-scenes",
+          payload: { scenes },
+        }));
+      }
+    } catch (e) { /* ignore */ }
+  }
+}
+
+// Internal: translate game events into scene switches.
+// Conservative: only fires if the master toggle is on AND the producer has
+// mapped a scene name for the trigger. Unknown events / unmapped triggers
+// silently do nothing.
+function onGameEventForObs(env) {
+  if (!obsSettings || !obsSettings.autoSwitchEnabled) return;
+  if (!obsController || !obsController.status.connected) return;
+  const map = obsSettings.sceneMap || {};
+  const ev = env && env.event;
+  if (ev === "GoalReplayStart" && map.replay) {
+    obsController.switchScene(map.replay);
+  } else if ((ev === "GoalReplayEnd" || ev === "CountdownBegin" || ev === "RoundStarted") && map.live) {
+    obsController.switchScene(map.live);
+  } else if (ev === "UpdateState" && map.postMatch) {
+    // Match-end heuristic: Game.Winner becomes a non-empty team name.
+    // Fire once per match by stashing the last GUID we switched on.
+    const data = env.data || {};
+    const winner = data.Game && data.Game.Winner;
+    const guid = data.MatchGuid;
+    if (winner && guid && onGameEventForObs._lastEnded !== guid) {
+      onGameEventForObs._lastEnded = guid;
+      obsController.switchScene(map.postMatch);
+    }
+  }
 }
 
 // Enable auto-start the first time the app ever runs (producer convenience).
@@ -200,12 +336,13 @@ if (!app.requestSingleInstanceLock()) {
     }
 
     applyFirstRunAutostart();
-    startBridge({ mock: process.argv.includes("--mock") });
+    bridgeHandle = startBridge({ mock: process.argv.includes("--mock") });
     collector = startReplayCollector({});
     startHttpServer(__dirname);
     createWindow();
     createTray();
     setupAutoUpdate();
+    setupObsIntegration();
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();
