@@ -116,22 +116,24 @@
 
   /* ===================== GOAL BANNER ====================== */
   /* Designed to PAINT OVER RL's in-game "X Scored" overlay. RL renders that
-     text at roughly the center of the screen, taking maybe ~25-30% of the
-     vertical height with the team logo + animated text. We can't suppress
-     RL's renderer; we can only composite over it via OBS. So this banner
-     is intentionally tall (320px) and fully opaque across the full width
-     for the seconds the goal sequence is on screen. */
-  .goal-banner{position:fixed;top:50%;left:0;right:0;transform:translateY(-50%);
+     text in the upper third of the screen (roughly y=8% to y=30% on 1080p).
+     Our banner is positioned with its vertical center at y=18% and is 300px
+     tall, fully opaque across the full width, so it physically covers
+     RL's text. We can't suppress RL's renderer; only composite over it via
+     OBS. Coexists with the top scorebar which is centered + only ~50%
+     wide, so the scorebar still shows above the goal slab.
+     Asset spec for the designer is in DESIGN-SPEC.md. */
+  .goal-banner{position:fixed;top:18%;left:0;right:0;transform:translateY(-50%);
     display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60;}
-  .goal-banner .gb-bg{position:absolute;left:0;right:0;top:50%;height:320px;
+  .goal-banner .gb-bg{position:absolute;left:0;right:0;top:50%;height:300px;
     transform:translateY(-50%) scaleX(0);transform-origin:left center;
-    transition:transform .34s cubic-bezier(.7,0,.25,1);
+    transition:transform .28s cubic-bezier(.7,0,.25,1);
     background:var(--goalc);
     border-top:3px solid rgba(0,0,0,.7); border-bottom:3px solid rgba(0,0,0,.7);
     box-shadow:0 0 60px rgba(0,0,0,.7);}
   .goal-banner .gb-text{position:relative;font-size:88px;font-weight:900;letter-spacing:6px;
     text-transform:uppercase;color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.85);
-    opacity:0;transform:translateY(10px);transition:opacity .3s .14s,transform .3s .14s;white-space:nowrap;}
+    opacity:0;transform:translateY(10px);transition:opacity .26s .1s,transform .26s .1s;white-space:nowrap;}
   .goal-banner.show .gb-bg{transform:translateY(-50%) scaleX(1);}
   .goal-banner.show .gb-text{opacity:1;transform:translateY(0);}
 
@@ -416,8 +418,10 @@ function showGoalBanner(scorer, teamNum){
   $("gbText").textContent = fillGoalText(control.goalText, scorer, teamName);
   $("goalBanner").classList.add("show");
   clearTimeout(bannerTimer);
-  // safety hide if replay events never arrive
-  bannerTimer = setTimeout(hideGoalBanner, 6000);
+  // safety hide if RL never fires GoalReplayStart (e.g. private lobbies that
+  // skip the replay). Tuned to roughly the duration of RL's own "X SCORED"
+  // banner so the overlay doesn't hang on screen if normal flow breaks.
+  bannerTimer = setTimeout(hideGoalBanner, 3000);
 }
 function hideGoalBanner(){ $("goalBanner").classList.remove("show"); }
 
