@@ -42,6 +42,13 @@ const OVERLAY_URL = `http://localhost:${HTTP_PORT}/overlay/overlay.html`;
 const CONTROL_URL = `http://localhost:${HTTP_PORT}/control/control.html`;
 const TRAY_ICON = path.join(__dirname, "assets", "tray.png");
 
+// Beta builds (built via electron-builder.beta.yml for CI PR artifacts) set
+// productName to "RIVALRY Overlay Beta". We surface that in the tray + window
+// title so producers running both prod + beta side by side can tell them apart
+// at a glance. Detection runs once at boot.
+const IS_BETA = (app.getName() || "").toLowerCase().includes("beta");
+const APP_TITLE = IS_BETA ? "RIVALRY Overlay (BETA)" : "RIVALRY Overlay";
+
 const MIME = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript",
@@ -89,7 +96,7 @@ function createWindow() {
     height: 1040,
     minWidth: 360,
     autoHideMenuBar: true,
-    title: "RIVALRY Overlay",
+    title: APP_TITLE,
     backgroundColor: "#0e1218",
     icon: TRAY_ICON,
     webPreferences: { contextIsolation: true },
@@ -130,7 +137,7 @@ function obsStatusLabel() {
 function buildTrayMenu() {
   const startsWithWindows = app.getLoginItemSettings().openAtLogin;
   return Menu.buildFromTemplate([
-    { label: "RIVALRY Overlay", enabled: false },
+    { label: APP_TITLE, enabled: false },
     { type: "separator" },
     { label: "Show control panel", click: showWindow },
     {
@@ -169,7 +176,7 @@ function buildTrayMenu() {
     },
     { type: "separator" },
     {
-      label: "Quit RIVALRY Overlay",
+      label: `Quit ${APP_TITLE}`,
       click: () => {
         app.isQuitting = true;
         app.quit();
@@ -200,7 +207,7 @@ function createTray() {
   let img = nativeImage.createFromPath(TRAY_ICON);
   if (!img.isEmpty()) img = img.resize({ width: 16, height: 16 });
   tray = new Tray(img.isEmpty() ? nativeImage.createEmpty() : img);
-  tray.setToolTip("RIVALRY Overlay");
+  tray.setToolTip(APP_TITLE);
   tray.setContextMenu(buildTrayMenu());
   tray.on("click", showWindow);
 }

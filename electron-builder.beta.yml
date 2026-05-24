@@ -1,0 +1,38 @@
+# =============================================================================
+# Beta build config. CI builds this on every PR (see .github/workflows/
+# pr-build.yml) and uploads it as a downloadable artifact on the Actions run.
+# Installs alongside the production app (different appId / install dir /
+# userData path) so testing a PR build never disturbs your stable install.
+# =============================================================================
+appId: gg.rivalry.overlay.beta
+productName: RIVALRY Overlay Beta
+directories:
+  output: dist-beta
+files:
+  - main.js
+  - bridge/**/*
+  - overlay/**/*
+  - control/**/*
+  - config/**/*
+  - assets/**/*
+# Forces app.getName() to return "RIVALRY Overlay Beta" at runtime, which
+# main.js uses to flip the tray + window title into BETA mode.
+extraMetadata:
+  name: rivalry-overlay-beta
+  productName: RIVALRY Overlay Beta
+win:
+  target:
+    - nsis
+  icon: build/icon.ico
+  artifactName: RIVALRY-Overlay-Beta-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: RIVALRY Overlay Beta
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+# No publish block: beta builds are throwaway artifacts attached to the PR.
+# They never appear in GitHub Releases and never trigger the auto-updater.

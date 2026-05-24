@@ -236,6 +236,53 @@ is for any future early-required Electron-only deps.
 
 ---
 
+## 6.7 Beta build channel (test installs alongside prod)
+
+Two co-existing installs on the same machine:
+
+|                          | Production                                                 | Beta                                                             |
+| ------------------------ | ---------------------------------------------------------- | ---------------------------------------------------------------- |
+| `appId`                  | `gg.rivalry.overlay`                                       | `gg.rivalry.overlay.beta`                                        |
+| Windows app name         | RIVALRY Overlay                                            | RIVALRY Overlay Beta                                             |
+| Tray + window title      | RIVALRY Overlay                                            | RIVALRY Overlay (BETA)                                           |
+| Installer file           | `RIVALRY-Overlay-Setup-${version}.exe`                     | `RIVALRY-Overlay-Beta-Setup-${version}.exe`                      |
+| Settings folder          | `%AppData%\RIVALRY Overlay\`                               | `%AppData%\RIVALRY Overlay Beta\`                                |
+| Where the installer comes from | Tag push -> [release.yml](.github/workflows/release.yml) | Every PR -> [pr-build.yml](.github/workflows/pr-build.yml) artifact |
+| Auto-updater             | On, stable channel                                         | Off (each PR build is throwaway)                                 |
+
+Build configs live in [electron-builder.yml](electron-builder.yml) (prod) and
+[electron-builder.beta.yml](electron-builder.beta.yml) (beta).
+
+### Building locally
+
+```powershell
+$env:ELECTRON_RUN_AS_NODE = $null
+npm run dist          # prod installer -> dist\
+npm run dist:beta     # beta installer -> dist-beta\
+```
+
+### Downloading the beta installer from a PR
+
+1. Open the PR on GitHub.
+2. The "PR Build (Beta installer)" workflow runs automatically. The bot
+   leaves a comment on the PR with a link once the build finishes (~5 min).
+3. Click through to the Actions run, scroll to "Artifacts", download the
+   `rivalry-overlay-beta-<sha>` zip. Inside is the `.exe` installer.
+4. Install. The first run scaffolds its own settings folder, totally
+   separate from the production install.
+
+### When to use which
+
+- **Testing a PR yourself:** beta install. Lets you keep using the production
+  install for real broadcasts while a PR is in flight.
+- **Pushing a fix you trust:** merge to main, tag, prod installer auto-builds.
+- **Sharing a test build with a caster:** out of scope of beta CI artifacts
+  (artifacts are only visible to people with repo access). Cut a GitHub
+  prerelease tag for those, e.g. `v1.1.0-rc1`. See section 7 for the
+  prerelease/code-signing discussion.
+
+---
+
 ## 7. Open decisions / next moves
 
 - [ ] **Do a packaged-build smoke test before tagging v1.0.0?** Options:

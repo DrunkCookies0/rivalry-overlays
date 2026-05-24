@@ -10,9 +10,10 @@
     "mock": "electron . --mock",
     "dev:bridge": "node bridge/rl-bridge.js --mock",
     "setup": "node bridge/rl-bridge.js --setup",
-    "dist": "electron-builder --win",
-    "pack": "electron-builder --win --dir",
-    "release": "electron-builder --win --publish always"
+    "pack": "electron-builder --win --dir --config electron-builder.yml",
+    "dist": "electron-builder --win --config electron-builder.yml",
+    "dist:beta": "electron-builder --win --config electron-builder.beta.yml",
+    "release": "electron-builder --win --publish always --config electron-builder.yml"
   },
   "dependencies": {
     "ws": "^8.18.0",
@@ -22,45 +23,5 @@
   "devDependencies": {
     "electron": "^31.7.6",
     "electron-builder": "^24.13.3"
-  },
-  "build": {
-    "appId": "gg.rivalry.overlay",
-    "productName": "RIVALRY Overlay",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "main.js",
-      "bridge/**/*",
-      "overlay/**/*",
-      "control/**/*",
-      "config/**/*",
-      "assets/**/*"
-    ],
-    "win": {
-      "target": [
-        "nsis"
-      ],
-      "icon": "build/icon.ico",
-      "artifactName": "RIVALRY-Overlay-Setup-${version}.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "RIVALRY Overlay",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "DrunkCookies0",
-        "repo": "rivalry-overlays",
-        "releaseType": "release"
-      }
-    ]
   }
 }

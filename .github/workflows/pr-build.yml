@@ -1,0 +1,90 @@
+# =============================================================================
+# PR Build (Beta installer)
+# -----------------------------------------------------------------------------
+# On every PR (and every push to a feat/* branch) we build the beta installer
+# and attach it as a downloadable artifact on the workflow run. Devs can grab
+# it from the Actions tab and install side-by-side with their stable prod app.
+#
+# The beta installer uses a different appId / productName / install dir, so it
+# never disturbs the production install or its userData.
+#
+# Production releases still flow through release.yml on tag push.
+# =============================================================================
+name: PR Build (Beta installer)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - 'feat/**'
+      - 'fix/**'
+
+permissions:
+  contents: read
+  pull-requests: write   # so the workflow can comment the download link on PRs
+
+jobs:
+  build-beta:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build beta installer
+        run: npm run dist:beta
+
+      - name: Upload installer artifact
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: rivalry-overlay-beta-${{ github.sha }}
+          path: dist-beta/RIVALRY-Overlay-Beta-Setup-*.exe
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Comment download link on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const sha = context.sha.substring(0, 7);
+            const body = [
+              `### Beta installer ready`,
+              ``,
+              `Built from commit \`${sha}\`. Download the \`.exe\` from the workflow run:`,
+              ``,
+              `**[Open Actions run -> Artifacts](${runUrl})**`,
+              ``,
+              `Installs as **RIVALRY Overlay Beta** alongside any production install. Settings live in \`%AppData%\\RIVALRY Overlay Beta\\\`. The tray + window title will show \`(BETA)\` so you can tell them apart.`,
+            ].join('\n');
+
+            // Find an existing comment from this workflow and update it, else create a new one.
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            const marker = '### Beta installer ready';
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }
