@@ -37,7 +37,10 @@ jobs:
         run: npm install
 
       - name: Build beta installer
-        run: npm run dist:beta
+        # Bake the commit SHA into the installed app via electron-builder's
+        # extraMetadata so the tray + control panel can render "v0.2.0-beta
+        # (<short-sha>)" and a producer can tell installed builds apart.
+        run: npm run dist:beta -- -c.extraMetadata.buildSha=${{ github.sha }}
 
       - name: Upload installer artifact
         id: upload

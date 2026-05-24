@@ -46,7 +46,12 @@
 </style>
 </head>
 <body>
-  <div class="brand"><img class="wordmark" src="../assets/rivalry-wordmark.svg" alt="RIVALRY" /><span>Control Panel</span></div>
+  <div class="brand">
+    <img class="wordmark" src="../assets/rivalry-wordmark.svg" alt="RIVALRY" />
+    <span>Control Panel</span>
+    <span id="buildLabel" style="font-size:11px;letter-spacing:1px;color:#5b6d80;
+      margin-left:auto;font-family:'Consolas',monospace;text-transform:none;"></span>
+  </div>
   <div class="sub">Push team branding and series score to the overlay in real time.</div>
 
   <div class="card full" style="margin-bottom:18px;border-left:3px solid var(--rivalry);">
@@ -184,6 +189,12 @@ const CONTROL_WS = "ws://localhost:49777";
 let ws = null, connected = false;
 const $ = (id) => document.getElementById(id);
 const state = { series:{a:0,b:0} };
+
+// Fetch + render the build label (e.g. "v0.2.0-beta (a3b9c1d)") in the
+// header so a producer can tell installed builds apart at a glance.
+fetch("/version").then(r => r.json()).then(meta => {
+  if (meta && meta.label) $("buildLabel").textContent = meta.label;
+}).catch(() => {});
 
 function connect(){
   ws = new WebSocket(CONTROL_WS);

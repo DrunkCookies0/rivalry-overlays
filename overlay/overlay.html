@@ -270,11 +270,21 @@ function fmtClock(sec, isOT){
 }
 
 // Find the currently spectated player across the field shapes the API may use.
+// RL's Stats API sends Game.Target as an OBJECT ({Name, Shortcut, TeamNum})
+// when bHasTarget is true. Older API revisions / BARL examples also showed
+// it as a bare string. We accept either and pull the player name out.
 function getTargetName(data){
   const g = data.Game || {};
-  return data.Target || g.Target || data.Spectated ||
-         (data.Spectator && (data.Spectator.PlayerName || data.Spectator.Name)) ||
-         (g.Spectator && (g.Spectator.PlayerName || g.Spectator.Name)) || null;
+  const candidates = [
+    data.Target, g.Target, data.Spectated,
+    data.Spectator, g.Spectator,
+  ];
+  for (const t of candidates) {
+    if (!t) continue;
+    if (typeof t === "string") return t;
+    if (typeof t === "object") return t.Name || t.PlayerName || null;
+  }
+  return null;
 }
 
 function onUpdateState(data){

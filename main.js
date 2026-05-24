@@ -36,6 +36,7 @@ const { runSetup, startBridge } = require("./bridge/rl-bridge");
 const { startReplayCollector } = require("./bridge/replay-collector");
 const { createOBSController } = require("./bridge/obs-controller");
 const obsSettingsStore = require("./bridge/obs-settings");
+const { getMeta } = require("./bridge/app-meta");
 
 const HTTP_PORT = 49080;
 const OVERLAY_URL = `http://localhost:${HTTP_PORT}/overlay/overlay.html`;
@@ -48,6 +49,7 @@ const TRAY_ICON = path.join(__dirname, "assets", "tray.png");
 // at a glance. Detection runs once at boot.
 const IS_BETA = (app.getName() || "").toLowerCase().includes("beta");
 const APP_TITLE = IS_BETA ? "RIVALRY Overlay (BETA)" : "RIVALRY Overlay";
+const META = getMeta(IS_BETA);
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -63,6 +65,11 @@ const MIME = {
 function startHttpServer(rootDir) {
   const server = http.createServer((req, res) => {
     let urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
+    // Tiny meta endpoint so the control panel can render the build label.
+    if (urlPath === "/version" || urlPath === "/version.json") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(META));
+    }
     if (urlPath === "/" || urlPath === "") urlPath = "/control/control.html";
     const filePath = path.normalize(path.join(rootDir, urlPath));
     if (!filePath.startsWith(rootDir)) {
@@ -138,6 +145,7 @@ function buildTrayMenu() {
   const startsWithWindows = app.getLoginItemSettings().openAtLogin;
   return Menu.buildFromTemplate([
     { label: APP_TITLE, enabled: false },
+    { label: META.label, enabled: false },
     { type: "separator" },
     { label: "Show control panel", click: showWindow },
     {
@@ -161,11 +169,14 @@ function buildTrayMenu() {
       click: () => setupObsScenes(),
     },
     { type: "separator" },
-    {
+    // Beta builds have no update channel (each PR build is throwaway, no
+    // latest.yml is published), so the menu item would do nothing visible.
+    // Hide it entirely on beta to remove the dead UX.
+    ...(IS_BETA ? [] : [{
       label: "Check for updates",
       click: () => { try { getAutoUpdater().checkForUpdates(); } catch (e) {} },
-    },
-    { type: "separator" },
+    }]),
+    ...(IS_BETA ? [] : [{ type: "separator" }]),
     {
       label: "Start with Windows",
       type: "checkbox",
