@@ -309,7 +309,12 @@ function onGameEventForObs(env) {
   if (!obsController || !obsController.status.connected) return;
   const map = obsSettings.sceneMap || {};
   const ev = env && env.event;
-  if (ev === "GoalReplayStart" && map.replay) {
+  if (ev === "GoalScored" && map.goal) {
+    // Briefly cut to the "Goal" scene so RL's in-game "X Scored" text is
+    // never composited into the broadcast. The replay-start handler below
+    // will swap to the replay scene once RL fires it.
+    obsController.switchScene(map.goal);
+  } else if (ev === "GoalReplayStart" && map.replay) {
     obsController.switchScene(map.replay);
   } else if ((ev === "GoalReplayEnd" || ev === "CountdownBegin" || ev === "RoundStarted") && map.live) {
     obsController.switchScene(map.live);

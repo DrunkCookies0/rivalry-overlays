@@ -165,6 +165,10 @@
           <input type="text" id="obsSceneLive" placeholder="RIVALRY - Live" />
         </div>
         <div style="flex:1;">
+          <label>Goal scene</label>
+          <input type="text" id="obsSceneGoal" placeholder="(hides RL's text)" />
+        </div>
+        <div style="flex:1;">
           <label>Replay scene</label>
           <input type="text" id="obsSceneReplay" placeholder="(optional)" />
         </div>
@@ -174,7 +178,7 @@
         </div>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:8px;">
-        Scene names must match exactly. Leave blank to skip auto-switching on a trigger.
+        Scene names must match exactly. Leave blank to skip auto-switching on a trigger. The Goal scene should be a graphics-only scene (no game capture) so RL's in-game "X Scored" text is never composited into the broadcast.
       </div>
     </div>
 
@@ -252,6 +256,7 @@ function readObsForm(){
     autoSwitchEnabled: $("obsAutoSwitch").checked,
     sceneMap: {
       live: $("obsSceneLive").value.trim(),
+      goal: $("obsSceneGoal").value.trim(),
       replay: $("obsSceneReplay").value.trim(),
       postMatch: $("obsScenePostMatch").value.trim(),
     },
@@ -277,10 +282,11 @@ function hydrateObsForm(settings){
   $("obsAutoSwitch").checked = !!settings.autoSwitchEnabled;
   const map = settings.sceneMap || {};
   if (typeof map.live === "string") $("obsSceneLive").value = map.live;
+  if (typeof map.goal === "string") $("obsSceneGoal").value = map.goal;
   if (typeof map.replay === "string") $("obsSceneReplay").value = map.replay;
   if (typeof map.postMatch === "string") $("obsScenePostMatch").value = map.postMatch;
 }
-["obsEnabled","obsWsUrl","obsWsPassword","obsAutoSwitch","obsSceneLive","obsSceneReplay","obsScenePostMatch"]
+["obsEnabled","obsWsUrl","obsWsPassword","obsAutoSwitch","obsSceneLive","obsSceneGoal","obsSceneReplay","obsScenePostMatch"]
   .forEach(id => {
     const el = $(id);
     el.addEventListener("change", pushObsSettings);

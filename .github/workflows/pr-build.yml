@@ -56,16 +56,23 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
             const sha = context.sha.substring(0, 7);
+            const label = `v${pkg.version}-beta (${sha})`;
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const body = [
               `### Beta installer ready`,
               ``,
-              `Built from commit \`${sha}\`. Download the \`.exe\` from the workflow run:`,
+              `Build label: \`${label}\``,
+              ``,
+              `Download the \`.exe\` from the workflow run:`,
               ``,
               `**[Open Actions run -> Artifacts](${runUrl})**`,
               ``,
-              `Installs as **RIVALRY Overlay Beta** alongside any production install. Settings live in \`%AppData%\\RIVALRY Overlay Beta\\\`. The tray + window title will show \`(BETA)\` so you can tell them apart.`,
+              `After install, the same label appears in the control panel header and the tray menu, so you can confirm you're running this build before testing.`,
+              ``,
+              `Installs as **RIVALRY Overlay Beta** alongside any production install. Settings live in \`%AppData%\\RIVALRY Overlay Beta\\\`.`,
             ].join('\n');
 
             // Find an existing comment from this workflow and update it, else create a new one.

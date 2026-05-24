@@ -293,6 +293,22 @@ function getTargetName(data){
   return null;
 }
 
+// Sticky focus: RL's Stats API only includes Game.Target in some frames
+// during director cam (~63% of frames). Without persistence the statbar +
+// radial gauge flicker on/off every other frame. We hold the last known
+// target for FOCUS_STICKY_MS so the UI feels solid; in that window we
+// re-look-up the player by name in the current Players array so live
+// stats (boost, goals) still update.
+const FOCUS_STICKY_MS = 1500;
+let lastFocusName = null;
+let lastFocusTime = 0;
+
+// Boost cache: RL only re-sends a player's Boost field when it changes. If
+// we showed "--" on any frame missing the field, the side rails would
+// flicker. Cache the last value per name; we only show "--" if we've never
+// seen a real value for that player.
+const lastBoostByName = {};
+
 function onUpdateState(data){
   const game = data.Game || {};
   const teams = game.Teams || [];
@@ -307,11 +323,18 @@ function onUpdateState(data){
   renderBoost($("colA"), players.filter(p => p.TeamNum === 0), "blue");
   renderBoost($("colB"), players.filter(p => p.TeamNum === 1), "red");
 
-  // focused player -> statfeed + radial boost
+  // focused player -> statfeed + radial boost (with sticky-focus persistence)
   const targetName = getTargetName(data);
-  const target = players.find(p => p.Name === targetName);
+  let target = targetName ? players.find(p => p.Name === targetName) : null;
+  const now = performance.now();
+  if (target) {
+    lastFocusName = target.Name;
+    lastFocusTime = now;
+  } else if (lastFocusName && now - lastFocusTime < FOCUS_STICKY_MS) {
+    target = players.find(p => p.Name === lastFocusName) || null;
+  }
   updateFocus(target);
-  markActive(targetName);
+  markActive(target ? target.Name : null);
 }
 
 function renderBoost(col, players, cls){
@@ -327,10 +350,12 @@ function renderBoost(col, players, cls){
   }
   players.forEach((p, i) => {
     const tag = col.children[i];
-    const hasBoost = typeof p.Boost === "number";
+    if (typeof p.Boost === "number") lastBoostByName[p.Name] = p.Boost;
+    const boost = lastBoostByName[p.Name];
+    const hasBoost = typeof boost === "number";
     tag.querySelector(".pname").textContent = p.Name || "";
-    tag.querySelector(".pboost").textContent = hasBoost ? p.Boost : "--";
-    tag.querySelector(".fill").style.width = (hasBoost ? p.Boost : 0) + "%";
+    tag.querySelector(".pboost").textContent = hasBoost ? boost : "--";
+    tag.querySelector(".fill").style.width = (hasBoost ? boost : 0) + "%";
     tag.dataset.name = p.Name || "";
   });
 }
@@ -354,12 +379,17 @@ function updateFocus(p){
   $("sbSaves").textContent   = p.Saves   ?? 0;
   $("sbDemos").textContent   = demosByName[p.Name] || 0;
 
-  const boost = typeof p.Boost === "number" ? p.Boost : 0;
+  // Same boost cache as renderBoost so the radial gauge doesn't flicker
+  // to 0 / "--" on frames where RL omits the Boost field.
+  const cachedBoost = lastBoostByName[p.Name];
+  const haveBoost = typeof p.Boost === "number" || typeof cachedBoost === "number";
+  const boost = typeof p.Boost === "number" ? p.Boost
+              : typeof cachedBoost === "number" ? cachedBoost : 0;
   const val = $("gaugeVal");
   val.style.stroke = blue ? "var(--blue)" : "var(--red)";
   val.style.strokeDasharray = GAUGE_CIRC;
   val.style.strokeDashoffset = GAUGE_CIRC * (1 - boost/100);
-  $("gaugeLabel").textContent = typeof p.Boost === "number" ? boost : "--";
+  $("gaugeLabel").textContent = haveBoost ? boost : "--";
 }
 
 /* ---- Goal sequence -------------------------------------------------------

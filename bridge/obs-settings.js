@@ -19,6 +19,8 @@ const DEFAULTS = {
   // "don't auto-switch on this trigger" - the controller skips the call.
   sceneMap: {
     live: "",
+    goal: "",      // briefly cut to this scene when a goal scores so
+                    // RL's in-game "X Scored" text never reaches the broadcast
     replay: "",
     postMatch: "",
   },
