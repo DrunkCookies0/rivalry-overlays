@@ -1,9 +1,8 @@
-# Handoff: shipping state, auto-updater, dev tooling (session of 2026-05-23)
+# Handoff: shipping state, auto-updater, dev tooling
 
-A handoff for whoever picks up next (me, future Claude, or Alex). Covers the
-current release state, exactly what the auto-updater will and will not do, the
-ritual for cutting a tag, what was installed locally this session, and the open
-decisions still on the table.
+A handoff for whoever picks up next. Covers the current release state,
+exactly what the auto-updater will and will not do, the ritual for cutting
+a tag, what was installed locally, and the open decisions still on the table.
 
 ---
 
@@ -16,11 +15,11 @@ decisions still on the table.
 | `package.json` version                | `1.0.0` (unbumped, never tagged)                                     |
 | Git tags                              | NONE                                                                 |
 | GitHub Releases                       | NONE                                                                 |
-| CI release workflow runs              | NEVER fired (only a Copilot review run exists)                       |
+| CI release workflow runs              | NEVER fired                                                          |
 | Installer published anywhere          | NO                                                                   |
 | Auto-updater in code                  | Wired, but inert until a Release exists with `latest.yml`            |
 | Code signing                          | NOT configured (SmartScreen will warn on first run)                  |
-| Local dev tooling added this session  | Playwright + Chromium, 3 Claude skills (see section 6)               |
+| Local dev tooling                     | Playwright + Chromium (see section 6)                                |
 
 Bottom line: nothing has shipped yet. The first thing pushed up as `v1.0.0` will
 be the actual first release. The auto-updater code already in `main.js` only
@@ -150,22 +149,12 @@ python -m playwright install chromium
 python -m playwright --help
 ```
 
-### Claude Code skills (user-global, at `D:\Repositories\.claude\skills\`)
-
-| Skill                | Purpose for this project                                                                            |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| `webapp-testing`     | Drive Chromium against `localhost:49080` overlay/control, screenshot, watch console errors.         |
-| `changelog-generator`| Read `git log` between two refs, draft a release-notes block. Use on every tag.                     |
-| `code-reviewer`      | Structured review of a diff using 6 reference checklists. Use before pushing release tags.          |
-
-Skills do NOT hot-load mid-conversation. After installing them this session,
-Claude Code probably needs a restart before they show up as invocable.
-
 ### OBS MCP (dev-only)
 
-[`.mcp.json`](.mcp.json) at the repo root registers [`obs-mcp`](https://www.npmjs.com/package/obs-mcp)
-so Claude Code can drive your local OBS during development (switch scenes,
-add browser sources, refresh sources after editing overlay HTML).
+[`.mcp.json`](.mcp.json) at the repo root registers
+[`obs-mcp`](https://www.npmjs.com/package/obs-mcp) so dev tooling can
+drive your local OBS during development (switch scenes, add browser
+sources, refresh sources after editing overlay HTML).
 
 Setup, once:
 
@@ -174,10 +163,9 @@ Setup, once:
    ```powershell
    $env:OBS_WEBSOCKET_PASSWORD = "<your-password>"
    ```
-3. Restart Claude Code so it attaches the new MCP server.
-4. Verify: ask Claude to "list OBS scenes."
+3. Restart your editor / MCP host so the server attaches.
 
-End-users never see this. The MCP is for Claude<->OBS, not the shipped app.
+End-users never see this. The MCP is dev-time only, not the shipped app.
 
 ---
 
@@ -216,8 +204,8 @@ Test against a real match before relying on it for a live broadcast.
 
 `npm run mock` and `npm start` crash inside `electron-updater` if the shell
 env var `ELECTRON_RUN_AS_NODE=1` is set (it makes `require('electron')`
-return a path string, so `app` is undefined everywhere). This var is set
-inside the VS Code terminal + Claude Code's bash harness on this machine.
+return a path string, so `app` is undefined everywhere). VS Code's
+integrated terminal can set this in some configurations.
 
 Workarounds:
 
@@ -296,8 +284,7 @@ npm run dist:beta     # beta installer -> dist-beta\
   `certificatePassword` to `build` in `package.json`. Skip unless casters
   complain.
 - [ ] **Set up a CHANGELOG.md** before v1.0.0 so the first release has real
-  notes, not a default GitHub blob. The `changelog-generator` skill is
-  installed for this.
+  notes, not a default GitHub blob.
 - [ ] **Confirm the GitHub Actions `release.yml` works end-to-end** by tagging
   a throwaway prerelease first if you want belt-and-braces, e.g. `v0.9.0-rc1`.
   Optional.
@@ -306,8 +293,8 @@ npm run dist:beta     # beta installer -> dist-beta\
 
 ## 8. Gotchas to remember
 
-- **Direct push to `main` is blocked** by Alex's Claude Code deny rules.
-  Always go feat branch + PR. Squash-merge is the default that worked here.
+- **Direct push to `main` is blocked.** Always go feat branch + PR.
+  Squash-merge is the default that worked here.
 - **`package.json` version and git tag must match.** Bump first, commit,
   THEN tag.
 - **The auto-updater is silent in dev.** Don't try to "test" it from
@@ -318,8 +305,6 @@ npm run dist:beta     # beta installer -> dist-beta\
   fetched the old `latest.yml` may get into a confused state.)
 - **Playwright CLI is not on PATH.** Always `python -m playwright`, never
   bare `playwright`.
-- **PowerShell is on Alex's deny list for Claude Bash.** Use bash with POSIX
-  syntax when running things on his behalf.
 - **`AUTO-UPDATE-HANDOFF.md` references repo `rivalry-broadcaster`.** That
   was an earlier working name; the real repo is `rivalry-overlays`. The
   shipped `package.json` is correct (`owner: DrunkCookies0`,

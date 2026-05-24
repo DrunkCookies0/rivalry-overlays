@@ -1,6 +1,6 @@
 # RIVALRY Overlay - Project Handoff
 
-A complete handoff for anyone (developer or Copilot) taking over this project. It explains
+A complete handoff for anyone taking over this project. It explains
 what the app is, how it works, every file, how to run and ship it, what is done, what is
 shaky, and what is next.
 
