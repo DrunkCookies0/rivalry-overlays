@@ -21,8 +21,8 @@ on:
       - 'fix/**'
 
 permissions:
-  contents: read
-  pull-requests: write   # so the workflow can comment the download link on PRs
+  contents: write          # create GitHub prereleases for beta auto-update
+  pull-requests: write     # comment the download link on PRs
 
 jobs:
   build-beta:
@@ -36,13 +36,24 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build beta installer
-        # Bake the commit SHA into the installed app via electron-builder's
-        # extraMetadata so the tray + control panel can render "v0.2.0-beta
-        # (<short-sha>)" and a producer can tell installed builds apart.
-        run: npm run dist:beta -- -c.extraMetadata.buildSha=${{ github.sha }}
+      - name: Compute build version
+        id: ver
+        shell: bash
+        run: |
+          # base_version comes from package.json. github.run_number gives us
+          # a monotonically increasing build number per workflow that's
+          # unique across all PRs, so prereleases compare cleanly via semver.
+          BASE=$(node -p "require('./package.json').version")
+          echo "version=${BASE}-beta.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload installer artifact
+      - name: Build + publish beta installer (GitHub prerelease)
+        env:
+          # electron-builder's GitHub publisher uses GH_TOKEN to create the
+          # prerelease + upload assets + write latest.yml.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run dist:beta -- --publish always -c.extraMetadata.version=${{ steps.ver.outputs.version }} -c.extraMetadata.buildSha=${{ github.sha }}
+
+      - name: Upload installer artifact (also available on the PR)
         id: upload
         uses: actions/upload-artifact@v4
         with:
@@ -51,26 +62,45 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+      # Trim the prerelease backlog so we don't accumulate hundreds of 124MB
+      # installers in Releases (GitHub gives free repos ~2GB of release
+      # storage). Keep the 5 most recent prereleases; delete the rest.
+      - name: Prune old prereleases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release list --limit 100 --json tagName,isPrerelease,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | map(select(.isPrerelease)) | .[5:] | .[].tagName' \
+            | while read -r tag; do
+                if [ -n "$tag" ]; then
+                  echo "Deleting old prerelease: $tag"
+                  gh release delete "$tag" --yes --cleanup-tag || true
+                fi
+              done
+
       - name: Comment download link on PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v7
+        env:
+          BUILD_VERSION: ${{ steps.ver.outputs.version }}
         with:
           script: |
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            const version = process.env.BUILD_VERSION;
             const sha = context.sha.substring(0, 7);
-            const label = `v${pkg.version}-beta (${sha})`;
+            const label = `v${version} (${sha})`;
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const releaseUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/v${version}`;
             const body = [
               `### Beta installer ready`,
               ``,
               `Build label: \`${label}\``,
               ``,
-              `Download the \`.exe\` from the workflow run:`,
+              `**If you already have the beta installed:** nothing to do. Your installed app will detect this build at next launch (or within 30 min) and prompt you to update. Quit from the tray when you're ready to install — never mid-broadcast.`,
               ``,
-              `**[Open Actions run -> Artifacts](${runUrl})**`,
-              ``,
-              `After install, the same label appears in the control panel header and the tray menu, so you can confirm you're running this build before testing.`,
+              `**First-time install:** download the \`.exe\` from one of these:`,
+              `- [GitHub Release page](${releaseUrl})`,
+              `- [Workflow Artifacts (zipped)](${runUrl})`,
               ``,
               `Installs as **RIVALRY Overlay Beta** alongside any production install. Settings live in \`%AppData%\\RIVALRY Overlay Beta\\\`.`,
             ].join('\n');

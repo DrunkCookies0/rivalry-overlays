@@ -34,5 +34,15 @@ nsis:
   shortcutName: RIVALRY Overlay Beta
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
-# No publish block: beta builds are throwaway artifacts attached to the PR.
-# They never appear in GitHub Releases and never trigger the auto-updater.
+# Publish each PR build as a GitHub prerelease. The installed beta app
+# runs electron-updater with allowPrerelease: true (see setupAutoUpdate
+# in main.js) so it auto-detects newer prereleases and offers an in-app
+# "Update available" prompt instead of forcing the producer to download
+# from GitHub by hand. Production releases (tagged v* from main) are
+# semver-greater than any prerelease, so they take precedence cleanly.
+publish:
+  - provider: github
+    owner: DrunkCookies0
+    repo: rivalry-overlays
+    releaseType: prerelease
+    vPrefixedTagName: true

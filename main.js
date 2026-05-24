@@ -169,14 +169,14 @@ function buildTrayMenu() {
       click: () => setupObsScenes(),
     },
     { type: "separator" },
-    // Beta builds have no update channel (each PR build is throwaway, no
-    // latest.yml is published), so the menu item would do nothing visible.
-    // Hide it entirely on beta to remove the dead UX.
-    ...(IS_BETA ? [] : [{
+    // Beta now publishes each PR build as a GitHub prerelease so this
+    // menu item works on both channels. Label is the same; behavior
+    // diverges via autoUpdater.allowPrerelease in setupAutoUpdate().
+    {
       label: "Check for updates",
       click: () => { try { getAutoUpdater().checkForUpdates(); } catch (e) {} },
-    }]),
-    ...(IS_BETA ? [] : [{ type: "separator" }]),
+    },
+    { type: "separator" },
     {
       label: "Start with Windows",
       type: "checkbox",
@@ -229,6 +229,10 @@ function setupAutoUpdate() {
   const autoUpdater = getAutoUpdater();
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true; // installs on full quit, never mid-broadcast
+  // Beta installs follow the prerelease channel (each PR push publishes a
+  // GitHub prerelease tagged v<version>-beta.N). Production installs ignore
+  // prereleases and only update on stable v<version> releases from main.
+  autoUpdater.allowPrerelease = IS_BETA;
   autoUpdater.on("error", (e) => console.error("[rivalry] updater error:", e && e.message));
   autoUpdater.on("update-available", (i) => console.log("[rivalry] update available:", i && i.version));
   autoUpdater.on("update-downloaded", (i) => console.log("[rivalry] update downloaded:", i && i.version));

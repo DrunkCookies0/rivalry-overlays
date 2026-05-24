@@ -1,10 +1,10 @@
 /* =============================================================================
  * RIVALRY RL Bridge  (importable module + CLI)
  * -----------------------------------------------------------------------------
- * Same trick BARL uses. Rocket League's official Stats API
- * ("MatchStatsExporter_TA") opens a RAW TCP socket on 127.0.0.1:49123 and
- * streams concatenated JSON while a match is live. Browsers can't read raw TCP,
- * so this module bridges it to WebSocket.
+ * Rocket League's official Stats API ("MatchStatsExporter_TA") opens a RAW
+ * TCP socket on 127.0.0.1:49123 and streams concatenated JSON while a match
+ * is live. Browsers can't read raw TCP, so this module bridges it to a
+ * WebSocket the overlay subscribes to.
  *
  * Exports:
  *   runSetup()          - writes DefaultStatsAPI.ini into the RL config folder
@@ -24,7 +24,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-// ---- Ports (match BARL's defaults; change here if they collide) ------------
+// ---- Local ports (change here if any collide with other apps) --------------
 const RL_TCP_HOST = "127.0.0.1";
 const RL_TCP_PORT = 49123; // must match Port= in DefaultStatsAPI.ini
 const GAME_WS_PORT = 49124; // overlay subscribes here for live match data
@@ -63,7 +63,7 @@ function runSetup() {
 // 2. JSON FRAMER
 //    RL sends JSON objects back-to-back with no length prefix. Walk the byte
 //    stream tracking brace depth (ignoring braces inside strings) and emit one
-//    complete {...} object at a time. Same logic BARL uses.
+//    complete {...} object at a time. Standard streaming-JSON pattern.
 // =============================================================================
 class JsonFrameBuffer {
   constructor() {

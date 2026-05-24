@@ -277,8 +277,8 @@ function fmtClock(sec, isOT){
 
 // Find the currently spectated player across the field shapes the API may use.
 // RL's Stats API sends Game.Target as an OBJECT ({Name, Shortcut, TeamNum})
-// when bHasTarget is true. Older API revisions / BARL examples also showed
-// it as a bare string. We accept either and pull the player name out.
+// when bHasTarget is true. Older API revisions also showed it as a bare
+// string. We accept either and pull the player name out.
 function getTargetName(data){
   const g = data.Game || {};
   const candidates = [
