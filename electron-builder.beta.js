@@ -1,13 +1,19 @@
 /* =============================================================================
- * Beta build config (JS form so CI can inject version + sha via env vars
- * without dealing with PowerShell tokenizing "-c.extraMetadata.foo=bar"
- * args on the dot — which silently broke every CI build between 21:30
- * and 22:19 UTC on 2026-05-24).
+ * Beta build config — Squirrel.Windows target.
  *
- * Builds a side-by-side install (separate appId / install dir / userData)
- * so testing a PR build never disturbs the production install. Published
- * to GitHub as a prerelease per PR push so the installed beta auto-updates
- * via electron-updater (main.js sets allowPrerelease=true on beta).
+ * Squirrel gives us silent in-place updates (no installer dialog, no UAC,
+ * just download a small .nupkg delta and swap files on next launch). For
+ * the beta channel that's even more important because we push new builds
+ * frequently and we don't want a producer to see an install wizard every
+ * few hours.
+ *
+ * Side-by-side install (different appId / productName / install dir /
+ * userData) keeps the beta out of the production app's way. Each PR push
+ * publishes a GitHub prerelease so installed betas auto-update via
+ * electron-updater (allowPrerelease + channel='beta' in main.js).
+ *
+ * JS form (not YAML) so CI can inject BUILD_VERSION + BUILD_SHA via env
+ * vars instead of fragile "-c.extraMetadata.foo=bar" CLI args.
  * ===========================================================================*/
 
 "use strict";
@@ -24,7 +30,7 @@ module.exports = {
     "config/**/*",
     "assets/**/*",
   ],
-  // extraMetadata is written into the BUILT package.json. Forces app.getName()
+  // extraMetadata is written into the built package.json. Forces app.getName()
   // to return "RIVALRY Overlay Beta" at runtime; baked-in version + sha let
   // the tray + control panel show "v0.2.0-beta.N (a3b9c1d)". CI sets the env
   // vars; local `npm run dist:beta` falls back to defaults.
@@ -35,19 +41,14 @@ module.exports = {
     ...(process.env.BUILD_SHA ? { buildSha: process.env.BUILD_SHA } : {}),
   },
   win: {
-    target: ["nsis"],
+    target: ["squirrel"],
     icon: "build/icon.ico",
-    artifactName: "RIVALRY-Overlay-Beta-Setup-${version}.${ext}",
   },
-  nsis: {
-    oneClick: false,
-    perMachine: false,
-    allowToChangeInstallationDirectory: true,
-    createDesktopShortcut: true,
-    createStartMenuShortcut: true,
-    shortcutName: "RIVALRY Overlay Beta",
-    installerIcon: "build/icon.ico",
-    uninstallerIcon: "build/icon.ico",
+  squirrelWindows: {
+    // Squirrel requires the icon as a hosted URL (embedded into Setup.exe
+    // + uninstall registry entry). Repo is public.
+    iconUrl: "https://raw.githubusercontent.com/DrunkCookies0/rivalry-overlays/main/build/icon.ico",
+    msi: false,
   },
   publish: [
     {
@@ -56,12 +57,9 @@ module.exports = {
       repo: "rivalry-overlays",
       releaseType: "prerelease",
       vPrefixedTagName: true,
-      // Writes `beta.yml` to each release instead of `latest.yml`. The
-      // updater (main.js sets autoUpdater.channel = 'beta' for IS_BETA)
-      // reads from this channel via a URL pattern that doesn't go through
-      // /releases/latest — which 404s on this repo because it has no
-      // stable releases yet, only prereleases. Without this, the updater
-      // can't find any newer builds at all.
+      // Writes `beta.yml` (the channel manifest electron-updater fetches)
+      // to each prerelease, separate from the stable channel's `latest.yml`.
+      // main.js sets autoUpdater.channel = 'beta' for IS_BETA installs.
       channel: "beta",
     },
   ],

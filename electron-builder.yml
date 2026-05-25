@@ -1,7 +1,24 @@
 # =============================================================================
-# Production build config. Tag-push -> .github/workflows/release.yml uses this
-# to build the installer that lands on GitHub Releases for end users.
-# Mirrored (with overrides) by electron-builder.beta.yml for test installs.
+# Production build config (Squirrel.Windows target).
+#
+# Why Squirrel and not NSIS:
+#   - No installer dialog. The Setup.exe runs silently into %LocalAppData%.
+#   - Truly background updates: electron-updater downloads a small .nupkg
+#     delta, swaps app files in place, next launch is the new version. No
+#     "quit and install" wizard, no UAC prompt, no install-time UI flash.
+#   - Per-user install (no admin). Makes update silent + safe to ship to
+#     casters who don't have local admin rights.
+#   - Differential .nupkg packages keep update downloads tiny.
+#
+# Trade-offs:
+#   - Install path is %LocalAppData%\RIVALRYOverlay\app-<version>\ instead
+#     of "Program Files". This is normal for Squirrel apps (Discord, Slack,
+#     VS Code, GitHub Desktop, Atom all use it).
+#   - One-time migration for anyone on an older NSIS install: uninstall
+#     the NSIS one first, then run the new Setup.exe.
+#
+# Tag-push -> .github/workflows/release.yml uses this. Mirrored (with
+# overrides) by electron-builder.beta.js for the beta channel.
 # =============================================================================
 appId: gg.rivalry.overlay
 productName: RIVALRY Overlay
@@ -16,18 +33,14 @@ files:
   - assets/**/*
 win:
   target:
-    - nsis
+    - squirrel
   icon: build/icon.ico
-  artifactName: RIVALRY-Overlay-Setup-${version}.${ext}
-nsis:
-  oneClick: false
-  perMachine: false
-  allowToChangeInstallationDirectory: true
-  createDesktopShortcut: true
-  createStartMenuShortcut: true
-  shortcutName: RIVALRY Overlay
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
+squirrelWindows:
+  # Squirrel requires the icon as a hosted URL (it embeds it in the
+  # Setup.exe + uninstall entry). Repo is public, so the raw GitHub URL
+  # works. If the repo ever flips private, host this somewhere else.
+  iconUrl: https://raw.githubusercontent.com/DrunkCookies0/rivalry-overlays/main/build/icon.ico
+  msi: false
 publish:
   - provider: github
     owner: DrunkCookies0
