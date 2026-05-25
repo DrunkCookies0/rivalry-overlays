@@ -1,6 +1,6 @@
 {
   "name": "rivalry-overlay",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "description": "RIVALRY in-house Rocket League broadcast overlay. Bridges Rocket League's official Stats API into the browser and serves an OBS overlay + control panel. Ships as a Windows installer.",
   "main": "main.js",
@@ -11,10 +11,10 @@
     "mock": "electron . --mock",
     "dev:bridge": "node bridge/rl-bridge.js --mock",
     "setup": "node bridge/rl-bridge.js --setup",
-    "pack": "electron-builder --win --dir --config electron-builder.js",
-    "dist": "electron-builder --win --config electron-builder.js",
+    "pack": "electron-builder --win --dir --config electron-builder.prod.js",
+    "dist": "electron-builder --win --config electron-builder.prod.js",
     "dist:beta": "electron-builder --win --config electron-builder.beta.js",
-    "release": "electron-builder --win --publish always --config electron-builder.js"
+    "release": "electron-builder --win --publish always --config electron-builder.prod.js"
   },
   "dependencies": {
     "ws": "^8.18.0",
