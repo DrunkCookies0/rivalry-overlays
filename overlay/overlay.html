@@ -418,10 +418,12 @@ function showGoalBanner(scorer, teamNum){
   $("gbText").textContent = fillGoalText(control.goalText, scorer, teamName);
   $("goalBanner").classList.add("show");
   clearTimeout(bannerTimer);
-  // safety hide if RL never fires GoalReplayStart (e.g. private lobbies that
-  // skip the replay). Tuned to roughly the duration of RL's own "X SCORED"
-  // banner so the overlay doesn't hang on screen if normal flow breaks.
-  bannerTimer = setTimeout(hideGoalBanner, 3000);
+  // Stay up through BOTH RL "X SCORED" appearances per goal: the first one
+  // fires at the goal moment, then RL shows it again during the replay
+  // angle change (~5-6s later). 3000ms left the second one uncovered.
+  // 6500ms covers both. Also serves as a safety hide if GoalReplayEnd
+  // never arrives (some game modes skip the replay sequence entirely).
+  bannerTimer = setTimeout(hideGoalBanner, 6500);
 }
 function hideGoalBanner(){ $("goalBanner").classList.remove("show"); }
 
