@@ -138,8 +138,9 @@ npm run dev:bridge      # bridge + fake data on the WebSocket ports
 
 ## Replay collector
 
-Rocket League auto-saves a `.replay` file for each match (turn on "Auto-save replays" in
-RL settings). The app watches the RL Demos folder and, when a new replay appears, copies it
+Rocket League writes a `.replay` file for each match into its Demos folder when you turn on
+**Settings → Game → Enable Replay Saving** in-game. This is a vanilla RL feature, EAC-safe,
+no modding required. The app watches that folder and, when a new replay appears, copies it
 into an organized archive at `Documents\RIVALRY Replays`:
 
 ```
@@ -152,7 +153,8 @@ names come from the control panel. Replays that already existed before launch ar
 so it only collects matches played during the session. "Open replays folder" is in the tray menu.
 
 This works off Rocket League's own native replay save (the Stats API can't export replays), so
-it only captures replays on the PC that's actually playing/spectating with auto-save enabled.
+it only captures replays on the PC that's actually playing/spectating with the replay-saving
+toggle enabled. Same approach as third-party tools like rockpload — just a folder watcher.
 
 ## Files
 - `main.js` — Electron entry: writes the ini, starts the bridge + web server, opens the panel

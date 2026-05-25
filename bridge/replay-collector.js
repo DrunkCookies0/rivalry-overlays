@@ -1,9 +1,10 @@
 /* =============================================================================
  * RIVALRY Replay Collector
  * -----------------------------------------------------------------------------
- * Rocket League auto-saves match replays as .replay files to its Demos folder
- * (the Stats API itself cannot save replays - this works off the game's own
- * native replay save, with "Auto-save replays" enabled in RL settings).
+ * Rocket League writes match replays as .replay files to its Demos folder when
+ * the user has "Settings -> Game -> Enable Replay Saving" turned on. This is a
+ * vanilla, EAC-safe feature — the Stats API itself cannot export replays, so
+ * we rely on the game's own native replay save.
  *
  * This module watches that Demos folder. When a NEW replay appears, it copies
  * it into an organized archive:

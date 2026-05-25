@@ -115,25 +115,55 @@
     justify-content:center;font-size:34px;font-weight:800;}
 
   /* ===================== GOAL BANNER ====================== */
-  /* Designed to PAINT OVER RL's in-game "X Scored" overlay. RL renders that
-     text in the upper third of the screen (roughly y=8% to y=30% on 1080p).
-     Our banner is positioned with its vertical center at y=18% and is 300px
-     tall, fully opaque across the full width, so it physically covers
-     RL's text. We can't suppress RL's renderer; only composite over it via
-     OBS. Coexists with the top scorebar which is centered + only ~50%
-     wide, so the scorebar still shows above the goal slab.
+  /* Positioned at y=35% center, 300px tall, fully opaque across the full
+     width. This was originally chosen to physically cover RL's in-game
+     "X Scored!" text (rendered around y=22-30%). RL has a "Hide In-Game
+     HUD" toggle in Settings → Interface that broadcasters should enable —
+     pending verification of whether it suppresses the goal celebration
+     text too, this overlay coverage remains as a belt-and-suspenders
+     fallback. Coexists with the top scorebar which is centered + only
+     ~50% wide, so the scorebar still shows above the goal slab.
      Asset spec for the designer is in DESIGN-SPEC.md. */
-  .goal-banner{position:fixed;top:18%;left:0;right:0;transform:translateY(-50%);
+  .goal-banner{position:fixed;top:35%;left:0;right:0;transform:translateY(-50%);
     display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60;}
-  .goal-banner .gb-bg{position:absolute;left:0;right:0;top:50%;height:300px;
+  /* Layer 1: dark slate backing, taller than mid slab, wipes in first/slowest.
+     Gives the team-color slab a "mounted on" feel. */
+  .goal-banner .gb-back{position:absolute;left:0;right:0;top:50%;height:320px;
     transform:translateY(-50%) scaleX(0);transform-origin:left center;
-    transition:transform .28s cubic-bezier(.7,0,.25,1);
-    background:var(--goalc);
-    border-top:3px solid rgba(0,0,0,.7); border-bottom:3px solid rgba(0,0,0,.7);
-    box-shadow:0 0 60px rgba(0,0,0,.7);}
-  .goal-banner .gb-text{position:relative;font-size:88px;font-weight:900;letter-spacing:6px;
-    text-transform:uppercase;color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.85);
-    opacity:0;transform:translateY(10px);transition:opacity .26s .1s,transform .26s .1s;white-space:nowrap;}
+    transition:transform .42s cubic-bezier(.65,0,.2,1);
+    background:linear-gradient(180deg,#11161d 0%,#06080b 50%,#11161d 100%);
+    box-shadow:0 0 70px rgba(0,0,0,.85);}
+  /* Layer 2: team-color slab — solid base with soft ambient lighting that
+     mimics RL's in-game focused-player card. Radial spotlight from top center
+     gives a "light from above" feel; bottom subtly darkens for grounding.
+     Inner shadow around the perimeter adds plate depth. No hatch / stripes.
+     Wipes in 90ms after the backing so the layers stagger. */
+  .goal-banner .gb-bg{position:absolute;left:0;right:0;top:50%;height:260px;
+    transform:translateY(-50%) scaleX(0);transform-origin:left center;
+    transition:transform .34s cubic-bezier(.7,0,.25,1) .09s;
+    background-color:var(--goalc);
+    background-image:
+      radial-gradient(ellipse 70% 90% at 50% -10%,
+                      rgba(255,255,255,.32) 0%,
+                      rgba(255,255,255,.10) 35%,
+                      rgba(255,255,255,0)   65%),
+      linear-gradient(180deg,
+                      rgba(255,255,255,0) 0%,
+                      rgba(255,255,255,0) 55%,
+                      rgba(0,0,0,.28)     100%);
+    box-shadow:
+      inset 0 2px 0 rgba(255,255,255,.45),
+      inset 0 -2px 0 rgba(0,0,0,.55),
+      inset 0 0 80px rgba(0,0,0,.20);}
+  /* Layer 3 (optional): scorer text — fades + slides in last, sits above
+     all layers. */
+  .goal-banner .gb-text{position:relative;font-size:92px;font-weight:900;letter-spacing:7px;
+    text-transform:uppercase;color:#fff;
+    text-shadow:0 4px 18px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.95),
+                0 2px 0 rgba(0,0,0,.6);
+    opacity:0;transform:translateY(14px);
+    transition:opacity .28s .30s,transform .28s .30s;white-space:nowrap;}
+  .goal-banner.show .gb-back{transform:translateY(-50%) scaleX(1);}
   .goal-banner.show .gb-bg{transform:translateY(-50%) scaleX(1);}
   .goal-banner.show .gb-text{opacity:1;transform:translateY(0);}
 
@@ -210,8 +240,10 @@
     <div class="label nums" id="gaugeLabel">0</div>
   </div>
 
-  <!-- GOAL BANNER (sweeps across, covers RL's in-game "X Scored" text) -->
+  <!-- GOAL BANNER (sweeps across, covers RL's in-game "X Scored" text)
+       Layers: back slate → team-color slab w/ ambient lighting → scorer text -->
   <div class="goal-banner" id="goalBanner">
+    <div class="gb-back"></div>
     <div class="gb-bg" id="gbBg"></div>
     <div class="gb-text" id="gbText">GOAL</div>
   </div>
@@ -418,13 +450,16 @@ function showGoalBanner(scorer, teamNum){
   $("gbText").textContent = fillGoalText(control.goalText, scorer, teamName);
   $("goalBanner").classList.add("show");
   clearTimeout(bannerTimer);
-  // Match RL's in-game "X SCORED" duration: ~2 seconds visible at the goal
-  // moment. We add a small buffer so our wipe-out animation starts as RL's
-  // text fades, not before. If RL shows its text again later in the goal
-  // sequence (different angle), that pass goes uncovered — not enough
-  // signal to time it precisely, and per producer feedback the banner
-  // hanging on for the whole replay felt worse than a brief second pass.
-  bannerTimer = setTimeout(hideGoalBanner, 2500);
+  // Measured against the LOS Twitch reference (2026-05-25 08-40-55.mp4):
+  //   LOS banner wipe-in starts T+2.1s after the goal moment
+  //   LOS banner gone T+5.5s after the goal moment
+  //   Total on-screen: ~3.4 seconds
+  // Our wipe-in + wipe-out animations are ~0.56s combined, so 2940ms of
+  // "visible" middle would exactly match LOS's total. Bot match goal
+  // sequences are shorter than LOS's competitive matches though, so
+  // 2500ms keeps us in roughly the right phase without dragging into
+  // kickoff prep in shorter sequences. Tune if needed.
+  bannerTimer = setTimeout(hideGoalBanner, 3900);
 }
 function hideGoalBanner(){ $("goalBanner").classList.remove("show"); }
 
@@ -441,16 +476,22 @@ function onGoalScored(data){
   if (!control.goalSequence) return;     // let the in-game text show if disabled
   const scorer = (data.Scorer && data.Scorer.Name) || "";
   const teamNum = (data.Scorer && data.Scorer.TeamNum);
+  // Don't render a "name-less" banner. Some game modes / own-goals fire
+  // GoalScored with an empty Scorer.Name, which used to produce "SCORES"
+  // with nothing in front of it. Better to skip the banner entirely than
+  // show a half-broken one.
+  if (!scorer) return;
   showGoalBanner(scorer, teamNum);
 }
 function onGoalReplayStart(){
   if (!control.goalSequence) return;
   hideGoalBanner();
-  playStinger();
+  // Stinger temporarily removed while we tune the banner alone.
+  // playStinger();
 }
 function onGoalReplayEnd(){
   if (!control.goalSequence) return;
-  playStinger();
+  // playStinger();
 }
 function clearGoalSequence(){
   hideGoalBanner();
