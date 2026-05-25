@@ -138,10 +138,9 @@ npm run dev:bridge      # bridge + fake data on the WebSocket ports
 
 ## Replay collector
 
-Rocket League writes a `.replay` file for each match into its Demos folder when you turn on
-**Settings → Game → Enable Replay Saving** in-game. This is a vanilla RL feature, EAC-safe,
-no modding required. The app watches that folder and, when a new replay appears, copies it
-into an organized archive at `Documents\RIVALRY Replays`:
+Rocket League writes `.replay` files to its Demos folder at
+`Documents\my games\Rocket League\TAGame\Demos`. The app watches that folder and, when
+a new replay appears, copies it into an organized archive at `Documents\RIVALRY Replays`:
 
 ```
 RIVALRY Replays\<Event>\<TeamA-vs-TeamB>\<TeamA-vs-TeamB__Game3__2026-05-23_19-41-08.replay>
@@ -152,9 +151,15 @@ game number, timestamp) so the files can be auto-uploaded to match pages later. 
 names come from the control panel. Replays that already existed before launch are left alone,
 so it only collects matches played during the session. "Open replays folder" is in the tray menu.
 
-This works off Rocket League's own native replay save (the Stats API can't export replays), so
-it only captures replays on the PC that's actually playing/spectating with the replay-saving
-toggle enabled. Same approach as third-party tools like rockpload — just a folder watcher.
+This works purely off whatever Rocket League writes natively to its Demos folder — no
+modding, no game injection, EAC-safe. The Stats API itself can't export replays. If RL
+on your setup only writes a replay when you click "Save Replay" after a match, click it
+each game so the collector has something to pick up.
+
+Different from third-party tools like rockpload, which authenticate against Epic Games
+and pull replays directly from Psyonix's backend (RLAPI). That captures every game without
+needing a local save, but doesn't carry the league event / team metadata that this app
+attaches to each archived replay.
 
 ## Files
 - `main.js` — Electron entry: writes the ini, starts the bridge + web server, opens the panel

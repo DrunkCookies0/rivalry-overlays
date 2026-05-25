@@ -1,10 +1,15 @@
 /* =============================================================================
  * RIVALRY Replay Collector
  * -----------------------------------------------------------------------------
- * Rocket League writes match replays as .replay files to its Demos folder when
- * the user has "Settings -> Game -> Enable Replay Saving" turned on. This is a
- * vanilla, EAC-safe feature — the Stats API itself cannot export replays, so
- * we rely on the game's own native replay save.
+ * Rocket League writes .replay files to its Demos folder for matches played /
+ * spectated on the local PC. This module watches that folder; the Stats API
+ * itself cannot export replays, so we rely on whatever RL writes natively.
+ * Folder-watching is EAC-safe — no modding, no game injection.
+ *
+ * Different mechanism from rockpload, which authenticates via Epic Games OAuth
+ * and pulls replays from Psyonix's backend (RLAPI). Folder watching captures
+ * only what's saved locally; the upside is we tag each archived replay with
+ * the event + team context from the operator's control panel.
  *
  * This module watches that Demos folder. When a NEW replay appears, it copies
  * it into an organized archive:
