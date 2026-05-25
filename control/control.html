@@ -78,8 +78,6 @@
       <input type="text" id="logoA" placeholder="https://.../logo.png" />
       <label>Tag (region / seed)</label>
       <input type="text" id="tagA" placeholder="EU1" />
-      <label>Accent color</label>
-      <div class="row"><input type="color" id="colorA" value="#2f7dff" /></div>
       <label>Series games won</label>
       <div class="series stepper">
         <button data-team="a" data-d="-1">-</button>
@@ -96,8 +94,6 @@
       <input type="text" id="logoB" placeholder="https://.../logo.png" />
       <label>Tag (region / seed)</label>
       <input type="text" id="tagB" placeholder="EU2" />
-      <label>Accent color</label>
-      <div class="row"><input type="color" id="colorB" value="#e6324f" /></div>
       <label>Series games won</label>
       <div class="series stepper">
         <button data-team="b" data-d="-1">-</button>
@@ -202,8 +198,8 @@ function payload(){
   return {
     type: "control",
     payload: {
-      teamA: { name:$("nameA").value, logo:$("logoA").value.trim(), color:$("colorA").value, tag:$("tagA").value },
-      teamB: { name:$("nameB").value, logo:$("logoB").value.trim(), color:$("colorB").value, tag:$("tagB").value },
+      teamA: { name:$("nameA").value, logo:$("logoA").value.trim(), tag:$("tagA").value },
+      teamB: { name:$("nameB").value, logo:$("logoB").value.trim(), tag:$("tagB").value },
       bestOf: parseInt($("bestOf").value, 10) || 5,
       series: { a: state.series.a, b: state.series.b },
       eventTitle: $("eventTitle").value
@@ -214,17 +210,41 @@ function push(){
   if (connected && ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload()));
 }
 
-// steppers
+// steppers — cap wins at the win threshold for the current bestOf
+// (BO5 caps at 3, BO7 at 4). Once a team has clinched (hit the threshold),
+// the OTHER team's wins are frozen at their current value — the series is
+// over, so the loser can't pick up more pips and override the winner's.
+function seriesCap(){
+  const bo = Math.max(1, parseInt($("bestOf").value, 10) || 5);
+  return Math.ceil((bo + 1) / 2);
+}
+function maxFor(team){
+  const cap = seriesCap();
+  const other = team === "a" ? "b" : "a";
+  // If the opponent has clinched, this team can't add more wins.
+  if (state.series[other] >= cap) return state.series[team];
+  return cap;
+}
 document.querySelectorAll(".stepper button").forEach(b => {
   b.addEventListener("click", () => {
     const t = b.dataset.team, d = parseInt(b.dataset.d, 10);
-    state.series[t] = Math.max(0, state.series[t] + d);
+    state.series[t] = Math.min(maxFor(t), Math.max(0, state.series[t] + d));
     $("series" + t.toUpperCase()).textContent = state.series[t];
     push();
   });
 });
+// If bestOf changes downward, clamp existing scores to the new cap.
+$("bestOf").addEventListener("input", () => {
+  const cap = seriesCap();
+  ["a","b"].forEach(t => {
+    if (state.series[t] > cap) {
+      state.series[t] = cap;
+      $("series" + t.toUpperCase()).textContent = cap;
+    }
+  });
+});
 // push on any field change
-["nameA","logoA","tagA","colorA","nameB","logoB","tagB","colorB","bestOf","eventTitle"]
+["nameA","logoA","tagA","nameB","logoB","tagB","bestOf","eventTitle"]
   .forEach(id => $(id).addEventListener("input", push));
 $("apply").addEventListener("click", push);
 

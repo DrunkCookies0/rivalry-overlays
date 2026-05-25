@@ -5,18 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>RIVALRY Overlay</title>
 <style>
+  /* RIVALRY brand typography: Exo 2 italic 700 for display headlines
+     (team names, scorer text, eyebrows), Space Mono for numeric/stat
+     fields, Roboto for body. Same Google Fonts request as RIVALRY-web. */
+  @import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@1,700&family=Roboto:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap');
+
   /* RLCS-style broadcast overlay. Transparent so it composites in OBS over
      gameplay + player webcams. Designed against a 1920x1080 canvas. */
   :root{
-    --blue:#2f7dff;   /* team A accent */
-    --red:#e6324f;    /* team B accent */
-    --panel:rgba(10,13,18,.94);
-    --panel-solid:#0a0d12;
-    --bar:#0c1118;
-    --ink:#f3f7fc;
-    --muted:#9fb1c4;
-    --gold:#f6c64a;       /* goal text */
-    --seg-off:#26323f;
+    --blue:#2f7dff;   /* team A accent (Rocket League BLUE team — game color, not brand) */
+    --red:#ff7601;    /* team B accent (Rocket League ORANGE team — matches brand USW orange) */
+    /* Chrome surfaces — all aligned to the RIVALRY brand palette below. */
+    --panel:rgba(19,46,59,.94);     /* jet-black @ .94, used for scorebar + player tags */
+    --panel-solid:#132E3B;           /* jet-black solid, used for subbar */
+    --bar:#1a3d4d;                   /* surface-1, used for the statfeed bar */
+    --ink:#F1EEEE;                   /* white-smoke — primary text */
+    --muted:rgba(241,238,238,.65);   /* dimmed white-smoke — secondary text */
+    --gold:#F1C40F;                  /* brand gold — goal text + accents */
+    --seg-off:#475a6e;               /* unclaimed pip — bright enough to read against panel */
     --shadow:0 10px 34px rgba(0,0,0,.55);
 
     /* RIVALRY brand tokens (sync with RIVALRY-web/brand.css). Available for
@@ -30,46 +36,63 @@
     --rivalry-teal:#1ABC9C;
     --rivalry-green:#2ECC71;
     --rivalry-red:#E74C3C;
+
+    /* Brand font stacks. Use --font-display for italic display headlines,
+       --font-stat for tabular numeric values, --font-body for everything else. */
+    --font-display:'Exo 2','Segoe UI',system-ui,sans-serif;
+    --font-stat:'Space Mono','SF Mono',Consolas,monospace;
+    --font-body:'Roboto','Segoe UI',system-ui,sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;width:1920px;height:1080px;background:transparent;overflow:hidden;
-    font-family:'Segoe UI',Roboto,Arial,sans-serif;color:var(--ink);
+    font-family:var(--font-body);color:var(--ink);
     -webkit-font-smoothing:antialiased;}
-  .nums{font-variant-numeric:tabular-nums;}
+  .nums{font-family:var(--font-stat);font-weight:700;font-variant-numeric:tabular-nums;}
+  /* Display headline utility used by every italic-uppercase brand label. */
+  .headline{font-family:var(--font-display);font-style:italic;font-weight:700;}
 
   /* ============================ TOP SCOREBAR ============================ */
   .top{position:fixed;top:0;left:50%;transform:translateX(-50%);
     display:flex;flex-direction:column;align-items:center;}
 
   /* event title strip sitting above the bar */
-  .eventbar{background:var(--panel-solid);color:var(--muted);
+  .eventbar{background:var(--rivalry-yale-blue);color:rgba(241,238,238,.85);
+    font-family:var(--font-display);font-style:italic;
     font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
     padding:5px 26px;border-radius:0 0 0 0;white-space:nowrap;
-    border-bottom:2px solid #000;box-shadow:var(--shadow);}
+    border-bottom:2px solid var(--rivalry-jet-black);box-shadow:var(--shadow);}
   .eventbar b{color:var(--ink);}
 
   .scorebar{display:flex;align-items:stretch;height:62px;background:var(--panel);
     box-shadow:var(--shadow);}
+  /* Both team slots are fixed-width so the clock + score blocks always sit at
+     the visual center of the scorebar regardless of team-name length. Names
+     longer than the slot truncate with an ellipsis. Budget ~18-20 chars at
+     24px Exo 2 italic for clean display; the league should target that. */
   .team{position:relative;display:flex;align-items:center;gap:14px;padding:0 20px;
-    min-width:300px;background:linear-gradient(180deg,#11161d,#0a0d12);}
+    width:340px;flex:0 0 340px;
+    background:linear-gradient(180deg,var(--rivalry-surface-1),var(--rivalry-jet-black));}
   .team.left{justify-content:flex-end;text-align:right;}
   .team.right{flex-direction:row-reverse;justify-content:flex-end;text-align:left;}
   .team .logo{width:42px;height:42px;flex:0 0 auto;background:center/contain no-repeat;}
-  .team .name{font-weight:800;font-size:26px;letter-spacing:.5px;text-transform:uppercase;
-    white-space:nowrap;}
+  .team .name{flex:1 1 auto;min-width:0;font-family:var(--font-display);font-style:italic;
+    font-weight:700;font-size:24px;letter-spacing:.5px;text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* colored accent line under the team's name side */
   .team::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;}
   .team.left::after{background:var(--blue);}
   .team.right::after{background:var(--red);}
 
   .score{display:flex;align-items:center;justify-content:center;min-width:64px;
-    font-size:38px;font-weight:800;}
+    font-family:var(--font-stat);font-size:38px;font-weight:700;
+    font-variant-numeric:tabular-nums;}
   .score.blue{background:var(--blue);color:#fff;}
   .score.red{background:var(--red);color:#fff;}
 
   .clockwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
     min-width:120px;background:#f4f7fb;color:#11151b;}
-  .clock{font-size:30px;font-weight:800;line-height:1;}
+  .clock{font-family:var(--font-stat);font-size:30px;font-weight:700;line-height:1;
+    font-variant-numeric:tabular-nums;}
   .clock.ot{color:var(--red);}
 
   /* under-bar row: region tag + segmented series pips per team */
@@ -77,12 +100,29 @@
     background:var(--panel-solid);box-shadow:var(--shadow);}
   .subside{display:flex;align-items:center;gap:10px;padding:5px 14px;}
   .subside.right{flex-direction:row-reverse;}
-  .tag{font-size:11px;font-weight:800;letter-spacing:1px;color:var(--muted);
-    background:#161d26;padding:3px 8px;border-radius:3px;}
-  .pips{display:flex;gap:4px;}
-  .seg{width:22px;height:7px;border-radius:2px;background:var(--seg-off);}
+  .tag{font-family:var(--font-display);font-style:italic;
+    font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);
+    background:rgba(32,73,111,.3);border:1px solid rgba(32,73,111,.45);
+    padding:3px 8px;border-radius:0;}
+  /* RLCS-style unified pip row: blue team's wins fill from the LEFT,
+     red team's wins fill from the RIGHT, gold marker sits on the active
+     game's pip in the middle of unclaimed pips. Single centered row
+     instead of separate per-team clusters. */
+  .pips{display:flex;gap:5px;}
+  .seg{width:26px;height:8px;border-radius:2px;background:var(--seg-off);
+    box-sizing:border-box;}
   .seg.on.blue{background:var(--blue);box-shadow:0 0 7px var(--blue);}
   .seg.on.red{background:var(--red);box-shadow:0 0 7px var(--red);}
+  /* Active-game pip is HOLLOW (matches RLCS): transparent fill + bright outline. */
+  .seg.current{background:transparent;border:2px solid var(--ink);
+    box-shadow:0 0 4px rgba(241,238,238,.55);}
+  /* Series-winning team's claimed pips swap to gold with a strong glow and a
+     thin team-color underline so the "they took the series" moment reads
+     clearly at a glance, while the team identity stays implicit via position +
+     the underline accent. */
+  .seg.win{background:var(--gold);box-shadow:0 0 12px var(--gold);}
+  .seg.win.blue{box-shadow:0 0 12px var(--gold),inset 0 -3px 0 var(--blue);}
+  .seg.win.red{box-shadow:0 0 12px var(--gold),inset 0 -3px 0 var(--red);}
 
   /* ===================== SIDE PLAYER BOOST TAGS ====================== */
   .col{position:fixed;top:18px;display:flex;flex-direction:column;gap:7px;width:250px;}
@@ -92,16 +132,26 @@
     padding:8px 12px 10px;overflow:hidden;}
   .ptag .prow{display:flex;align-items:center;gap:10px;}
   .col.right .ptag .prow{flex-direction:row-reverse;text-align:right;}
-  .ptag .pname{flex:1;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;
+  .ptag .pname{flex:1;font-family:var(--font-display);font-style:italic;
+    font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;
     text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.5px;}
-  .ptag .pboost{font-size:18px;font-weight:800;min-width:40px;text-align:center;}
+  .ptag .pboost{font-family:var(--font-stat);font-size:18px;font-weight:700;
+    min-width:40px;text-align:center;font-variant-numeric:tabular-nums;}
   /* boost fill line along the bottom of the tag */
   .ptag .fill{position:absolute;left:0;bottom:0;height:4px;width:0;transition:width .12s linear;}
   .col.left .ptag .fill{background:var(--blue);}
   .col.right .ptag .fill{background:var(--red);right:0;left:auto;}
-  /* highlight the spectated player */
-  .ptag.active{outline:2px solid var(--gold);outline-offset:-2px;}
-  .col.left .ptag.active{box-shadow:0 0 0 9999px rgba(0,0,0,0),0 8px 24px rgba(47,125,255,.45);}
+  /* On the active tag the team color is now the background, so the team-color
+     fill bar would disappear. Switch it to white-smoke for contrast. */
+  .ptag.active .fill{background:var(--ink);}
+  /* Spectated player: swap the whole tag background to the team color so
+     the highlight reads as identity (not a gold trim), with a soft ambient
+     shadow tinted to match. Boost number + name stay legible on the
+     saturated team color thanks to white text + dark text shadow on the box. */
+  .col.left .ptag.active{background:var(--blue);
+    box-shadow:0 8px 24px rgba(47,125,255,.55);}
+  .col.right .ptag.active{background:var(--red);
+    box-shadow:0 8px 24px rgba(255,118,1,.55);}
 
   /* ===================== BOTTOM STATFEED BAR ====================== */
   /* While the goal banner is on screen, the focused-player widgets (this
@@ -113,15 +163,18 @@
     transition:opacity .22s ease-out;}
   body.banner-active .statbar,
   body.banner-active .boostgauge{opacity:0;pointer-events:none;}
-  .statbar .who{display:flex;align-items:center;padding:0 20px;font-weight:800;
-    font-size:16px;letter-spacing:1px;text-transform:uppercase;color:#fff;}
+  .statbar .who{display:flex;align-items:center;padding:0 20px;
+    font-family:var(--font-display);font-style:italic;
+    font-weight:700;font-size:16px;letter-spacing:1px;text-transform:uppercase;color:#fff;}
   .statbar .who.blue{background:var(--blue);}
   .statbar .who.red{background:var(--red);}
   .statbar .stat{display:flex;align-items:center;gap:7px;padding:0 18px;
     border-right:1px solid #1c2632;}
   .statbar .stat:last-child{border-right:none;}
-  .statbar .stat b{font-size:18px;font-weight:800;}
-  .statbar .stat span{font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+  .statbar .stat b{font-family:var(--font-stat);font-size:18px;font-weight:700;
+    font-variant-numeric:tabular-nums;}
+  .statbar .stat span{font-family:var(--font-display);font-style:italic;
+    font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
 
   /* ===================== RADIAL BOOST GAUGE ====================== */
   .boostgauge{position:fixed;bottom:22px;right:30px;width:118px;height:118px;
@@ -131,7 +184,8 @@
   .boostgauge .val{fill:none;stroke:var(--blue);stroke-width:9;stroke-linecap:round;
     transition:stroke-dashoffset .12s linear,stroke .2s;}
   .boostgauge .label{position:absolute;inset:0;display:flex;align-items:center;
-    justify-content:center;font-size:34px;font-weight:800;}
+    justify-content:center;font-family:var(--font-stat);font-size:34px;font-weight:700;
+    font-variant-numeric:tabular-nums;}
 
   /* ===================== GOAL BANNER ====================== */
   /* Positioned at y=35% center, 300px tall, fully opaque across the full
@@ -194,7 +248,9 @@
     transition:opacity .28s .30s,transform .28s .30s;}
   .goal-banner.show .gb-avatar{opacity:1;transform:translateY(0);}
   /* Layer 4: scorer text — fades + slides in last, sits above all layers. */
-  .goal-banner .gb-text{position:relative;font-size:92px;font-weight:900;letter-spacing:7px;
+  .goal-banner .gb-text{position:relative;
+    font-family:var(--font-display);font-style:italic;
+    font-size:92px;font-weight:700;letter-spacing:7px;
     text-transform:uppercase;color:#fff;
     text-shadow:0 4px 18px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.95),
                 0 2px 0 rgba(0,0,0,.6);
@@ -258,7 +314,8 @@
   .replay-card .rpc-header{display:flex;align-items:center;justify-content:space-between;
     padding:11px 20px;background:rgba(0,0,0,.35);
     border-bottom:1px solid rgba(0,0,0,.5);
-    font-size:14px;font-weight:800;letter-spacing:3px;text-transform:uppercase;
+    font-family:var(--font-display);font-style:italic;
+    font-size:14px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
     color:rgba(255,255,255,.8);}
   .replay-card .rpc-identity{display:flex;align-items:center;gap:18px;
     padding:18px 20px 8px 20px;}
@@ -273,7 +330,9 @@
       100% 100%,
       10px 100%,
       0 calc(100% - 10px));}
-  .replay-card .rpc-name{flex:1 1 auto;font-size:36px;font-weight:900;letter-spacing:.5px;
+  .replay-card .rpc-name{flex:1 1 auto;
+    font-family:var(--font-display);font-style:italic;
+    font-size:36px;font-weight:700;letter-spacing:.5px;
     text-transform:uppercase;color:#fff;
     text-shadow:0 2px 6px rgba(0,0,0,.6);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -281,8 +340,10 @@
     gap:1px;padding:0 12px 14px 12px;}
   .replay-card .rpc-stat{display:flex;flex-direction:column;align-items:center;
     padding:9px 6px;}
-  .replay-card .rpc-stat b{font-size:30px;font-weight:900;color:#fff;line-height:1;}
-  .replay-card .rpc-stat span{font-size:13px;font-weight:700;letter-spacing:1px;
+  .replay-card .rpc-stat b{font-family:var(--font-stat);font-size:30px;font-weight:700;
+    color:#fff;line-height:1;font-variant-numeric:tabular-nums;}
+  .replay-card .rpc-stat span{font-family:var(--font-display);font-style:italic;
+    font-size:13px;font-weight:700;letter-spacing:1px;
     color:rgba(255,255,255,.75);margin-top:5px;text-transform:uppercase;}
 
   #status{position:fixed;top:2px;right:4px;font-size:10px;color:var(--muted);
@@ -311,11 +372,10 @@
     <div class="subbar">
       <div class="subside left">
         <span class="tag" id="tagA">EU</span>
-        <div class="pips" id="pipsA"></div>
       </div>
+      <div class="pips" id="pips"></div>
       <div class="subside right">
         <span class="tag" id="tagB">EU</span>
-        <div class="pips" id="pipsB"></div>
       </div>
     </div>
   </div>
@@ -385,8 +445,8 @@ const GAME_WS = "ws://localhost:49124";
 const CONTROL_WS = "ws://localhost:49777";
 
 let control = {
-  teamA: { name:"BLUE",   logo:"", color:"#2f7dff", tag:"EU" },
-  teamB: { name:"ORANGE", logo:"", color:"#e6324f", tag:"EU" },
+  teamA: { name:"BLUE",   logo:"", tag:"EU" },
+  teamB: { name:"ORANGE", logo:"", tag:"EU" },
   bestOf: 5,
   series: { a:0, b:0 },
   eventTitle: "RIVALRY",
@@ -420,23 +480,54 @@ function applyControl(){
   $("logoB").style.backgroundImage = `url("${control.teamB.logo || RV_LOGO}")`;
   $("tagA").textContent = control.teamA.tag || "";
   $("tagB").textContent = control.teamB.tag || "";
-  document.documentElement.style.setProperty("--blue", control.teamA.color || "#2f7dff");
-  document.documentElement.style.setProperty("--red",  control.teamB.color || "#e6324f");
   renderPips();
 }
 
+// Unified pip row, RLCS-style: bestOf pips total, blue wins fill from the
+// LEFT, red wins fill from the RIGHT, neutral/gold marker on the GEOMETRIC
+// CENTER pip representing the active game. Pinned to center so the marker
+// never drifts as wins accumulate; hidden when the series is decided or
+// when a claimed pip covers the center slot.
 function renderPips(){
-  const need = Math.max(1, Math.ceil(control.bestOf / 2));
-  const build = (el, won, cls) => {
-    el.innerHTML = "";
-    for (let i=0;i<need;i++){
-      const d = document.createElement("div");
-      d.className = "seg " + cls + (i < won ? " on" : "");
-      el.appendChild(d);
+  const total = Math.max(1, control.bestOf | 0);
+  // For odd bestOf (BO3/5/7), threshold = (N+1)/2. For even (shouldn't
+  // happen in RL but defensive), require strict majority.
+  const oddThresh = Math.ceil((total + 1) / 2);
+  // Cap each team's wins at the threshold so an out-of-spec score from the
+  // control bus can't push one cluster into the other's pips. If a team has
+  // already clinched the series, the other team's render-side wins are
+  // additionally clamped to (total - oddThresh) so the loser's cluster
+  // can't overlap the winner's claimed pips.
+  let blueWins = Math.min(Math.max(0, control.series.a | 0), oddThresh);
+  let redWins  = Math.min(Math.max(0, control.series.b | 0), oddThresh);
+  if (blueWins >= oddThresh) redWins  = Math.min(redWins,  total - oddThresh);
+  if (redWins  >= oddThresh) blueWins = Math.min(blueWins, total - oddThresh);
+  const seriesDecided = blueWins >= oddThresh || redWins >= oddThresh;
+
+  // Active-game pip is always the geometric center. Hidden when:
+  //   - series is decided (no more games to play)
+  //   - center pip is already claimed by either team
+  const centerIdx = Math.floor(total / 2);
+  const centerClaimed = centerIdx < blueWins || centerIdx >= total - redWins;
+  const currentPip = (!seriesDecided && !centerClaimed) ? centerIdx : -1;
+
+  const el = $("pips");
+  el.innerHTML = "";
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement("div");
+    let cls = "seg";
+    if (i < blueWins) {
+      cls += " on blue";
+      if (seriesDecided && blueWins >= oddThresh) cls += " win";
+    } else if (i >= total - redWins) {
+      cls += " on red";
+      if (seriesDecided && redWins >= oddThresh) cls += " win";
+    } else if (i === currentPip) {
+      cls += " current";
     }
-  };
-  build($("pipsA"), control.series.a, "blue");
-  build($("pipsB"), control.series.b, "red");
+    d.className = cls;
+    el.appendChild(d);
+  }
 }
 
 function fmtClock(sec, isOT){
