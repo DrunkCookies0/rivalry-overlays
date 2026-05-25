@@ -1,0 +1,35 @@
+# =============================================================================
+# Production build config. Tag-push -> .github/workflows/release.yml uses this
+# to build the installer that lands on GitHub Releases for end users.
+# Mirrored (with overrides) by electron-builder.beta.yml for test installs.
+# =============================================================================
+appId: gg.rivalry.overlay
+productName: RIVALRY Overlay
+directories:
+  output: dist
+files:
+  - main.js
+  - bridge/**/*
+  - overlay/**/*
+  - control/**/*
+  - config/**/*
+  - assets/**/*
+win:
+  target:
+    - nsis
+  icon: build/icon.ico
+  artifactName: RIVALRY-Overlay-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: RIVALRY Overlay
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+publish:
+  - provider: github
+    owner: DrunkCookies0
+    repo: rivalry-overlays
+    releaseType: release

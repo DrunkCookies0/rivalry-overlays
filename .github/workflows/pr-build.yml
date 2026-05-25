@@ -1,0 +1,154 @@
+# =============================================================================
+# PR Build (Beta installer)
+# -----------------------------------------------------------------------------
+# On every PR (and every push to a feat/* branch) we build the beta installer
+# and attach it as a downloadable artifact on the workflow run. Devs can grab
+# it from the Actions tab and install side-by-side with their stable prod app.
+#
+# The beta installer uses a different appId / productName / install dir, so it
+# never disturbs the production install or its userData.
+#
+# Production releases still flow through release.yml on tag push.
+# =============================================================================
+name: PR Build (Beta installer)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - 'feat/**'
+      - 'fix/**'
+
+permissions:
+  contents: write          # create GitHub prereleases for beta auto-update
+  pull-requests: write     # comment the download link on PRs
+
+jobs:
+  build-beta:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compute build version
+        id: ver
+        shell: bash
+        run: |
+          # base_version comes from package.json. github.run_number gives us
+          # a monotonically increasing build number per workflow that's
+          # unique across all PRs, so prereleases compare cleanly via semver.
+          BASE=$(node -p "require('./package.json').version")
+          echo "version=${BASE}-beta.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build + publish beta installer (GitHub prerelease)
+        env:
+          # electron-builder's GitHub publisher uses GH_TOKEN to create the
+          # prerelease + upload assets + write latest.yml.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # electron-builder.beta.js reads these and writes them into the
+          # built package.json via extraMetadata. We don't pass them as CLI
+          # args because PowerShell tokenizes "-c.foo.bar=value" on the dot.
+          BUILD_VERSION: ${{ steps.ver.outputs.version }}
+          BUILD_SHA: ${{ github.sha }}
+        run: npm run dist:beta -- --publish always
+
+      # electron-builder's GitHub publisher creates the prerelease but anchors
+      # the tag to the default branch (main) by default, which means whatever's
+      # on main's HEAD shows up under the release's "what's in here" metadata
+      # regardless of which commit actually built the installer. We re-anchor
+      # the tag to this workflow's build commit so the release is unambiguously
+      # tied to feat-branch history and never leaks main commits.
+      - name: Re-anchor prerelease tag to build commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          TAG="v${{ steps.ver.outputs.version }}"
+          echo "Re-anchoring $TAG -> ${{ github.sha }}"
+          gh release edit "$TAG" --target "${{ github.sha }}"
+          # Move the underlying git tag too (gh release edit only updates the
+          # release record; the tag itself can still point at main).
+          git tag -f "$TAG" "${{ github.sha }}"
+          git push --force origin "refs/tags/$TAG"
+
+      - name: Upload installer artifact (also available on the PR)
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: rivalry-overlay-beta-${{ github.sha }}
+          path: dist-beta/RIVALRY-Overlay-Beta-Setup-*.exe
+          retention-days: 30
+          if-no-files-found: error
+
+      # Trim the prerelease backlog so we don't accumulate hundreds of 124MB
+      # installers in Releases (GitHub gives free repos ~2GB of release
+      # storage). Keep the 5 most recent prereleases; delete the rest.
+      - name: Prune old prereleases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release list --limit 100 --json tagName,isPrerelease,createdAt \
+            --jq 'sort_by(.createdAt) | reverse | map(select(.isPrerelease)) | .[5:] | .[].tagName' \
+            | while read -r tag; do
+                if [ -n "$tag" ]; then
+                  echo "Deleting old prerelease: $tag"
+                  gh release delete "$tag" --yes --cleanup-tag || true
+                fi
+              done
+
+      - name: Comment download link on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          BUILD_VERSION: ${{ steps.ver.outputs.version }}
+        with:
+          script: |
+            const version = process.env.BUILD_VERSION;
+            const sha = context.sha.substring(0, 7);
+            const label = `v${version} (${sha})`;
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const releaseUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/v${version}`;
+            const body = [
+              `### Beta installer ready`,
+              ``,
+              `Build label: \`${label}\``,
+              ``,
+              `**If you already have the beta installed:** nothing to do. Your installed app will detect this build at next launch (or within 30 min) and prompt you to update. Quit from the tray when you're ready to install — never mid-broadcast.`,
+              ``,
+              `**First-time install:** download the \`.exe\` from one of these:`,
+              `- [GitHub Release page](${releaseUrl})`,
+              `- [Workflow Artifacts (zipped)](${runUrl})`,
+              ``,
+              `Installs as **RIVALRY Overlay Beta** alongside any production install. Settings live in \`%AppData%\\RIVALRY Overlay Beta\\\`.`,
+            ].join('\n');
+
+            // Find an existing comment from this workflow and update it, else create a new one.
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+            const marker = '### Beta installer ready';
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.payload.pull_request.number,
+                body,
+              });
+            }

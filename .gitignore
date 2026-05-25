@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-beta/
+*.log
+.DS_Store
+.recon/
+LeagueOS/
+Recordings/
+*.exe
+*.mp4

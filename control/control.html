@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RIVALRY Control Panel</title>
+<style>
+  :root{ --rivalry:#e7274a; --accent:#30c0f6; --bg:#0e1218; --panel:#171f29;
+    --ink:#eef3f8; --muted:#8aa0b6; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Segoe UI',Roboto,Arial,sans-serif;padding:22px;}
+  h1{font-size:18px;margin:0 0 4px;letter-spacing:1px;}
+  h1 b{color:var(--rivalry);}
+  .brand{display:flex;align-items:center;gap:11px;margin:0 0 4px;flex-wrap:wrap;}
+  .brand .wordmark{height:22px;width:auto;display:block;}
+  .brand span{font-size:14px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+  .sub{color:var(--muted);font-size:12px;margin-bottom:18px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  .card{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:16px;}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;color:var(--muted);}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;}
+  input[type=text],input[type=number]{width:100%;padding:8px 10px;border-radius:6px;
+    border:1px solid rgba(255,255,255,.1);background:#0b0f14;color:var(--ink);font-size:14px;}
+  input[type=color]{width:48px;height:32px;border:none;background:none;}
+  .row{display:flex;align-items:center;gap:10px;}
+  .series{display:flex;align-items:center;gap:8px;margin-top:6px;}
+  button{cursor:pointer;border:none;border-radius:6px;padding:8px 12px;font-weight:700;font-size:14px;}
+  .stepper button{width:34px;background:#243040;color:var(--ink);font-size:18px;}
+  .scoreval{font-size:22px;font-weight:800;min-width:28px;text-align:center;}
+  .full{grid-column:1 / -1;}
+  .apply{background:var(--rivalry);color:#fff;width:100%;padding:12px;font-size:15px;letter-spacing:1px;}
+  .status{font-size:12px;margin-top:10px;color:var(--muted);text-align:center;}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#c0392b;margin-right:5px;}
+  .dot.ok{background:#2ecc71;}
+  .row{flex-wrap:wrap;}
+  /* Narrow layout for OBS custom browser docks (and small windows) */
+  @media (max-width:560px){
+    body{padding:12px;}
+    h1{font-size:16px;}
+    .sub{margin-bottom:12px;}
+    .grid{grid-template-columns:1fr;gap:12px;}
+    .card{padding:12px;}
+    #obsUrl{min-width:0;}
+  }
+</style>
+</head>
+<body>
+  <div class="brand">
+    <img class="wordmark" src="../assets/rivalry-wordmark.svg" alt="RIVALRY" />
+    <span>Control Panel</span>
+    <span id="buildLabel" style="font-size:11px;letter-spacing:1px;color:#5b6d80;
+      margin-left:auto;font-family:'Consolas',monospace;text-transform:none;"></span>
+  </div>
+  <div class="sub">Push team branding and series score to the overlay in real time.</div>
+
+  <div class="card full" style="margin-bottom:18px;border-left:3px solid var(--rivalry);">
+    <h2>Add to OBS</h2>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">
+      In OBS add a <b style="color:var(--ink)">Browser Source</b>, set width 1920 / height 1080, and paste this URL:
+    </div>
+    <div class="row" style="gap:8px;">
+      <input type="text" id="obsUrl" readonly value="http://localhost:49080/overlay/overlay.html"
+        style="flex:1;font-family:monospace;font-size:13px;" />
+      <button id="copyUrl" style="background:#243040;color:var(--ink);white-space:nowrap;">Copy URL</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;">
+      First time only: launch Rocket League once after installing so the stats feed turns on, then start spectating a match.
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Team A (Blue)</h2>
+      <label>Name</label>
+      <input type="text" id="nameA" value="BLUE" />
+      <label>Logo URL</label>
+      <input type="text" id="logoA" placeholder="https://.../logo.png" />
+      <label>Tag (region / seed)</label>
+      <input type="text" id="tagA" placeholder="EU1" />
+      <label>Accent color</label>
+      <div class="row"><input type="color" id="colorA" value="#2f7dff" /></div>
+      <label>Series games won</label>
+      <div class="series stepper">
+        <button data-team="a" data-d="-1">-</button>
+        <span class="scoreval" id="seriesA">0</span>
+        <button data-team="a" data-d="1">+</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Team B (Orange)</h2>
+      <label>Name</label>
+      <input type="text" id="nameB" value="ORANGE" />
+      <label>Logo URL</label>
+      <input type="text" id="logoB" placeholder="https://.../logo.png" />
+      <label>Tag (region / seed)</label>
+      <input type="text" id="tagB" placeholder="EU2" />
+      <label>Accent color</label>
+      <div class="row"><input type="color" id="colorB" value="#e6324f" /></div>
+      <label>Series games won</label>
+      <div class="series stepper">
+        <button data-team="b" data-d="-1">-</button>
+        <span class="scoreval" id="seriesB">0</span>
+        <button data-team="b" data-d="1">+</button>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>Series</h2>
+      <div class="row">
+        <div style="flex:1">
+          <label>Best of</label>
+          <input type="number" id="bestOf" value="5" min="1" max="9" step="2" />
+        </div>
+        <div style="flex:3">
+          <label>Event title (top strip)</label>
+          <input type="text" id="eventTitle" placeholder="RIVALRY SEASON 1 | PLAYOFFS | UPPER ROUND 1" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>Goal sequence</h2>
+      <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:2px 0 6px;">
+        <input type="checkbox" id="goalSequence" checked style="width:auto;" />
+        <span style="color:var(--ink);font-size:13px;">Custom goal banner + stinger (covers the in-game "scored" text)</span>
+      </label>
+      <label>Goal banner text</label>
+      <input type="text" id="goalText" value="{SCORER} SCORES" />
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;">
+        Placeholders: <b style="color:var(--ink)">{SCORER}</b> player name, <b style="color:var(--ink)">{TEAM}</b> team name. Lowercase versions keep original casing.
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>OBS integration <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(optional)</span></h2>
+      <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:2px 0 10px;">
+        <input type="checkbox" id="obsEnabled" style="width:auto;" />
+        <span style="color:var(--ink);font-size:13px;">Connect to OBS via WebSocket (Tools -> WebSocket Server Settings)</span>
+      </label>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2;">
+          <label>WebSocket URL</label>
+          <input type="text" id="obsWsUrl" value="ws://localhost:4455" />
+        </div>
+        <div style="flex:1;">
+          <label>Password</label>
+          <input type="text" id="obsWsPassword" placeholder="from OBS" />
+        </div>
+      </div>
+      <div class="row" style="gap:8px;margin-top:10px;">
+        <button id="obsTest" style="background:#243040;color:var(--ink);">Test connection</button>
+        <button id="obsSetupScenes" style="background:#243040;color:var(--ink);">Create OBS scene</button>
+        <div style="flex:1;"></div>
+        <div id="obsStatus" style="font-size:12px;color:var(--muted);align-self:center;">disabled</div>
+      </div>
+      <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:14px 0 10px;">
+        <input type="checkbox" id="obsAutoSwitch" style="width:auto;" />
+        <span style="color:var(--ink);font-size:13px;">Auto-switch OBS scenes on game events (replay, post-match)</span>
+      </label>
+      <div class="row" style="gap:10px;">
+        <div style="flex:1;">
+          <label>Live scene</label>
+          <input type="text" id="obsSceneLive" placeholder="RIVALRY - Live" />
+        </div>
+        <div style="flex:1;">
+          <label>Goal scene</label>
+          <input type="text" id="obsSceneGoal" placeholder="(hides RL's text)" />
+        </div>
+        <div style="flex:1;">
+          <label>Replay scene</label>
+          <input type="text" id="obsSceneReplay" placeholder="(optional)" />
+        </div>
+        <div style="flex:1;">
+          <label>Post-match scene</label>
+          <input type="text" id="obsScenePostMatch" placeholder="(optional)" />
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px;">
+        Scene names must match exactly. Leave blank to skip auto-switching on a trigger. The Goal scene should be a graphics-only scene (no game capture) so RL's in-game "X Scored" text is never composited into the broadcast.
+      </div>
+    </div>
+
+    <div class="full">
+      <button class="apply" id="apply">PUSH TO OVERLAY</button>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">connecting to bridge...</span></div>
+    </div>
+  </div>
+
+<script>
+const CONTROL_WS = "ws://localhost:49777";
+let ws = null, connected = false;
+const $ = (id) => document.getElementById(id);
+const state = { series:{a:0,b:0} };
+
+// Fetch + render the build label (e.g. "v0.2.0-beta (a3b9c1d)") in the
+// header so a producer can tell installed builds apart at a glance.
+fetch("/version").then(r => r.json()).then(meta => {
+  if (meta && meta.label) $("buildLabel").textContent = meta.label;
+}).catch(() => {});
+
+function connect(){
+  ws = new WebSocket(CONTROL_WS);
+  ws.onopen = () => { connected = true; setStatus(); push(); };
+  ws.onclose = () => { connected = false; setStatus(); setTimeout(connect, 1500); };
+  ws.onerror = () => ws.close();
+}
+function setStatus(){
+  $("dot").className = "dot" + (connected ? " ok" : "");
+  $("statusText").textContent = connected ? "connected to bridge" : "bridge offline (start: npm start)";
+}
+
+function payload(){
+  return {
+    type: "control",
+    payload: {
+      teamA: { name:$("nameA").value, logo:$("logoA").value.trim(), color:$("colorA").value, tag:$("tagA").value },
+      teamB: { name:$("nameB").value, logo:$("logoB").value.trim(), color:$("colorB").value, tag:$("tagB").value },
+      bestOf: parseInt($("bestOf").value, 10) || 5,
+      series: { a: state.series.a, b: state.series.b },
+      eventTitle: $("eventTitle").value,
+      goalSequence: $("goalSequence").checked,
+      goalText: $("goalText").value
+    }
+  };
+}
+function push(){
+  if (connected && ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload()));
+}
+
+// steppers
+document.querySelectorAll(".stepper button").forEach(b => {
+  b.addEventListener("click", () => {
+    const t = b.dataset.team, d = parseInt(b.dataset.d, 10);
+    state.series[t] = Math.max(0, state.series[t] + d);
+    $("series" + t.toUpperCase()).textContent = state.series[t];
+    push();
+  });
+});
+// push on any field change
+["nameA","logoA","tagA","colorA","nameB","logoB","tagB","colorB","bestOf","eventTitle","goalText"]
+  .forEach(id => $(id).addEventListener("input", push));
+$("goalSequence").addEventListener("change", push);
+$("apply").addEventListener("click", push);
+
+// ---- OBS integration card -------------------------------------------------
+// Bridge sends `obs-status` updates whenever settings change or the OBS
+// connection state changes. We mirror its `settings` into the inputs so a
+// fresh control-panel window hydrates correctly.
+function readObsForm(){
+  return {
+    enabled: $("obsEnabled").checked,
+    url: $("obsWsUrl").value.trim() || "ws://localhost:4455",
+    password: $("obsWsPassword").value,
+    autoSwitchEnabled: $("obsAutoSwitch").checked,
+    sceneMap: {
+      live: $("obsSceneLive").value.trim(),
+      goal: $("obsSceneGoal").value.trim(),
+      replay: $("obsSceneReplay").value.trim(),
+      postMatch: $("obsScenePostMatch").value.trim(),
+    },
+  };
+}
+function pushObsSettings(){
+  if (!connected || ws.readyState !== ws.OPEN) return;
+  ws.send(JSON.stringify({ type: "obs-settings", payload: readObsForm() }));
+}
+function renderObsStatus(s){
+  const st = s && s.status;
+  const enabled = s && s.settings && s.settings.enabled;
+  if (!enabled) { $("obsStatus").textContent = "disabled"; return; }
+  if (st && st.connected) { $("obsStatus").textContent = "connected"; return; }
+  if (st && st.error) { $("obsStatus").textContent = "error: " + st.error; return; }
+  $("obsStatus").textContent = "connecting...";
+}
+function hydrateObsForm(settings){
+  if (!settings) return;
+  $("obsEnabled").checked = !!settings.enabled;
+  if (typeof settings.url === "string") $("obsWsUrl").value = settings.url;
+  if (typeof settings.password === "string") $("obsWsPassword").value = settings.password;
+  $("obsAutoSwitch").checked = !!settings.autoSwitchEnabled;
+  const map = settings.sceneMap || {};
+  if (typeof map.live === "string") $("obsSceneLive").value = map.live;
+  if (typeof map.goal === "string") $("obsSceneGoal").value = map.goal;
+  if (typeof map.replay === "string") $("obsSceneReplay").value = map.replay;
+  if (typeof map.postMatch === "string") $("obsScenePostMatch").value = map.postMatch;
+}
+["obsEnabled","obsWsUrl","obsWsPassword","obsAutoSwitch","obsSceneLive","obsSceneGoal","obsSceneReplay","obsScenePostMatch"]
+  .forEach(id => {
+    const el = $(id);
+    el.addEventListener("change", pushObsSettings);
+    el.addEventListener("input", pushObsSettings);
+  });
+$("obsTest").addEventListener("click", () => {
+  // Force a settings reapply (triggers reconnect) by re-pushing the form.
+  pushObsSettings();
+});
+$("obsSetupScenes").addEventListener("click", () => {
+  if (connected && ws.readyState === ws.OPEN) {
+    ws.send(JSON.stringify({ type: "obs-action", payload: { action: "setup-scenes" } }));
+  }
+});
+
+// Override the basic connect() above to also push obs-settings on open and
+// receive obs-status broadcasts back from main.js.
+connect = function(){
+  ws = new WebSocket(CONTROL_WS);
+  ws.onopen = () => { connected = true; setStatus(); push(); pushObsSettings(); };
+  ws.onclose = () => { connected = false; setStatus(); setTimeout(connect, 1500); };
+  ws.onerror = () => ws.close();
+  ws.onmessage = (e) => {
+    try {
+      const m = JSON.parse(e.data);
+      if (m && m.type === "obs-status") {
+        hydrateObsForm(m.payload && m.payload.settings);
+        renderObsStatus(m.payload);
+      }
+    } catch { /* ignore */ }
+  };
+};
+
+// copy the OBS overlay URL to clipboard
+$("copyUrl").addEventListener("click", async () => {
+  const url = $("obsUrl").value;
+  try { await navigator.clipboard.writeText(url); }
+  catch { $("obsUrl").select(); document.execCommand("copy"); }
+  const b = $("copyUrl"); const t = b.textContent;
+  b.textContent = "Copied!"; setTimeout(() => b.textContent = t, 1500);
+});
+
+connect();
+</script>
+</body>
+</html>
