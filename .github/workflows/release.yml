@@ -22,3 +22,6 @@ jobs:
         run: npm run release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Baked into the built package.json so the tray + control panel
+          # show "v0.2.2 (a3b9c1d)" instead of "v0.2.2 (dev)".
+          BUILD_SHA: ${{ github.sha }}
