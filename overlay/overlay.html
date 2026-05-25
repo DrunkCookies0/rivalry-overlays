@@ -418,12 +418,13 @@ function showGoalBanner(scorer, teamNum){
   $("gbText").textContent = fillGoalText(control.goalText, scorer, teamName);
   $("goalBanner").classList.add("show");
   clearTimeout(bannerTimer);
-  // Stay up through BOTH RL "X SCORED" appearances per goal: the first one
-  // fires at the goal moment, then RL shows it again during the replay
-  // angle change (~5-6s later). 3000ms left the second one uncovered.
-  // 6500ms covers both. Also serves as a safety hide if GoalReplayEnd
-  // never arrives (some game modes skip the replay sequence entirely).
-  bannerTimer = setTimeout(hideGoalBanner, 6500);
+  // Match RL's in-game "X SCORED" duration: ~2 seconds visible at the goal
+  // moment. We add a small buffer so our wipe-out animation starts as RL's
+  // text fades, not before. If RL shows its text again later in the goal
+  // sequence (different angle), that pass goes uncovered — not enough
+  // signal to time it precisely, and per producer feedback the banner
+  // hanging on for the whole replay felt worse than a brief second pass.
+  bannerTimer = setTimeout(hideGoalBanner, 2500);
 }
 function hideGoalBanner(){ $("goalBanner").classList.remove("show"); }
 
