@@ -18,6 +18,18 @@
     --gold:#f6c64a;       /* goal text */
     --seg-off:#26323f;
     --shadow:0 10px 34px rgba(0,0,0,.55);
+
+    /* RIVALRY brand tokens (sync with RIVALRY-web/brand.css). Available for
+       upcoming brand-pass restyling without re-plumbing CSS variables. */
+    --rivalry-yale-blue:#20496F;
+    --rivalry-jet-black:#132E3B;
+    --rivalry-white-smoke:#F1EEEE;
+    --rivalry-surface-1:#1a3d4d;
+    --rivalry-surface-2:#20496F;
+    --rivalry-gold:#F1C40F;
+    --rivalry-teal:#1ABC9C;
+    --rivalry-green:#2ECC71;
+    --rivalry-red:#E74C3C;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;width:1920px;height:1080px;background:transparent;overflow:hidden;
@@ -92,9 +104,15 @@
   .col.left .ptag.active{box-shadow:0 0 0 9999px rgba(0,0,0,0),0 8px 24px rgba(47,125,255,.45);}
 
   /* ===================== BOTTOM STATFEED BAR ====================== */
+  /* While the goal banner is on screen, the focused-player widgets (this
+     statfeed bar + the radial boost gauge below) fade out so they don't
+     compete visually with the GOAL graphic. JS toggles body.banner-active. */
   .statbar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
     display:flex;align-items:stretch;height:40px;background:var(--bar);
-    box-shadow:var(--shadow);border-radius:4px;overflow:hidden;}
+    box-shadow:var(--shadow);border-radius:4px;overflow:hidden;
+    transition:opacity .22s ease-out;}
+  body.banner-active .statbar,
+  body.banner-active .boostgauge{opacity:0;pointer-events:none;}
   .statbar .who{display:flex;align-items:center;padding:0 20px;font-weight:800;
     font-size:16px;letter-spacing:1px;text-transform:uppercase;color:#fff;}
   .statbar .who.blue{background:var(--blue);}
@@ -106,7 +124,8 @@
   .statbar .stat span{font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
 
   /* ===================== RADIAL BOOST GAUGE ====================== */
-  .boostgauge{position:fixed;bottom:22px;right:30px;width:118px;height:118px;}
+  .boostgauge{position:fixed;bottom:22px;right:30px;width:118px;height:118px;
+    transition:opacity .22s ease-out;}
   .boostgauge svg{transform:rotate(-90deg);}
   .boostgauge .track{fill:none;stroke:#1a2330;stroke-width:9;}
   .boostgauge .val{fill:none;stroke:var(--blue);stroke-width:9;stroke-linecap:round;
@@ -155,8 +174,26 @@
       inset 0 2px 0 rgba(255,255,255,.45),
       inset 0 -2px 0 rgba(0,0,0,.55),
       inset 0 0 80px rgba(0,0,0,.20);}
-  /* Layer 3 (optional): scorer text — fades + slides in last, sits above
-     all layers. */
+  /* Layer 3: scorer avatar — square plate with the brand "Rivalry Cut"
+     diagonally clipped corners (matches RIVALRY-web's signature shape).
+     Always to the left of the scorer text regardless of which team scored.
+     RV logo is the placeholder; league API swaps the src later. */
+  .goal-banner .gb-avatar{position:relative;flex:0 0 auto;width:140px;height:140px;
+    object-fit:contain;padding:24px;
+    background:rgba(0,0,0,.45);
+    box-shadow:0 6px 22px rgba(0,0,0,.55);
+    margin-right:28px;
+    clip-path:polygon(
+      0 0,
+      calc(100% - 18px) 0,
+      100% 18px,
+      100% 100%,
+      18px 100%,
+      0 calc(100% - 18px));
+    opacity:0;transform:translateY(14px);
+    transition:opacity .28s .30s,transform .28s .30s;}
+  .goal-banner.show .gb-avatar{opacity:1;transform:translateY(0);}
+  /* Layer 4: scorer text — fades + slides in last, sits above all layers. */
   .goal-banner .gb-text{position:relative;font-size:92px;font-weight:900;letter-spacing:7px;
     text-transform:uppercase;color:#fff;
     text-shadow:0 4px 18px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.95),
@@ -166,6 +203,17 @@
   .goal-banner.show .gb-back{transform:translateY(-50%) scaleX(1);}
   .goal-banner.show .gb-bg{transform:translateY(-50%) scaleX(1);}
   .goal-banner.show .gb-text{opacity:1;transform:translateY(0);}
+  /* Wipe direction follows the scoring team. Blue (left team) is the default:
+     wipe in from left, exit to right. Orange (right team) gets .from-right,
+     which mirrors both: wipe in from right, exit to left. The .exiting class
+     swaps the active origin so the slab collapses off the screen in the
+     "outgoing" direction instead of rewinding. */
+  .goal-banner.exiting .gb-back,
+  .goal-banner.exiting .gb-bg{transform-origin:right center;}
+  .goal-banner.from-right .gb-back,
+  .goal-banner.from-right .gb-bg{transform-origin:right center;}
+  .goal-banner.from-right.exiting .gb-back,
+  .goal-banner.from-right.exiting .gb-bg{transform-origin:left center;}
 
   /* ===================== STINGER WIPE (masks replay cut in/out) ============ */
   .stinger{position:fixed;inset:0;overflow:hidden;pointer-events:none;display:none;z-index:120;}
@@ -181,6 +229,61 @@
   @keyframes stgSweep{0%{left:-210%;}44%{left:-22%;}56%{left:-22%;}100%{left:170%;}}
   @keyframes stgLogo{0%,30%{opacity:0;transform:translate(-50%,-50%) scale(.55);}
     46%,54%{opacity:1;transform:translate(-50%,-50%) scale(1);}78%,100%{opacity:0;}}
+
+  /* ===================== REPLAY PLAYER CARD ====================== */
+  /* Sits in the bottom corner on the scorer's team side during the goal
+     replay window. Shows the scorer's name + stats snapshot taken at the
+     moment they scored. Subsequent cuts will add: ball-speed (cut 2),
+     assist player (cut 3), avatar slot (cut 4). */
+  .replay-card{position:fixed;bottom:30px;width:500px;
+    background-color:var(--rpc);
+    background-image:
+      radial-gradient(ellipse 70% 90% at 50% -10%,
+                      rgba(255,255,255,.30) 0%,
+                      rgba(255,255,255,.08) 35%,
+                      rgba(255,255,255,0)   65%),
+      linear-gradient(180deg,
+                      rgba(255,255,255,0) 0%,
+                      rgba(255,255,255,0) 60%,
+                      rgba(0,0,0,.30)     100%);
+    box-shadow:
+      0 12px 32px rgba(0,0,0,.55),
+      inset 0 2px 0 rgba(255,255,255,.45),
+      inset 0 -2px 0 rgba(0,0,0,.55);
+    opacity:0;transform:translateY(40px);pointer-events:none;z-index:55;
+    transition:opacity .28s ease-out,transform .34s cubic-bezier(.2,.7,.2,1);}
+  .replay-card.left{left:30px;}
+  .replay-card.right{right:30px;}
+  .replay-card.show{opacity:1;transform:translateY(0);}
+  .replay-card .rpc-header{display:flex;align-items:center;justify-content:space-between;
+    padding:11px 20px;background:rgba(0,0,0,.35);
+    border-bottom:1px solid rgba(0,0,0,.5);
+    font-size:14px;font-weight:800;letter-spacing:3px;text-transform:uppercase;
+    color:rgba(255,255,255,.8);}
+  .replay-card .rpc-identity{display:flex;align-items:center;gap:18px;
+    padding:18px 20px 8px 20px;}
+  .replay-card .rpc-avatar{flex:0 0 auto;width:70px;height:70px;
+    object-fit:contain;padding:12px;
+    background:rgba(0,0,0,.35);
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+    clip-path:polygon(
+      0 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% 100%,
+      10px 100%,
+      0 calc(100% - 10px));}
+  .replay-card .rpc-name{flex:1 1 auto;font-size:36px;font-weight:900;letter-spacing:.5px;
+    text-transform:uppercase;color:#fff;
+    text-shadow:0 2px 6px rgba(0,0,0,.6);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .replay-card .rpc-stats{display:grid;grid-template-columns:repeat(5,1fr);
+    gap:1px;padding:0 12px 14px 12px;}
+  .replay-card .rpc-stat{display:flex;flex-direction:column;align-items:center;
+    padding:9px 6px;}
+  .replay-card .rpc-stat b{font-size:30px;font-weight:900;color:#fff;line-height:1;}
+  .replay-card .rpc-stat span{font-size:13px;font-weight:700;letter-spacing:1px;
+    color:rgba(255,255,255,.75);margin-top:5px;text-transform:uppercase;}
 
   #status{position:fixed;top:2px;right:4px;font-size:10px;color:var(--muted);
     font-family:monospace;opacity:.6;}
@@ -241,11 +344,33 @@
   </div>
 
   <!-- GOAL BANNER (sweeps across, covers RL's in-game "X Scored" text)
-       Layers: back slate → team-color slab w/ ambient lighting → scorer text -->
+       Layers: back slate → team-color slab w/ ambient lighting → avatar + text.
+       Avatar defaults to the RV logo placeholder; league API supplies the
+       real per-player image once it lands. -->
   <div class="goal-banner" id="goalBanner">
     <div class="gb-back"></div>
     <div class="gb-bg" id="gbBg"></div>
+    <img class="gb-avatar" id="gbAvatar" src="../assets/rivalry-logo.svg" alt="" />
     <div class="gb-text" id="gbText">GOAL</div>
+  </div>
+
+  <!-- REPLAY PLAYER CARD (appears during the goal replay; team side via class)
+       The avatar slot defaults to the RV logo (shared placeholder for all
+       avatar/logo slots); once the league API gives us a per-player URL we
+       just swap rpcAvatar.src in showReplayCard. -->
+  <div class="replay-card" id="replayCard">
+    <div class="rpc-header"><span id="rpcLabel">GOAL</span></div>
+    <div class="rpc-identity">
+      <img class="rpc-avatar" id="rpcAvatar" src="../assets/rivalry-logo.svg" alt="" />
+      <div class="rpc-name" id="rpcName">-</div>
+    </div>
+    <div class="rpc-stats">
+      <div class="rpc-stat"><b class="nums" id="rpcGoals">0</b><span>Goals</span></div>
+      <div class="rpc-stat"><b class="nums" id="rpcAssists">0</b><span>Assists</span></div>
+      <div class="rpc-stat"><b class="nums" id="rpcSaves">0</b><span>Saves</span></div>
+      <div class="rpc-stat"><b class="nums" id="rpcShots">0</b><span>Shots</span></div>
+      <div class="rpc-stat"><b class="nums" id="rpcDemos">0</b><span>Demos</span></div>
+    </div>
   </div>
 
   <!-- STINGER WIPE (fires on replay start + end to mask the cut) -->
@@ -266,7 +391,7 @@ let control = {
   series: { a:0, b:0 },
   eventTitle: "RIVALRY",
   goalSequence: true,
-  goalText: "{SCORER} SCORES"
+  goalText: "{SCORER} SCORED!"
 };
 
 const $ = (id) => document.getElementById(id);
@@ -275,12 +400,24 @@ const GAUGE_CIRC = 2 * Math.PI * 52; // circumference of the boost ring
 // demos are not in UpdateState; tally them from StatfeedEvent, keyed by player.
 let demosByName = {};
 
+// Latest snapshot of the players list. We pin this on every UpdateState so
+// the replay card can look up the scorer's row at the moment they scored.
+let latestPlayers = [];
+// Timer that fades the replay card in after the goal banner finishes its
+// exit animation, so the two graphics don't overlap on screen.
+let replayCardShowTimer = null;
+
+// RV logo as the universal avatar/logo placeholder for team-, player-, and
+// franchise-level slots that don't yet have a real asset. League API can
+// override per row when it lands.
+const RV_LOGO = "../assets/rivalry-logo.svg";
+
 function applyControl(){
   $("eventbar").innerHTML = control.eventTitle || "RIVALRY";
   $("nameA").textContent = control.teamA.name || "BLUE";
   $("nameB").textContent = control.teamB.name || "ORANGE";
-  $("logoA").style.backgroundImage = control.teamA.logo ? `url("${control.teamA.logo}")` : "none";
-  $("logoB").style.backgroundImage = control.teamB.logo ? `url("${control.teamB.logo}")` : "none";
+  $("logoA").style.backgroundImage = `url("${control.teamA.logo || RV_LOGO}")`;
+  $("logoB").style.backgroundImage = `url("${control.teamB.logo || RV_LOGO}")`;
   $("tagA").textContent = control.teamA.tag || "";
   $("tagB").textContent = control.teamB.tag || "";
   document.documentElement.style.setProperty("--blue", control.teamA.color || "#2f7dff");
@@ -333,7 +470,7 @@ function getTargetName(data){
 // target for FOCUS_STICKY_MS so the UI feels solid; in that window we
 // re-look-up the player by name in the current Players array so live
 // stats (boost, goals) still update.
-const FOCUS_STICKY_MS = 1500;
+const FOCUS_STICKY_MS = 500;
 let lastFocusName = null;
 let lastFocusTime = 0;
 
@@ -354,6 +491,7 @@ function onUpdateState(data){
   clk.classList.toggle("ot", isOT);
 
   const players = data.Players || [];
+  latestPlayers = players;
   renderBoost($("colA"), players.filter(p => p.TeamNum === 0), "blue");
   renderBoost($("colB"), players.filter(p => p.TeamNum === 1), "red");
 
@@ -436,7 +574,7 @@ function updateFocus(p){
 let bannerTimer = null;
 
 function fillGoalText(tpl, scorer, teamName){
-  return String(tpl || "{SCORER} SCORES")
+  return String(tpl || "{SCORER} SCORED!")
     .replace(/\{SCORER\}/g, (scorer || "").toUpperCase())
     .replace(/\{scorer\}/g, scorer || "")
     .replace(/\{TEAM\}/g, (teamName || "").toUpperCase())
@@ -448,7 +586,17 @@ function showGoalBanner(scorer, teamNum){
   const teamName = blue ? control.teamA.name : control.teamB.name;
   document.documentElement.style.setProperty("--goalc", blue ? "var(--blue)" : "var(--red)");
   $("gbText").textContent = fillGoalText(control.goalText, scorer, teamName);
-  $("goalBanner").classList.add("show");
+  // Strip the .exiting class from any previous goal cycle so the wipe-in
+  // is anchored at the correct side. Apply .from-right when the orange
+  // (right-side) team scored, so the banner wipes in from their side.
+  const b = $("goalBanner");
+  b.classList.remove("exiting");
+  b.classList.toggle("from-right", teamNum === 1);
+  b.classList.add("show");
+  // Fade out the focused-player widgets (statbar + radial gauge) so they
+  // don't compete with the GOAL banner. The body class drives the CSS;
+  // hideGoalBanner removes it and they fade back in.
+  document.body.classList.add("banner-active");
   clearTimeout(bannerTimer);
   // Measured against the LOS Twitch reference (2026-05-25 08-40-55.mp4):
   //   LOS banner wipe-in starts T+2.1s after the goal moment
@@ -459,9 +607,27 @@ function showGoalBanner(scorer, teamNum){
   // sequences are shorter than LOS's competitive matches though, so
   // 2500ms keeps us in roughly the right phase without dragging into
   // kickoff prep in shorter sequences. Tune if needed.
-  bannerTimer = setTimeout(hideGoalBanner, 3900);
+  bannerTimer = setTimeout(hideGoalBanner, 3000);
 }
-function hideGoalBanner(){ $("goalBanner").classList.remove("show"); }
+function hideGoalBanner(){
+  // Enter from left, exit to right (mirrored for orange goals).
+  // Adding .exiting and removing .show in the same tick lets the browser
+  // batch them into one paint, which can skip the transform-origin flip
+  // and make the wipe-out look like a normal rewind. The force-reflow
+  // (`void b.offsetWidth`) commits the .exiting origin change as its own
+  // paint first so the scaleX collapse animates against the new origin.
+  // The .exiting class is then cleaned up after the transition finishes
+  // (~600ms for the slowest layer), leaving the banner ready for the
+  // next goal's wipe-in.
+  const b = $("goalBanner");
+  b.classList.add("exiting");
+  void b.offsetWidth;
+  b.classList.remove("show");
+  setTimeout(() => b.classList.remove("exiting"), 600);
+  // Bring the focused-player widgets back. The CSS transition fades them
+  // in over .22s so the swap doesn't pop.
+  document.body.classList.remove("banner-active");
+}
 
 function playStinger(){
   const s = $("stinger");
@@ -472,6 +638,11 @@ function playStinger(){
   playStinger._t = setTimeout(() => s.classList.remove("run"), 950);
 }
 
+// Delay (ms) between RL firing GoalScored and the banner starting to wipe in.
+// Lets the in-game celebration land first, then the broadcast graphic sweeps
+// in over it. Bump up for more breathing room, down for snappier.
+const GOAL_BANNER_DELAY_MS = 750;
+
 function onGoalScored(data){
   if (!control.goalSequence) return;     // let the in-game text show if disabled
   const scorer = (data.Scorer && data.Scorer.Name) || "";
@@ -481,7 +652,17 @@ function onGoalScored(data){
   // with nothing in front of it. Better to skip the banner entirely than
   // show a half-broken one.
   if (!scorer) return;
-  showGoalBanner(scorer, teamNum);
+  setTimeout(() => showGoalBanner(scorer, teamNum), GOAL_BANNER_DELAY_MS);
+  // Schedule the replay card to fade in once the goal banner has wiped
+  // out. Replay events (GoalReplayStart/End) don't fire in every game
+  // mode, so we drive the card off the same trigger as the banner with
+  // a longer delay. onGoalReplayEnd / clearGoalSequence still hide it
+  // if RL does fire those.
+  clearTimeout(replayCardShowTimer);
+  replayCardShowTimer = setTimeout(
+    () => showReplayCard(scorer, teamNum),
+    GOAL_BANNER_DELAY_MS + 3600
+  );
 }
 function onGoalReplayStart(){
   if (!control.goalSequence) return;
@@ -491,11 +672,37 @@ function onGoalReplayStart(){
 }
 function onGoalReplayEnd(){
   if (!control.goalSequence) return;
+  hideReplayCard();
   // playStinger();
 }
 function clearGoalSequence(){
   hideGoalBanner();
+  hideReplayCard();
+  clearTimeout(replayCardShowTimer);
   $("stinger").classList.remove("run");
+}
+
+// Look up the scorer's row in the latest UpdateState snapshot and paint
+// their stats into the card. Team color drives both the card background
+// and which corner it sits in (left for blue, right for orange).
+function showReplayCard(scorerName, teamNum){
+  const blue = teamNum === 0;
+  const p = latestPlayers.find(x => x && x.Name === scorerName) || {};
+  document.documentElement.style.setProperty("--rpc", blue ? "var(--blue)" : "var(--red)");
+  const card = $("replayCard");
+  card.classList.remove("left", "right");
+  card.classList.add(blue ? "left" : "right");
+  $("rpcName").textContent = scorerName || "-";
+  $("rpcGoals").textContent   = p.Goals   ?? 0;
+  $("rpcAssists").textContent = p.Assists ?? 0;
+  $("rpcSaves").textContent   = p.Saves   ?? 0;
+  $("rpcShots").textContent   = p.Shots   ?? 0;
+  $("rpcDemos").textContent   = demosByName[scorerName] ?? 0;
+  card.classList.add("show");
+}
+
+function hideReplayCard(){
+  $("replayCard").classList.remove("show");
 }
 
 function onStatfeed(data){

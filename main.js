@@ -18,7 +18,7 @@
 
 "use strict";
 
-const { app, BrowserWindow, Tray, Menu, nativeImage, clipboard, shell, Notification } = require("electron");
+const { app, BrowserWindow, Tray, Menu, nativeImage, clipboard, shell, Notification, dialog } = require("electron");
 // electron-updater is required lazily inside setupAutoUpdate() because its
 // module-load path eagerly instantiates NsisUpdater, which calls into
 // electron.app and crashes when require()'d in dev (npm start / npm run mock).
@@ -36,6 +36,7 @@ const { runSetup, startBridge } = require("./bridge/rl-bridge");
 const { startReplayCollector } = require("./bridge/replay-collector");
 const { createOBSController } = require("./bridge/obs-controller");
 const obsSettingsStore = require("./bridge/obs-settings");
+const devSettingsStore = require("./bridge/dev-settings");
 const { getMeta } = require("./bridge/app-meta");
 
 const HTTP_PORT = 49080;
@@ -62,7 +63,16 @@ const MIME = {
   ".json": "application/json",
 };
 
+// Mutable root for the static-file server. Dev mode (see toggleDevMode) swaps
+// this to a local repo folder so overlay/control HTML edits go live with just
+// an OBS browser-source refresh — no app restart. Defaults to the packaged
+// app directory.
+let httpRootDir = __dirname;
+function setHttpRoot(dir) { httpRootDir = dir; }
+function getHttpRoot()   { return httpRootDir; }
+
 function startHttpServer(rootDir) {
+  setHttpRoot(rootDir);
   const server = http.createServer((req, res) => {
     let urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
     // Tiny meta endpoint so the control panel can render the build label.
@@ -71,8 +81,9 @@ function startHttpServer(rootDir) {
       return res.end(JSON.stringify(META));
     }
     if (urlPath === "/" || urlPath === "") urlPath = "/control/control.html";
-    const filePath = path.normalize(path.join(rootDir, urlPath));
-    if (!filePath.startsWith(rootDir)) {
+    const root = httpRootDir;
+    const filePath = path.normalize(path.join(root, urlPath));
+    if (!filePath.startsWith(root)) {
       res.writeHead(403);
       return res.end("forbidden");
     }
@@ -108,7 +119,18 @@ let updateState = "idle";
 let updateVersion = null;
 let updateError = null;
 
+// Dev-mode tray toggle. Hidden by default in packaged builds — only appears
+// when running unpacked OR when RIVALRY_DEV=1 is set in the user environment.
+// When on, the HTTP server serves overlay / control HTML from `devSettings.path`
+// instead of the packaged app dir, so edits in a local repo go live to OBS
+// after a browser-source refresh — no install / restart loop.
+let devSettings = { enabled: false, path: "" };
+const DEV_MODE_AVAILABLE = !app.isPackaged || process.env.RIVALRY_DEV === "1";
+
 function createWindow() {
+  // Start hidden so the app boots quietly to the tray on every launch
+  // (including auto-start with Windows). Users open the control panel
+  // explicitly via the tray click handler or "Show control panel".
   mainWindow = new BrowserWindow({
     width: 900,
     height: 1040,
@@ -117,6 +139,7 @@ function createWindow() {
     title: APP_TITLE,
     backgroundColor: "#0e1218",
     icon: TRAY_ICON,
+    show: false,
     webPreferences: { contextIsolation: true },
   });
   mainWindow.setMenuBarVisibility(false);
@@ -224,6 +247,19 @@ function buildTrayMenu() {
         app.setLoginItemSettings({ openAtLogin: item.checked });
       },
     },
+    // Dev-mode toggle. Hidden in packaged user builds (gated by env var so the
+    // code ships but the UI doesn't surface to end users).
+    ...(DEV_MODE_AVAILABLE ? [
+      { type: "separator" },
+      {
+        label: devSettings.enabled
+          ? `Dev: serving from ${devSettings.path}`
+          : "Dev: serve overlay from local folder...",
+        type: "checkbox",
+        checked: devSettings.enabled,
+        click: () => { toggleDevMode().catch((e) => console.error("[rivalry] dev toggle:", e.message)); },
+      },
+    ] : []),
     { type: "separator" },
     {
       label: `Quit ${APP_TITLE}`,
@@ -251,6 +287,37 @@ async function setupObsScenes() {
     try { await obsController.createSceneWithBrowserSource(s); }
     catch (e) { console.error("[rivalry] scene setup failed:", e.message); }
   }
+}
+
+// Toggle dev mode on/off. When turning on, prompts for the local repo folder
+// (unless one was previously saved). When turning off, reverts the HTTP root
+// to the packaged app dir. Persists across launches.
+async function toggleDevMode() {
+  if (!DEV_MODE_AVAILABLE) return;
+  if (devSettings.enabled) {
+    devSettings = { ...devSettings, enabled: false };
+    setHttpRoot(__dirname);
+  } else {
+    const result = await dialog.showOpenDialog({
+      properties: ["openDirectory"],
+      title: "Choose RIVALRY Overlays repo folder",
+      defaultPath: devSettings.path || app.getPath("home"),
+    });
+    if (result.canceled || !result.filePaths.length) return;
+    const picked = result.filePaths[0];
+    if (!fs.existsSync(path.join(picked, "overlay", "overlay.html"))) {
+      dialog.showMessageBox({
+        type: "warning",
+        message: "That folder does not look like a rivalry-overlays repo",
+        detail: "Expected to find overlay/overlay.html inside it.",
+      });
+      return;
+    }
+    devSettings = { enabled: true, path: picked };
+    setHttpRoot(picked);
+  }
+  devSettingsStore.save(app.getPath("userData"), devSettings);
+  refreshTrayMenu();
 }
 
 function createTray() {
@@ -429,6 +496,23 @@ function onGameEventForObs(env) {
   }
 }
 
+// Toast notification on startup so the user has visible confirmation the app
+// is running in the tray. Clicking it opens the control panel.
+function notifyReady() {
+  try {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({
+      title: `${APP_TITLE} is live`,
+      body: `Overlay: ${OVERLAY_URL}`,
+      silent: true,
+    });
+    n.on("click", showWindow);
+    n.show();
+  } catch (e) {
+    console.error("[rivalry] notify error:", e.message);
+  }
+}
+
 // Enable auto-start the first time the app ever runs (producer convenience).
 function applyFirstRunAutostart() {
   try {
@@ -449,6 +533,11 @@ if (!app.requestSingleInstanceLock()) {
   app.on("second-instance", showWindow);
 
   app.whenReady().then(() => {
+    // Windows needs an explicit AppUserModelID for native notifications
+    // to work reliably in unpackaged dev runs. Without it, the toast appears
+    // but the notification subsystem can behave strangely.
+    try { app.setAppUserModelId("com.rivalry.overlay"); } catch {}
+
     try {
       const r = runSetup();
       console.log("[rivalry] stats API config:", r.ok ? "written" : "RL folder not found yet");
@@ -457,13 +546,25 @@ if (!app.requestSingleInstanceLock()) {
     }
 
     applyFirstRunAutostart();
+    // Resolve dev settings before starting the HTTP server so the right root
+    // is in place on first request. Falls back to __dirname if the saved
+    // folder no longer exists (e.g. repo was moved).
+    if (DEV_MODE_AVAILABLE) {
+      devSettings = devSettingsStore.load(app.getPath("userData"));
+      if (devSettings.enabled && !fs.existsSync(path.join(devSettings.path, "overlay", "overlay.html"))) {
+        console.warn("[rivalry] dev path missing, falling back to packaged:", devSettings.path);
+        devSettings = { ...devSettings, enabled: false };
+      }
+    }
     bridgeHandle = startBridge({ mock: process.argv.includes("--mock") });
     collector = startReplayCollector({});
-    startHttpServer(__dirname);
+    const initialRoot = devSettings.enabled ? devSettings.path : __dirname;
+    startHttpServer(initialRoot);
     createWindow();
     createTray();
     setupAutoUpdate();
     setupObsIntegration();
+    notifyReady();
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();

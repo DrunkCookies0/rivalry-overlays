@@ -12,7 +12,10 @@ const fs = require("fs");
 const path = require("path");
 
 const DEFAULTS = {
-  enabled: false,
+  // Default ON so the app auto-attempts an OBS connection on first launch
+  // (OBS WebSocket is built into OBS 28+ and listens on 4455 by default).
+  // Failed connects are silent — the tray still shows "OBS: connecting...".
+  enabled: true,
   url: "ws://localhost:4455",
   password: "",
   // Scene names a producer maps via the control panel. Empty string means

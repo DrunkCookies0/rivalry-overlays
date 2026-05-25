@@ -121,19 +121,6 @@
     </div>
 
     <div class="card full">
-      <h2>Goal sequence</h2>
-      <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:2px 0 6px;">
-        <input type="checkbox" id="goalSequence" checked style="width:auto;" />
-        <span style="color:var(--ink);font-size:13px;">Custom goal banner + stinger (covers the in-game "scored" text)</span>
-      </label>
-      <label>Goal banner text</label>
-      <input type="text" id="goalText" value="{SCORER} SCORES" />
-      <div style="font-size:12px;color:var(--muted);margin-top:6px;">
-        Placeholders: <b style="color:var(--ink)">{SCORER}</b> player name, <b style="color:var(--ink)">{TEAM}</b> team name. Lowercase versions keep original casing.
-      </div>
-    </div>
-
-    <div class="card full">
       <h2>OBS integration <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(optional)</span></h2>
       <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:2px 0 10px;">
         <input type="checkbox" id="obsEnabled" style="width:auto;" />
@@ -219,9 +206,7 @@ function payload(){
       teamB: { name:$("nameB").value, logo:$("logoB").value.trim(), color:$("colorB").value, tag:$("tagB").value },
       bestOf: parseInt($("bestOf").value, 10) || 5,
       series: { a: state.series.a, b: state.series.b },
-      eventTitle: $("eventTitle").value,
-      goalSequence: $("goalSequence").checked,
-      goalText: $("goalText").value
+      eventTitle: $("eventTitle").value
     }
   };
 }
@@ -239,9 +224,8 @@ document.querySelectorAll(".stepper button").forEach(b => {
   });
 });
 // push on any field change
-["nameA","logoA","tagA","colorA","nameB","logoB","tagB","colorB","bestOf","eventTitle","goalText"]
+["nameA","logoA","tagA","colorA","nameB","logoB","tagB","colorB","bestOf","eventTitle"]
   .forEach(id => $(id).addEventListener("input", push));
-$("goalSequence").addEventListener("change", push);
 $("apply").addEventListener("click", push);
 
 // ---- OBS integration card -------------------------------------------------

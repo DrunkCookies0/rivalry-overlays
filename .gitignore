@@ -5,6 +5,8 @@ dist-beta/
 .DS_Store
 .recon/
 LeagueOS/
+RIVALRY-web/
+rockpload/
 Recordings/
 *.exe
 *.mp4
