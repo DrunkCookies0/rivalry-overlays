@@ -47,6 +47,29 @@ Rocket League                RIVALRY Overlay app           OBS
 
 ---
 
+## What's on the overlay
+
+**Scorebar (top center)**
+- Event title strip, team blocks (name, logo, region/record tag), scores, clock, RLCS-style unified pip row (blue from left, red from right, hollow neutral marker on the active game, gold + team-color underline on the series winner's pips), state strip for `OVERTIME` (red pulse) and `KICKOFF` (gold).
+
+**Goal experience**
+- **GOAL flash** over the scoring team's name in the scorebar — gold gradient slab, sheen sweep, punch-in bounce, glow pulse, team-color underline.
+- **Goal banner** mid-screen — layered slab that wipes in from the scorer's side, contains the scorer's avatar plus a stack of scorer name, optional subtitle, and up to 3 badge slots (subtitle / badges populated from league API per-player data when wired).
+- **Replay card** in the scorer's corner during the goal replay — avatar, name, optional assister line (correlated via assist statfeed within 5s of the goal), goal speed in MPH, and per-player stats (Goals / Assists / Saves / Shots / Demos).
+- **Stat-event pops** — small color-coded badges (GOAL / AST / SAV / SHT / DMO) pop in next to the actor's player tag whenever RL fires the matching statfeed event; stack vertically, auto-dismiss.
+
+**Match-state cues**
+- **Kickoff 3-2-1-GO!** — center-screen countdown synced with RL's `CountdownBegin`, with separate delay regimes for the very first kickoff of a match, fresh kickoffs (pause/resume), and post-goal kickoffs (each tuned independently in [overlay/overlay.html](overlay/overlay.html)). GO! is anchored to `RoundStarted` so it lands on the actual ball drop. Useful when the broadcaster has RL's in-game HUD hidden via Settings → Interface.
+- **Final-10s big number** — upper-center gold pulsing seconds counter when ≤10s remain in regulation. Suppressed during OT (the state strip's `OVERTIME` carries the urgency there).
+- **OVERTIME** state strip — only fires on RL's explicit `IsOT` flag (no false-positive on tied-zero).
+
+**Focused player widgets (side tags + bottom statbar + boost gauge)**
+- Per-team player tags on the side flanks with live boost, full team-color background highlight when the spectator camera focuses them. Bottom statbar + radial boost gauge for the focused player. All fade out during the goal banner so they don't compete.
+
+The control panel sets team branding (name, logo, region/record tag), best-of, series score, event title, and OBS scene wiring. Accent colors lock to RL's blue and orange so they always match the in-game teams.
+
+---
+
 ## For end users (the people you ship to)
 
 1. Run `RIVALRY-Overlay-Setup-<version>.exe` and install.
@@ -165,7 +188,7 @@ attaches to each archived replay.
 - `main.js` — Electron entry: writes the ini, starts the bridge + web server, opens the panel
 - `bridge/rl-bridge.js` — TCP to WebSocket bridge + `runSetup()`; also a CLI (`--setup`, `--mock`)
 - `bridge/replay-collector.js` — watches the RL Demos folder and archives replays + metadata
-- `overlay/overlay.html` — the OBS browser source (RLCS-style scorebar, boost, statfeed, gauge, goal banner)
+- `overlay/overlay.html` — the OBS browser source. See **What's on the overlay** below for the full feature list.
 - `control/control.html` — operator control panel (team branding, series, OBS URL)
 - `config/DefaultStatsAPI.ini` — reference copy of the snippet the app writes
 - `assets/` — tray icon + RIVALRY logo and wordmark (used by the control panel)

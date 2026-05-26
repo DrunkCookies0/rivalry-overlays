@@ -1225,12 +1225,12 @@ function showReplayCard(scorerName, teamNum){
   $("rpcSaves").textContent   = p.Saves   ?? 0;
   $("rpcShots").textContent   = p.Shots   ?? 0;
   $("rpcDemos").textContent   = demosByName[scorerName] ?? 0;
-  // Goal speed — RL's GoalSpeed is in UU/s per the rl-bridge convention.
-  // UU/s ÷ 44.704 = MPH, ÷ 27.7778 = KPH. Default NA → MPH; when league API
-  // supplies match region the unit will flip per non-NA matches.
+  // Goal speed — RL's GoalScored.GoalSpeed comes in KPH (matches the in-game
+  // post-goal display unit). Convert to MPH for NA broadcasts: MPH = KPH × 0.621371.
+  // When league API supplies match region, the unit will flip for non-NA matches.
   const speedEl = $("rpcSpeed");
   if (lastGoalSpeed > 0){
-    const mph = Math.round(lastGoalSpeed / 44.704);
+    const mph = Math.round(lastGoalSpeed * 0.621371);
     speedEl.innerHTML = `<b>${mph}</b>MPH`;
   } else {
     speedEl.textContent = "";
