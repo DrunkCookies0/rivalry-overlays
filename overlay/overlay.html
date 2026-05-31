@@ -315,15 +315,18 @@
     box-shadow:0 4px 12px rgba(231,76,60,.55),inset 0 0 0 1px rgba(255,255,255,.12);}
 
   /* ===================== BOTTOM STATFEED BAR ====================== */
-  /* While the goal banner is on screen, the focused-player widgets (this
-     statfeed bar + the radial boost gauge below) fade out so they don't
-     compete visually with the GOAL graphic. JS toggles body.banner-active. */
+  /* While the goal sequence is in flight (banner → replay → card → stinger
+     → kickoff), the focused-player widgets (statfeed bar + radial boost
+     gauge) fade out so they don't compete visually with goal graphics OR
+     pop back in during the banner-exit → replay-start gap. JS toggles
+     body.goal-sequence-active, synced 1:1 with the goalSequenceActive
+     flag — set in showGoalBanner, cleared in clearGoalSequence. */
   .statbar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
     display:flex;align-items:stretch;height:40px;background:var(--bar);
     box-shadow:var(--shadow);border-radius:4px;overflow:hidden;
     transition:opacity .22s ease-out;}
-  body.banner-active .statbar,
-  body.banner-active .boostgauge{opacity:0;pointer-events:none;}
+  body.goal-sequence-active .statbar,
+  body.goal-sequence-active .boostgauge{opacity:0;pointer-events:none;}
   .statbar .who{display:flex;align-items:center;padding:0 20px;
     font-family:var(--font-display);font-style:italic;
     font-weight:700;font-size:16px;letter-spacing:1px;text-transform:uppercase;color:#fff;}
@@ -1122,10 +1125,12 @@ function showGoalBanner(scorer, teamNum){
   b.classList.remove("exiting");
   b.classList.toggle("from-right", teamNum === 1);
   b.classList.add("show");
-  // Fade out the focused-player widgets (statbar + radial gauge) so they
-  // don't compete with the GOAL banner. The body class drives the CSS;
-  // hideGoalBanner removes it and they fade back in.
-  document.body.classList.add("banner-active");
+  // Fade out the focused-player widgets (statbar + radial gauge) for the
+  // ENTIRE goal sequence — banner, replay, replay card, stinger, kickoff —
+  // so they don't pop back in during the banner-exit → replay-start gap.
+  // clearGoalSequence removes the class; hideGoalBanner does NOT (banner
+  // exit is just stage 1, the sequence continues).
+  document.body.classList.add("goal-sequence-active");
   clearTimeout(bannerTimer);
   // Measured against the LOS Twitch reference (2026-05-25 08-40-55.mp4):
   //   LOS banner wipe-in starts T+2.1s after the goal moment
@@ -1156,9 +1161,10 @@ function hideGoalBanner(){
   bannerExitTimer = setTimeout(() => b.classList.remove("exiting"), 600);
   clearTimeout(bannerTimer);
   bannerTimer = null;
-  // Bring the focused-player widgets back. The CSS transition fades them
-  // in over .22s so the swap doesn't pop.
-  document.body.classList.remove("banner-active");
+  // Focused-player widgets stay hidden — banner exit is just stage 1 of the
+  // goal sequence. clearGoalSequence (on kickoff / match end / disconnect)
+  // is the single owner of the goal-sequence-active class removal so the
+  // widgets don't pop back in between banner exit and replay start.
 }
 
 // Kickoff 3-2-1-GO center-screen countdown. Fires on CountdownBegin so
@@ -1460,7 +1466,7 @@ function clearGoalSequence(){
   document.querySelectorAll(".goal-flash").forEach(el => {
     el.classList.remove("show", "exiting");
   });
-  document.body.classList.remove("banner-active");
+  document.body.classList.remove("goal-sequence-active");
 }
 
 // Look up the scorer's row in the latest UpdateState snapshot and paint
