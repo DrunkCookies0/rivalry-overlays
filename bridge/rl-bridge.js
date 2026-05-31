@@ -398,9 +398,11 @@ function startMockFeed(broadcastGame) {
       event: "GoalScored",
       data: { MatchGuid: "mock-match", GoalSpeed: 88, Scorer: { Name: scorer, TeamNum: team } },
     });
-    setTimeout(() => broadcastGame({ event: "GoalReplayStart", data: {} }), 3000);
-    setTimeout(() => broadcastGame({ event: "GoalReplayWillEnd", data: {} }), 8000);
-    setTimeout(() => broadcastGame({ event: "GoalReplayEnd", data: {} }), 8800);
+    // Use the canonical RL Stats API event names so `npm run mock` exercises
+    // the same dispatch path real matches do.
+    setTimeout(() => broadcastGame({ event: "ReplayPlaybackStart", data: {} }), 3000);
+    setTimeout(() => broadcastGame({ event: "ReplayWillEnd", data: {} }), 8000);
+    setTimeout(() => broadcastGame({ event: "ReplayPlaybackEnd", data: {} }), 8800);
     setTimeout(() => broadcastGame({ event: "CountdownBegin", data: {} }), 10000);
   }
   setInterval(runGoalSequence, 14000);

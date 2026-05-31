@@ -475,8 +475,8 @@
   .stinger{position:fixed;inset:0;overflow:hidden;pointer-events:none;display:none;z-index:120;}
   .stinger.run{display:block;}
   .stinger .panel{position:absolute;top:-20%;height:140%;width:170%;left:-210%;transform:skewX(-12deg);}
-  .stinger .panel.p1{background:var(--red);}
-  .stinger .panel.p2{background:#0e1218;}
+  .stinger .panel.p1{background:var(--rivalry-yale-blue);}
+  .stinger .panel.p2{background:var(--rivalry-jet-black);}
   .stinger .slogo{position:absolute;top:50%;left:50%;width:230px;height:155px;opacity:0;
     transform:translate(-50%,-50%) scale(.55);background:center/contain no-repeat;}
   .stinger.run .panel.p1{animation:stgSweep .9s cubic-bezier(.6,0,.2,1) forwards;}
@@ -717,6 +717,33 @@ let latestPlayers = [];
 // Timer that fades the replay card in after the goal banner finishes its
 // exit animation, so the two graphics don't overlap on screen.
 let replayCardShowTimer = null;
+// Timer that defers the banner+flash show until after the in-game goal
+// celebration lands. Captured so clearGoalSequence + rapid back-to-back goals
+// can cancel a pending show before it pops over podium / next-goal state.
+let goalBannerShowTimer = null;
+// Stinger fallback timer — ReplayPlaybackEnd is the canonical trigger but RL's
+// Stats API drops that event in bot/freeplay/private matches. Same fallback
+// pattern as the replay card: fire on a timer; clear if the real event arrives.
+let stingerShowTimer = null;
+// Tracks when the stinger last fired so CountdownBegin can trigger it
+// on demand without double-firing if ReplayPlaybackEnd already played it.
+let lastStingerTime = 0;
+// GoalScored dedup — RL fires every goal twice ~4-15ms apart; the second
+// payload typically lacks GoalSpeed and would zero out our captured speed
+// if we ran the pipeline twice. Key on scorer name within GOAL_DEDUP_MS.
+const GOAL_DEDUP_MS = 100;
+let lastGoalFireByName = {};
+// Statfeed dedup — Demolition fires twice per real demo (~800ms apart) which
+// over-counts demos and stacks DEMO pops. Key on `${type}|${actor}` within
+// STATFEED_DEDUP_MS. Trade-off: chained demos under ~1s would lose the second
+// pop; revisit if telemetry shows it.
+const STATFEED_DEDUP_MS = 1000;
+let lastStatfeedFire = {};
+// Last CountdownBegin timestamp so a double-fire (RL quirk after pause) can be
+// debounced. Without this, the second CountdownBegin re-anchors the kickoff
+// sequence with a different regime than the first, drifting from the in-game 3.
+let lastCountdownBeginTime = 0;
+const COUNTDOWN_DEBOUNCE_MS = 500;
 
 // RV logo as the universal avatar/logo placeholder for team-, player-, and
 // franchise-level slots that don't yet have a real asset. League API can
@@ -956,13 +983,18 @@ function updateFocus(p){
 }
 
 /* ---- Goal sequence -------------------------------------------------------
- * GoalScored        -> show custom banner (covers RL's in-game "X Scored")
- * GoalReplayStart   -> hide banner, fire stinger wipe (mask cut into replay)
- * GoalReplayEnd     -> fire stinger wipe again (mask cut back to live)
+ * GoalScored            -> show custom banner (covers RL's in-game "X Scored")
+ * ReplayPlaybackStart   -> hide banner (real cut into replay)
+ * ReplayWillEnd         -> hide replay card (~3s pre-warning)
+ * ReplayPlaybackEnd     -> fire stinger wipe (mask cut back to live)
  * CountdownBegin /
- * RoundStarted      -> clear everything for kickoff
+ * RoundStarted          -> clear everything for kickoff
+ * Bot/freeplay/private matches don't emit Replay* events — fallback timers
+ * in onGoalScored drive the same sequence and get cancelled when (and if)
+ * the real events arrive.
  * ------------------------------------------------------------------------- */
 let bannerTimer = null;
+let bannerExitTimer = null;
 
 function fillGoalText(tpl, scorer, teamName){
   return String(tpl || "{SCORER} SCORED!")
@@ -985,6 +1017,7 @@ function showGoalBanner(scorer, teamNum){
   // is anchored at the correct side. Apply .from-right when the orange
   // (right-side) team scored, so the banner wipes in from their side.
   const b = $("goalBanner");
+  clearTimeout(bannerExitTimer);
   b.classList.remove("exiting");
   b.classList.toggle("from-right", teamNum === 1);
   b.classList.add("show");
@@ -1018,7 +1051,10 @@ function hideGoalBanner(){
   b.classList.add("exiting");
   void b.offsetWidth;
   b.classList.remove("show");
-  setTimeout(() => b.classList.remove("exiting"), 600);
+  clearTimeout(bannerExitTimer);
+  bannerExitTimer = setTimeout(() => b.classList.remove("exiting"), 600);
+  clearTimeout(bannerTimer);
+  bannerTimer = null;
   // Bring the focused-player widgets back. The CSS transition fades them
   // in over .22s so the swap doesn't pop.
   document.body.classList.remove("banner-active");
@@ -1129,10 +1165,13 @@ function applyGoalBannerExtras(scorer, teamNum){
 // Scoreboard GOAL flash — gold "GOAL" graphic over the scoring team's name
 // block. Synced with the goal banner so both reactions read as one moment.
 let goalFlashTimers = { A:null, B:null };
+let goalFlashExitTimers = { A:null, B:null };
 function showGoalFlash(teamNum){
   const which = teamNum === 0 ? "A" : "B";
   const el = $("goalFlash" + which);
   if (!el) return;
+  // Clean up any pending exit-cleanup from a previous flash before we re-show.
+  clearTimeout(goalFlashExitTimers[which]);
   el.classList.remove("exiting");
   // Force reflow so re-trigger during a previous flash re-animates cleanly.
   void el.offsetWidth;
@@ -1147,11 +1186,14 @@ function hideGoalFlash(teamNum){
   el.classList.add("exiting");
   void el.offsetWidth;
   el.classList.remove("show");
-  setTimeout(() => el.classList.remove("exiting"), 400);
+  clearTimeout(goalFlashExitTimers[which]);
+  goalFlashExitTimers[which] = setTimeout(() => el.classList.remove("exiting"), 400);
 }
 
 function playStinger(){
   const s = $("stinger");
+  if (!s) return;
+  lastStingerTime = performance.now();
   s.classList.remove("run");
   void s.offsetWidth;        // force reflow so the animation restarts
   s.classList.add("run");
@@ -1169,44 +1211,107 @@ function onGoalScored(data){
   const scorer = (data.Scorer && data.Scorer.Name) || "";
   const teamNum = (data.Scorer && data.Scorer.TeamNum);
   // Don't render a "name-less" banner. Some game modes / own-goals fire
-  // GoalScored with an empty Scorer.Name, which used to produce "SCORES"
-  // with nothing in front of it. Better to skip the banner entirely than
-  // show a half-broken one.
+  // GoalScored with an empty Scorer.Name (also fires on every ReplayPlaybackEnd
+  // as a phantom payload). Skip — and skip BEFORE the dedup map update so the
+  // phantom doesn't poison the last-fire key.
   if (!scorer) return;
-  lastGoalTime = performance.now();
+  // Dedup the double-fire RL emits per real goal (~4-15ms apart; second payload
+  // typically lacks GoalSpeed and would zero out lastGoalSpeed if we re-ran the
+  // pipeline). If the late payload carries a GoalSpeed and the earlier one was
+  // 0, adopt it; otherwise drop the duplicate.
+  const now = performance.now();
+  const prevFire = lastGoalFireByName[scorer] || 0;
+  if (now - prevFire < GOAL_DEDUP_MS) {
+    const lateSpeed = Number(data.GoalSpeed) || 0;
+    if (lateSpeed > 0 && lastGoalSpeed === 0) lastGoalSpeed = lateSpeed;
+    return;
+  }
+  lastGoalFireByName[scorer] = now;
+  lastGoalTime = now;
   lastGoalSpeed = Number(data.GoalSpeed) || 0;
   spawnStatPop(scorer, "goal", "GOAL");
-  setTimeout(() => {
+  // Cancel any in-flight pending banner+flash from a previous goal so a
+  // rapid back-to-back doesn't double-pop.
+  clearTimeout(goalBannerShowTimer);
+  goalBannerShowTimer = setTimeout(() => {
     showGoalBanner(scorer, teamNum);
     showGoalFlash(teamNum);
   }, GOAL_BANNER_DELAY_MS);
   // Schedule the replay card to fade in once the goal banner has wiped
-  // out. Replay events (GoalReplayStart/End) don't fire in every game
+  // out. Replay events (ReplayPlaybackStart/End) don't fire in every game
   // mode, so we drive the card off the same trigger as the banner with
-  // a longer delay. onGoalReplayEnd / clearGoalSequence still hide it
+  // a longer delay. onGoalReplayStart/End / clearGoalSequence cancel this
   // if RL does fire those.
   clearTimeout(replayCardShowTimer);
   replayCardShowTimer = setTimeout(
     () => showReplayCard(scorer, teamNum),
     GOAL_BANNER_DELAY_MS + 3600
   );
+  // Same fallback pattern for the stinger — ReplayPlaybackEnd doesn't fire in
+  // bot/freeplay/private matches, so trigger the wipe on a timer ~9s after
+  // the replay card lands (13.75s after the goal). onGoalReplayEnd /
+  // clearGoalSequence cancel this if the real event arrives so we don't
+  // double-fire. CountdownBegin also fires the stinger early if the fallback
+  // hasn't run yet (lastGoalTime > lastStingerTime check).
+  clearTimeout(stingerShowTimer);
+  stingerShowTimer = setTimeout(
+    () => { hideReplayCard(); playStinger(); },
+    GOAL_BANNER_DELAY_MS + 13000
+  );
 }
 function onGoalReplayStart(){
   if (!control.goalSequence) return;
+  // Real replay started. Cancel the stinger fallback only — the replay card
+  // show timer is INTENTIONALLY left alive so the card still appears at its
+  // scheduled moment (after the banner has exited), which lines up with the
+  // replay playback. RL fires ReplayPlaybackStart ~1-3s after the goal, well
+  // before the replay-card show timer at GOAL_BANNER_DELAY_MS + 3600ms.
+  clearTimeout(stingerShowTimer);
   hideGoalBanner();
-  // Stinger temporarily removed while we tune the banner alone.
-  // playStinger();
+}
+// RL fires ReplayWillEnd ~3s before ReplayPlaybackEnd. Pre-hide the replay
+// card so it's gone before the cut back to live, leaving the stinger (fired
+// on ReplayPlaybackEnd) to mask the cut itself. Also cancels the show timer
+// in case the replay was so short that the timer hasn't fired yet — without
+// this, the card could pop AFTER the replay ended.
+function onGoalReplayWillEnd(){
+  if (!control.goalSequence) return;
+  clearTimeout(replayCardShowTimer);
+  hideReplayCard();
 }
 function onGoalReplayEnd(){
   if (!control.goalSequence) return;
+  // Real event arrived — cancel both fallback timers so we don't fire twice.
+  clearTimeout(stingerShowTimer);
+  clearTimeout(replayCardShowTimer);
   hideReplayCard();
-  // playStinger();
+  // Stinger wipe masks the cut from replay back to live (kickoff reset).
+  playStinger();
 }
 function clearGoalSequence(){
+  // Cancel every in-flight timer that drives a piece of the goal sequence so
+  // a match boundary / disconnect / next goal can't leave any element stuck
+  // on screen. NOTE: deliberately does NOT touch the stinger's .run class or
+  // its self-clearing timer — clearGoalSequence is often called RIGHT AFTER
+  // playStinger() (CountdownBegin / RoundStarted backstop path), and stripping
+  // .run synchronously would cancel the stinger before the browser paints it.
+  // playStinger owns its own 950ms teardown; let the animation complete.
+  clearTimeout(goalBannerShowTimer);
+  clearTimeout(replayCardShowTimer);
+  clearTimeout(stingerShowTimer);
+  clearTimeout(bannerTimer);
+  clearTimeout(bannerExitTimer);
+  clearTimeout(goalFlashTimers.A);
+  clearTimeout(goalFlashTimers.B);
+  clearTimeout(goalFlashExitTimers.A);
+  clearTimeout(goalFlashExitTimers.B);
   hideGoalBanner();
   hideReplayCard();
-  clearTimeout(replayCardShowTimer);
-  $("stinger").classList.remove("run");
+  // Force-clear the GOAL flashes if either was visible.
+  document.querySelectorAll(".goal-flash").forEach(el => {
+    el.classList.remove("show", "exiting");
+  });
+  document.body.classList.remove("banner-active");
 }
 
 // Look up the scorer's row in the latest UpdateState snapshot and paint
@@ -1250,7 +1355,12 @@ function showReplayCard(scorerName, teamNum){
 }
 
 function hideReplayCard(){
-  $("replayCard").classList.remove("show");
+  const c = $("replayCard");
+  c.classList.remove("show", "has-assist");
+  // Scrub the assister text so a rapid next goal doesn't flash the previous
+  // assister's name on the new card for one frame before applyControl re-paints.
+  const a = $("rpcAssister");
+  if (a) a.textContent = "";
 }
 
 function onStatfeed(data){
@@ -1259,10 +1369,20 @@ function onStatfeed(data){
   const mainName = (data.MainPlayer && data.MainPlayer.Name) ||
                    (data.MainTarget && data.MainTarget.Name) ||
                    data.MainPlayer || data.Name;
+  // Dedup the double-fire on Demolition statfeeds (~800ms apart in the live
+  // capture). Currently only applied to the demo branch — other types
+  // (Save/Assist/Shot) don't show consistent doubles in our captures. If they
+  // start, generalize this wrapper. Trade-off: chained demo-into-kickoff-demo
+  // under STATFEED_DEDUP_MS would lose the second pop — revisit if telemetry
+  // shows that pattern.
   // Demos: attacker is the actor; also tally for the bottom statfeed counter.
   if (type.includes("demo") || type.includes("demolish")){
     const attacker = (data.Attacker && data.Attacker.Name) || mainName;
     if (attacker){
+      const key = "demo|" + attacker;
+      const now = performance.now();
+      if (now - (lastStatfeedFire[key] || 0) < STATFEED_DEDUP_MS) return;
+      lastStatfeedFire[key] = now;
       demosByName[attacker] = (demosByName[attacker] || 0) + 1;
       spawnStatPop(attacker, "demo", "DEMO");
     }
@@ -1309,12 +1429,35 @@ function cssEscape(s){
   return String(s).replace(/["\\]/g, "\\$&");
 }
 
-function resetMatch(){ demosByName = {}; firstKickoffPending = true; }
+function resetMatch(){
+  demosByName = {};
+  firstKickoffPending = true;
+  // Clear per-match state that could bleed into the next match if matches
+  // start back-to-back within the assist/goal-dedup windows.
+  lastAssist = { player: null, time: 0 };
+  lastGoalSpeed = 0;
+  lastGoalTime = 0;
+  lastStingerTime = 0;
+  lastGoalFireByName = {};
+  lastStatfeedFire = {};
+  lastCountdownBeginTime = 0;
+}
 
 function connectGame(){
   const ws = new WebSocket(GAME_WS);
   ws.onopen = () => $("status").textContent = "live";
-  ws.onclose = () => { $("status").textContent = "reconnecting"; setTimeout(connectGame, 1500); };
+  ws.onclose = () => {
+    $("status").textContent = "reconnecting";
+    // Tear down any in-flight goal sequence so a dropped WS during a goal
+    // doesn't leave the banner / replay card / stinger pinned on screen
+    // for the rest of the broadcast.
+    clearGoalSequence();
+    finishKickoffCountdown();
+    inCountdown = false;
+    currentOT = false;
+    updateStateStrip();
+    setTimeout(connectGame, 1500);
+  };
   ws.onerror = () => ws.close();
   ws.onmessage = (e) => {
     let msg; try { msg = JSON.parse(e.data); } catch { return; }
@@ -1322,15 +1465,38 @@ function connectGame(){
     const data = msg.data || {};
     if (ev === "UpdateState") onUpdateState(data);
     else if (ev === "GoalScored") onGoalScored(data);
-    else if (ev === "GoalReplayStart") onGoalReplayStart();
-    else if (ev === "GoalReplayEnd") onGoalReplayEnd();
-    else if (ev === "CountdownBegin") { inCountdown = true;  updateStateStrip(); startKickoffCountdown(); clearGoalSequence(); }
+    // Canonical RL replay event names. Legacy GoalReplayStart/End names that
+    // never actually fired in real matches were the cause of the stinger-late
+    // bug pre-0.5.2; the bot/freeplay fallback timers in onGoalScored remain
+    // as the safety net for modes that drop replay events entirely.
+    else if (ev === "ReplayPlaybackStart") onGoalReplayStart();
+    else if (ev === "ReplayWillEnd")       onGoalReplayWillEnd();
+    else if (ev === "ReplayPlaybackEnd")   onGoalReplayEnd();
+    else if (ev === "CountdownBegin") {
+      // Debounce — RL sometimes fires CountdownBegin twice after pause/resume,
+      // and the second would re-anchor the kickoff timer with a different
+      // regime than the first (drifts the visible 3-2-1 from the in-game one).
+      const now = performance.now();
+      if (now - lastCountdownBeginTime < COUNTDOWN_DEBOUNCE_MS) return;
+      lastCountdownBeginTime = now;
+      // If a goal happened since the last stinger fired, play the stinger NOW
+      // to mask the cut to kickoff. Then clearGoalSequence cancels the
+      // fallback timer (so it doesn't double-fire later).
+      if (lastGoalTime > lastStingerTime) {
+        hideReplayCard();
+        playStinger();
+      }
+      inCountdown = true;
+      updateStateStrip();
+      startKickoffCountdown();
+      clearGoalSequence();
+    }
     else if (ev === "RoundStarted")  { inCountdown = false; updateStateStrip(); fireKickoffGo(); clearGoalSequence(); }
     else if (ev === "StatfeedEvent") onStatfeed(data);
     else if (ev === "MatchCreated" || ev === "MatchInitialized") resetMatch();
-    // Golden-goal OT ends the match without firing GoalReplayEnd, which left
-    // the replay card pinned on screen. MatchEnded / PodiumStart force a full
-    // clear of the goal sequence and the OT/kickoff eventbar takeovers.
+    // Golden-goal OT ends the match without firing ReplayPlaybackEnd, which
+    // would leave the replay card pinned on screen. MatchEnded / PodiumStart
+    // force a full clear of the goal sequence and the OT/kickoff takeovers.
     else if (ev === "MatchEnded" || ev === "PodiumStart") {
       clearGoalSequence();
       currentOT = false;
