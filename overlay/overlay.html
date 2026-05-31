@@ -747,6 +747,10 @@ let lastGoalSpeed = 0;
 // Latest snapshot of the players list. We pin this on every UpdateState so
 // the replay card can look up the scorer's row at the moment they scored.
 let latestPlayers = [];
+// Latest team scores, pinned per frame so RoundStarted's OT preemptive-flip
+// heuristic can read them without re-walking the data tree.
+let lastScoreA = 0;
+let lastScoreB = 0;
 // Timer that fades the replay card in after the goal banner finishes its
 // exit animation, so the two graphics don't overlap on screen.
 let replayCardShowTimer = null;
@@ -918,8 +922,8 @@ const lastBoostByName = {};
 function onUpdateState(data){
   const game = data.Game || {};
   const teams = game.Teams || [];
-  if (teams[0]) $("scoreA").textContent = teams[0].Score ?? 0;
-  if (teams[1]) $("scoreB").textContent = teams[1].Score ?? 0;
+  if (teams[0]) { lastScoreA = teams[0].Score ?? 0; $("scoreA").textContent = lastScoreA; }
+  if (teams[1]) { lastScoreB = teams[1].Score ?? 0; $("scoreB").textContent = lastScoreB; }
   // Hybrid OT detector. Fast path is RL's explicit Game.IsOT — that's the
   // truth when it's set. But in bot/private/freeplay matches RL never sets it,
   // so we infer OT from a clock-direction breadcrumb: once the regulation
@@ -1058,16 +1062,33 @@ function updateFocus(p){
   $("gaugeLabel").textContent = haveBoost ? boost : "--";
 }
 
-/* ---- Goal sequence -------------------------------------------------------
- * GoalScored            -> show custom banner (covers RL's in-game "X Scored")
- * ReplayPlaybackStart   -> hide banner (real cut into replay)
- * ReplayWillEnd         -> hide replay card (~3s pre-warning)
- * ReplayPlaybackEnd     -> fire stinger wipe (mask cut back to live)
- * CountdownBegin /
- * RoundStarted          -> clear everything for kickoff
- * Bot/freeplay/private matches don't emit Replay* events — fallback timers
- * in onGoalScored drive the same sequence and get cancelled when (and if)
- * the real events arrive.
+/* ---- Goal sequence (v0.5.5 layered model) --------------------------------
+ * Each visual layer has a single owner and an explicit end condition.
+ * Handlers route events to layer roles; they don't kill siblings except
+ * at explicit cleanup boundaries (clearGoalSequence on kickoff/match end).
+ *
+ * Event                 Layer role
+ * ──────────────────    ──────────────────────────────────────────────────
+ * GoalScored            START banner (+750ms), card (+4350ms), stinger
+ *                       fallback (+13750ms — bot/freeplay path)
+ * ReplayPlaybackStart   END banner; cancel stinger fallback
+ *                       (card show timer LEFT ALIVE — fires mid-replay)
+ * ReplayWillEnd         START stinger (+STINGER_LEAD_AFTER_WILLEND_MS,
+ *                       so the wipe-in is mid-animation at the cut)
+ * ReplayPlaybackEnd     BACKSTOP — fire stinger only if WillEnd didn't
+ *                       (deduped on lastStingerTime within ~1.5s)
+ * CountdownBegin        Kickoff 3-2-1 starts; stinger BACKSTOP if no goal
+ *                       was covered yet this cycle; clearGoalSequence
+ * RoundStarted          GO!; OT preemptive flip (tight gate); clearGoalSequence
+ *
+ * The stinger is the topmost cover layer. It is the SINGLE OWNER of the
+ * replay-card hide — the card disappears simultaneously with stinger start,
+ * with the wipe-in covering the swap from the viewer. ReplayWillEnd and
+ * ReplayPlaybackEnd never hide the card directly under this model.
+ *
+ * Bot/freeplay/private matches don't emit Replay* events — the +13750ms
+ * fallback in onGoalScored drives the stinger and gets cancelled if the
+ * real events arrive.
  * ------------------------------------------------------------------------- */
 let bannerTimer = null;
 let bannerExitTimer = null;
@@ -1270,10 +1291,22 @@ function hideGoalFlash(teamNum){
   goalFlashExitTimers[which] = setTimeout(() => el.classList.remove("exiting"), 400);
 }
 
+// The stinger is the topmost cover layer. It owns the visual handoff from
+// replay → live (or banner → live in bot-mode fallback), so it ALSO hides
+// the replay card as it fires — the card disappears simultaneously with
+// the wipe-in starting, and the wipe-in covers the card-vacate frame from
+// the viewer. Per the layered ownership model: the stinger is the single
+// authority on "card is gone now", not ReplayWillEnd / ReplayPlaybackEnd.
+// Also cancels any pending replay-card show timer — a very short replay
+// (shorter than the +4350ms scheduled show) could otherwise fire the timer
+// AFTER the stinger has already cut to live, popping the card on top of
+// the wrong scene with no exit animation.
 function playStinger(){
   const s = $("stinger");
   if (!s) return;
   lastStingerTime = performance.now();
+  clearTimeout(replayCardShowTimer);
+  hideReplayCard();
   s.classList.remove("run");
   void s.offsetWidth;        // force reflow so the animation restarts
   s.classList.add("run");
@@ -1334,10 +1367,9 @@ function onGoalScored(data){
   // double-fire. CountdownBegin also fires the stinger early if the fallback
   // hasn't run yet (lastGoalTime > lastStingerTime check).
   clearTimeout(stingerShowTimer);
-  stingerShowTimer = setTimeout(
-    () => { hideReplayCard(); playStinger(); },
-    GOAL_BANNER_DELAY_MS + 13000
-  );
+  // playStinger hides the card as it fires (single owner of the cut handoff
+  // under the v0.5.5 layered model). No explicit hideReplayCard call needed.
+  stingerShowTimer = setTimeout(playStinger, GOAL_BANNER_DELAY_MS + 13000);
 }
 function onGoalReplayStart(){
   if (!control.goalSequence) return;
@@ -1349,23 +1381,47 @@ function onGoalReplayStart(){
   clearTimeout(stingerShowTimer);
   hideGoalBanner();
 }
-// RL fires ReplayWillEnd ~3s before ReplayPlaybackEnd. Pre-hide the replay
-// card so it's gone before the cut back to live, leaving the stinger (fired
-// on ReplayPlaybackEnd) to mask the cut itself. Also cancels the show timer
-// in case the replay was so short that the timer hasn't fired yet — without
-// this, the card could pop AFTER the replay ended.
+// RL fires ReplayWillEnd ~3s before ReplayPlaybackEnd. Under the v0.5.5
+// layered model this is the STINGER START trigger — not a card cleanup
+// event. We schedule the stinger to fire shortly before the expected cut
+// so the wipe-in is mid-animation when ReplayPlaybackEnd lands (covering
+// the cut from viewers). The replay card stays up the entire time; the
+// stinger hides it simultaneously when it fires, with the wipe-in
+// covering the swap. Tuned against [[live-capture-workflow]] data.
+const STINGER_LEAD_AFTER_WILLEND_MS = 2500;
 function onGoalReplayWillEnd(){
   if (!control.goalSequence) return;
-  clearTimeout(replayCardShowTimer);
-  hideReplayCard();
+  // Card stays. Schedule (or re-schedule) the stinger for the lead-in.
+  // Cancels any prior bot-mode fallback that was already in flight so we
+  // can't double-fire from the +13750ms GoalScored timer landing later.
+  clearTimeout(stingerShowTimer);
+  stingerShowTimer = setTimeout(playStinger, STINGER_LEAD_AFTER_WILLEND_MS);
 }
+// Backstop only. By the time ReplayPlaybackEnd fires, the stinger should
+// already be running (started ~500ms ago from ReplayWillEnd). If for some
+// reason it didn't — e.g., ReplayWillEnd never fired, or the WillEnd→End
+// gap was shorter than STINGER_LEAD_AFTER_WILLEND_MS — fire it now so the
+// cut to live isn't completely uncovered. Dedup on lastStingerTime so a
+// successful WillEnd-triggered stinger isn't double-fired.
+//
+// Dedup window is wide enough to cover: full stinger animation (~950ms) +
+// the WillEnd→End gap variance observed across captures (RL is not bounded
+// at exactly ~3s — long-tailed replays push it further). 3500ms gives us
+// solid headroom against a second stinger firing over the first's tail.
+const STINGER_BACKSTOP_DEDUP_MS = 3500;
 function onGoalReplayEnd(){
   if (!control.goalSequence) return;
-  // Real event arrived — cancel both fallback timers so we don't fire twice.
-  clearTimeout(stingerShowTimer);
+  // Card show-timer is no longer needed (we either showed it already or
+  // the replay was too short for the show timer to fire — either way kill it).
   clearTimeout(replayCardShowTimer);
-  hideReplayCard();
-  // Stinger wipe masks the cut from replay back to live (kickoff reset).
+  const now = performance.now();
+  if (now - lastStingerTime < STINGER_BACKSTOP_DEDUP_MS) {
+    // Stinger already running from ReplayWillEnd — nothing to do. It's
+    // already hiding the card and covering the cut.
+    return;
+  }
+  // Stinger didn't fire from WillEnd; fire it now as the backstop.
+  clearTimeout(stingerShowTimer);
   playStinger();
 }
 function clearGoalSequence(){
@@ -1531,6 +1587,10 @@ function resetMatch(){
   sawDescent = false;
   clockAscending = false;
   goalSequenceActive = false;
+  // Scores get re-populated by the next UpdateState; reset so the RoundStarted
+  // OT preemptive flip can't see stale tied scores carried from the prior match.
+  lastScoreA = 0;
+  lastScoreB = 0;
 }
 
 function connectGame(){
@@ -1559,6 +1619,13 @@ function connectGame(){
     goalSequenceActive = false;
     lastGoalTime = 0;
     lastStingerTime = 0;
+    // OT preemptive flip at RoundStarted reads lastScoreA/lastScoreB AND
+    // gates on !firstKickoffPending. The sawDescent reset above already
+    // blocks false positives until a real descent is observed post-reconnect,
+    // but reset these too so the gate doesn't depend on that side effect.
+    firstKickoffPending = true;
+    lastScoreA = 0;
+    lastScoreB = 0;
     updateStateStrip();
     setTimeout(connectGame, 1500);
   };
@@ -1584,10 +1651,8 @@ function connectGame(){
       if (now - lastCountdownBeginTime < COUNTDOWN_DEBOUNCE_MS) return;
       lastCountdownBeginTime = now;
       // If a goal happened since the last stinger fired, play the stinger NOW
-      // to mask the cut to kickoff. Then clearGoalSequence cancels the
-      // fallback timer (so it doesn't double-fire later).
+      // to mask the cut to kickoff. playStinger hides the card itself.
       if (lastGoalTime > lastStingerTime) {
-        hideReplayCard();
         playStinger();
       }
       inCountdown = true;
@@ -1595,7 +1660,24 @@ function connectGame(){
       startKickoffCountdown();
       clearGoalSequence();
     }
-    else if (ev === "RoundStarted")  { inCountdown = false; updateStateStrip(); fireKickoffGo(); clearGoalSequence(); }
+    else if (ev === "RoundStarted")  {
+      // OT preemptive flip — the OT detector's 3-frame hysteresis would
+      // otherwise leave the state strip blank for ~600ms between KICKOFF
+      // clearing on RoundStarted and OVERTIME latching as the clock starts
+      // ascending. Tight gate so a regulation post-goal kickoff at, say,
+      // 0:01 doesn't false-positive: requires regulation descent to have
+      // been observed AND the prior frame's clock to be at zero AND the
+      // teams tied AND not the very first kickoff of the match.
+      if (!currentOT && sawDescent && prevTimeSeconds <= 1 &&
+          lastScoreA === lastScoreB && !firstKickoffPending) {
+        inferredOT = true;
+        currentOT = true;
+      }
+      inCountdown = false;
+      updateStateStrip();
+      fireKickoffGo();
+      clearGoalSequence();
+    }
     else if (ev === "StatfeedEvent") onStatfeed(data);
     else if (ev === "MatchCreated" || ev === "MatchInitialized") resetMatch();
     // Golden-goal OT ends the match without firing ReplayPlaybackEnd, which
@@ -1617,6 +1699,13 @@ function connectGame(){
       goalSequenceActive = false;
       lastGoalTime = 0;
       lastStingerTime = 0;
+      // RL sometimes drops back to a fresh match without a MatchInitialized
+      // (e.g., menu drop → straight into next match). Reset firstKickoff +
+      // scores so the OT preemptive flip doesn't see stale tied state at
+      // the next match's first kickoff.
+      firstKickoffPending = true;
+      lastScoreA = 0;
+      lastScoreB = 0;
       updateStateStrip();
       finishKickoffCountdown();
     }
