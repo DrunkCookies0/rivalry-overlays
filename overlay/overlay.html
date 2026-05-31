@@ -178,7 +178,9 @@
     min-width:120px;background:#f4f7fb;color:#11151b;}
   .clock{font-family:var(--font-stat);font-size:30px;font-weight:700;line-height:1;
     font-variant-numeric:tabular-nums;}
-  .clock.ot{color:var(--red);}
+  /* OT clock uses true red, NOT --red (which is the team-B orange accent).
+     Keeps the OT clock visually distinct from the orange team's score block. */
+  .clock.ot{color:var(--rivalry-red);}
 
   /* ===================== KICKOFF CENTER COUNTDOWN (3-2-1-GO) ============== */
   /* Mirrors RL's own kickoff countdown for broadcasts where the in-game HUD
@@ -972,14 +974,19 @@ function onUpdateState(data){
   const t = Math.round(rawTime);
   clk.textContent = fmtClock(rawTime, isOT);
   clk.classList.toggle("ot", isOT);
-  // Final 10s of regulation — show big center-screen number, hidden during:
+  // Final 10s of regulation — show big center-screen number, including the
+  // "0" frame which matches the in-game UI's hold at 0:00 while RL waits
+  // for OT or a buzzer-beater goal. Hidden during:
   //   - OT (via isOT)
   //   - the clock ascending (covers OT ascend before inferredOT confirms,
   //     without depending on a single quantization-fragile threshold)
   //   - any active goal sequence (RL freezes TimeSeconds at the goal moment;
   //     goalSequenceActive flips true in showGoalBanner so the counter hides
   //     when the banner takes over, not 750ms earlier on GoalScored).
-  const showFinal10 = !isOT && !clockAscending && !goalSequenceActive && t > 0 && t <= 10;
+  //   - the kickoff countdown (3-2-1-GO) — the big gold "0" shouldn't
+  //     compete with the kickoff center text when OT kickoff begins.
+  const showFinal10 = !isOT && !clockAscending && !goalSequenceActive &&
+                      !inCountdown && t >= 0 && t <= 10;
   const f10 = $("final10");
   if (showFinal10){
     f10.textContent = String(t);
