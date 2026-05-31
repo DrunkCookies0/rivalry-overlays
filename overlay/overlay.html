@@ -1177,22 +1177,30 @@ function hideGoalBanner(){
 // Kickoff 3-2-1-GO center-screen countdown. Fires on CountdownBegin so
 // broadcasts with RL's in-game HUD hidden still see a countdown.
 //
-// Two delay regimes — RL fires CountdownBegin at different lead times
-// relative to the visible "3":
-//   - FRESH kickoff (pause/resume, match start): long spawn lead-in
-//   - POST-GOAL kickoff: shorter lead-in (celebration already covered it)
-// We pick the delay by checking if a goal fired within KICKOFF_POST_GOAL_WINDOW_MS.
+// v0.5.11 model: GO! is anchored to a CountdownBegin+delay+3000ms timer
+// targeting ball-drop, NOT to RoundStarted. Paired-capture analysis showed
+// RoundStarted fires BEFORE ball-drop (not at it):
+//   admin-pause kickoff: RoundStarted is ~4650ms before ball-drop
+//   OT kickoff:          RoundStarted is ~805ms  before ball-drop
+// Anchoring on RoundStarted dropped GO! several seconds early. RoundStarted
+// is kept as a safety backstop that calls fireKickoffGo (idempotent), so a
+// future regression that clears the primary timer still recovers.
 //
-// GO! is anchored to RoundStarted (the actual ball-drop moment) instead of
-// a timer, because RoundStarted reliably arrives right around when the
-// in-game "GO" would appear. Without this, RoundStarted's cleanup was
-// killing the GO! timer before it fired.
-// Three regimes — the very first kickoff after MatchCreated has the longest
-// lead-in (full intro / players-spawning sequence). Subsequent fresh kickoffs
-// (pause/resume) are shorter. Post-goal kickoffs are the shortest (the goal
-// celebration already covered most of the spawn time).
-// NOTE: tuned against bot matches; human matches may have different lead-in
-// timing — re-verify against a real human game and adjust if drift returns.
+// Four delay regimes — pick at CountdownBegin time:
+//   - FIRST kickoff after MatchCreated (longest intro)        — LOW confidence
+//   - OT kickoff (~4800ms CountdownBegin→ball-drop)           — measured v0.5.11
+//   - POST-GOAL kickoff (celebration already covered spawn)   — LOW confidence
+//   - FRESH kickoff (admin pause/resume; ~7770ms ball-drop)   — measured v0.5.10
+// OT is detected via the same gate as the OT preemptive state flip:
+// sawDescent + prevTimeSeconds≤2 + tied scores + not the first kickoff.
+//
+// NOTE: FIRST + POSTGOAL delays have no ball-drop ground truth yet — they
+// were tuned by feel and may drift. Capture and re-verify against
+// match-start and post-goal kickoffs before declaring them stable.
+// CONFIDENCE: LOW for FIRST + POSTGOAL — no ball-drop measurements yet.
+// These were tuned by feel pre-v0.5.11 and may drift; re-verify against
+// captured ball-drop frames for first-of-match and post-goal kickoffs
+// before assuming stable.
 const KICKOFF_FIRST_DELAY_MS     = 750;
 // v0.5.10: bumped 1500 → 4750 per the v0.5.9 admin-pause capture analysis
 // (workflow wul19xv9n, ball-drop ground-truth anchor):
@@ -1216,6 +1224,14 @@ const KICKOFF_FIRST_DELAY_MS     = 750;
 // introduce a dedicated KICKOFF_ADMIN_RESUME_DELAY_MS and detect it via
 // state-change heuristics (clock jump, score jump, etc.).
 const KICKOFF_FRESH_DELAY_MS     = 4750;
+// v0.5.11: OT kickoffs use a shorter lead-in than admin-pause kickoffs.
+// Paired capture analysis:
+//   CountdownBegin → ball-drop = ~4800ms in OT kickoffs
+//   Digit span 3→2→1→GO = 3000ms hardcoded
+//   Entry delay needed = 4800 − 3000 = 1800ms
+// Detected via the same heuristic as the RoundStarted OT preemptive flip,
+// but evaluated at CountdownBegin instead — see startKickoffCountdown.
+const KICKOFF_OT_DELAY_MS        = 1800;
 const KICKOFF_POSTGOAL_DELAY_MS  = 900;
 const KICKOFF_POST_GOAL_WINDOW_MS = 15000;
 const KICKOFF_GO_HOLD_MS = 1300;
@@ -1236,7 +1252,16 @@ function showKickoffValue(text, isGo){
 function startKickoffCountdown(){
   finishKickoffCountdown();
   const postGoal = (performance.now() - lastGoalTime) < KICKOFF_POST_GOAL_WINDOW_MS;
+  // OT-kickoff detection at CountdownBegin — same gate as the
+  // fireKickoffGo OT preemptive flip, but evaluated here so we can pick
+  // the shorter OT delay (~4800ms ball-drop) instead of the admin-pause
+  // delay (~7770ms ball-drop). Requires regulation descent to have been
+  // observed (rules out match start), prior clock at ~0 (regulation just
+  // expired), teams tied (OT condition), and not the very first kickoff.
+  const otKickoff = !currentOT && sawDescent && prevTimeSeconds <= 2 &&
+                    lastScoreA === lastScoreB && !firstKickoffPending;
   const delay = firstKickoffPending ? KICKOFF_FIRST_DELAY_MS
+              : otKickoff            ? KICKOFF_OT_DELAY_MS
               : postGoal             ? KICKOFF_POSTGOAL_DELAY_MS
               :                        KICKOFF_FRESH_DELAY_MS;
   firstKickoffPending = false;
@@ -1247,14 +1272,31 @@ function startKickoffCountdown(){
   // Fallback GO! in case RoundStarted never arrives (e.g., spectator API quirk).
   kickoffTimers.push(setTimeout(fireKickoffGo, delay + 3000));
 }
-// Called from RoundStarted (or as a fallback timer). Idempotent — if GO!
-// already fired this cycle (e.g., fallback timer ran first), do nothing so
-// RoundStarted doesn't re-trigger and cause a flicker.
+// Primary trigger: the delay+3000 fallback timer scheduled in
+// startKickoffCountdown — that's now the canonical GO! anchor because it
+// targets ball-drop, not RoundStarted (which RL fires ~4650ms BEFORE
+// ball-drop in admin-pause kickoffs and ~805ms BEFORE ball-drop in OT).
+// RoundStarted still calls this as a safety backstop in case the timer
+// gets cleared. Idempotent via kickoffGoShown so the two paths can't
+// double-fire.
 function fireKickoffGo(){
   if (kickoffGoShown) return;
   kickoffGoShown = true;
   kickoffTimers.forEach(clearTimeout);
   kickoffTimers = [];
+  // OT preemptive flip — was on RoundStarted pre-v0.5.11, moved here so
+  // OVERTIME latches at the GO! moment (ball-drop) instead of between
+  // "1" and "GO!". Same gate as the OT-kickoff delay heuristic above:
+  // requires regulation descent observed, prior clock at ~0, teams tied,
+  // and not the very first kickoff. Covers bot/private matches where
+  // Game.IsOT is never set so the 3-frame ascend hysteresis would
+  // otherwise leave the strip blank for ~600ms after GO!.
+  if (!currentOT && sawDescent && prevTimeSeconds <= 2 &&
+      lastScoreA === lastScoreB && !firstKickoffPending) {
+    inferredOT = true;
+    currentOT = true;
+    updateStateStrip();
+  }
   showKickoffValue("GO!", true);
   kickoffTimers.push(setTimeout(finishKickoffCountdown, KICKOFF_GO_HOLD_MS));
 }
@@ -1700,21 +1742,14 @@ function connectGame(){
       clearGoalSequence();
     }
     else if (ev === "RoundStarted")  {
-      // OT preemptive flip — the OT detector's 3-frame hysteresis would
-      // otherwise leave the state strip blank for ~600ms between KICKOFF
-      // clearing on RoundStarted and OVERTIME latching as the clock starts
-      // ascending. Tight gate so a regulation post-goal kickoff at, say,
-      // 0:01 doesn't false-positive: requires regulation descent to have
-      // been observed AND the prior frame's clock to be at zero AND the
-      // teams tied AND not the very first kickoff of the match.
-      if (!currentOT && sawDescent && prevTimeSeconds <= 1 &&
-          lastScoreA === lastScoreB && !firstKickoffPending) {
-        inferredOT = true;
-        currentOT = true;
-      }
+      // RoundStarted is the camera-cut to player POV — NOT ball-drop. Per the
+      // v0.5.11 paired-capture measurement (RoundStarted lands 805ms-4650ms
+      // BEFORE actual ball-drop depending on scenario), it is NOT a reliable
+      // GO! anchor. fireKickoffGo is now driven by the per-scenario delay+3000
+      // timer scheduled in startKickoffCountdown. RoundStarted just clears
+      // inCountdown and any lingering goal-sequence state.
       inCountdown = false;
       updateStateStrip();
-      fireKickoffGo();
       clearGoalSequence();
     }
     else if (ev === "StatfeedEvent") onStatfeed(data);
