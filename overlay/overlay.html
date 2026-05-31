@@ -1280,7 +1280,7 @@ function showGoalFlash(teamNum){
   if (!el) return;
   // Clean up any pending exit-cleanup from a previous flash before we re-show.
   clearTimeout(goalFlashExitTimers[which]);
-  el.classList.remove("exiting");
+  el.classList.remove("exiting", "show");
   // Force reflow so re-trigger during a previous flash re-animates cleanly.
   void el.offsetWidth;
   el.classList.add("show");
@@ -1309,6 +1309,7 @@ function hideGoalFlash(teamNum){
 // AFTER the stinger has already cut to live, popping the card on top of
 // the wrong scene with no exit animation.
 function playStinger(){
+  if (!control.goalSequence) return;
   const s = $("stinger");
   if (!s) return;
   lastStingerTime = performance.now();
@@ -1380,6 +1381,7 @@ function onGoalScored(data){
 }
 function onGoalReplayStart(){
   if (!control.goalSequence) return;
+  if (!goalSequenceActive) return;
   // Real replay started. Cancel the stinger fallback only — the replay card
   // show timer is INTENTIONALLY left alive so the card still appears at its
   // scheduled moment (after the banner has exited), which lines up with the
@@ -1398,6 +1400,8 @@ function onGoalReplayStart(){
 const STINGER_LEAD_AFTER_WILLEND_MS = 2500;
 function onGoalReplayWillEnd(){
   if (!control.goalSequence) return;
+  if (!goalSequenceActive) return;
+  if (performance.now() - lastStingerTime < STINGER_BACKSTOP_DEDUP_MS) return;
   // Card stays. Schedule (or re-schedule) the stinger for the lead-in.
   // Cancels any prior bot-mode fallback that was already in flight so we
   // can't double-fire from the +13750ms GoalScored timer landing later.
@@ -1418,6 +1422,7 @@ function onGoalReplayWillEnd(){
 const STINGER_BACKSTOP_DEDUP_MS = 3500;
 function onGoalReplayEnd(){
   if (!control.goalSequence) return;
+  if (!goalSequenceActive) return;
   // Card show-timer is no longer needed (we either showed it already or
   // the replay was too short for the show timer to fire — either way kill it).
   clearTimeout(replayCardShowTimer);
@@ -1659,7 +1664,7 @@ function connectGame(){
       lastCountdownBeginTime = now;
       // If a goal happened since the last stinger fired, play the stinger NOW
       // to mask the cut to kickoff. playStinger hides the card itself.
-      if (lastGoalTime > lastStingerTime) {
+      if (goalSequenceActive && lastGoalTime > lastStingerTime) {
         playStinger();
       }
       inCountdown = true;
