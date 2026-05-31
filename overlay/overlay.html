@@ -4,6 +4,12 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>RIVALRY Overlay</title>
+<!-- Font Awesome 6 Free — used by the stat-pop badges (goal / assist / save /
+     shot / demo / center / clear / hat trick / aerial / bicycle / high five
+     icons). CDN matches the Google Fonts import pattern already in use; if
+     OBS later runs offline, switch to a self-hosted webfont copy. Holding-
+     spot until brand-custom SVG icons are designed. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
   /* RIVALRY brand typography: Exo 2 italic 700 for display headlines
      (team names, scorer text, eyebrows), Space Mono for numeric/stat
@@ -304,18 +310,25 @@
     display:flex;flex-direction:column;gap:4px;pointer-events:none;z-index:10;}
   .col.left  .ptag .pops{left:calc(100% + 8px);align-items:flex-start;}
   .col.right .ptag .pops{right:calc(100% + 8px);align-items:flex-end;}
-  .stat-pop{font-family:var(--font-display);font-style:italic;font-weight:700;
-    font-size:12px;letter-spacing:1.5px;text-transform:uppercase;
-    padding:4px 10px;color:#fff;white-space:nowrap;
+  /* Circular icon badge — Font Awesome glyph centered, color-coded by the
+     event family. Sized so a stack of 2-3 events stays under the player
+     tag's vertical footprint; rapid 4+ events visibly stack overflow until
+     they auto-dismiss. Switch to brand SVG icons later by swapping the
+     <i class="fa..."> child rendered by spawnStatPop. */
+  .stat-pop{display:flex;align-items:center;justify-content:center;
+    width:30px;height:30px;border-radius:50%;
+    color:#fff;font-size:14px;line-height:1;
     background:var(--bar);
     box-shadow:0 4px 12px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08);
-    opacity:0;transform:translateX(-12px) scale(.85);
+    opacity:0;transform:translateX(-12px) scale(.7);
     transition:opacity .35s ease-out,transform .35s cubic-bezier(.34,1.56,.64,1);}
-  .col.right .ptag .stat-pop{transform:translateX(12px) scale(.85);}
+  .col.right .ptag .stat-pop{transform:translateX(12px) scale(.7);}
   .stat-pop.show{opacity:1;transform:translateX(0) scale(1);}
-  .stat-pop.fade{opacity:0;transform:translateX(0) scale(.95);
+  .stat-pop.fade{opacity:0;transform:translateX(0) scale(.85);
     transition:opacity .30s ease-in,transform .30s ease-in;}
-  /* Color per event type — clearest possible distinction at a glance. */
+  /* Color per event family — clearest possible distinction at a glance.
+     Subtypes (epic-save, hat-trick, aerial-goal, bicycle-goal, pool-shot)
+     share their parent family's color and differ only by Font Awesome icon. */
   .stat-pop.goal{background:var(--gold);color:#1a1206;
     box-shadow:0 4px 14px rgba(241,196,15,.6),inset 0 0 0 1px rgba(0,0,0,.2);}
   .stat-pop.assist{background:#8e5fd9;
@@ -326,6 +339,10 @@
     box-shadow:0 4px 12px rgba(255,118,1,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
   .stat-pop.demo{background:#e74c3c;
     box-shadow:0 4px 12px rgba(231,76,60,.55),inset 0 0 0 1px rgba(255,255,255,.12);}
+  .stat-pop.pass{background:#2f7dff;
+    box-shadow:0 4px 12px rgba(47,125,255,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
+  .stat-pop.five{background:#2ECC71;
+    box-shadow:0 4px 12px rgba(46,204,113,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
 
   /* ===================== BOTTOM STATFEED BAR ====================== */
   /* While the goal sequence is in flight (banner → replay → card → stinger
@@ -1430,7 +1447,7 @@ function onGoalScored(data){
   lastGoalFireByName[scorer] = now;
   lastGoalTime = now;
   lastGoalSpeed = Number(data.GoalSpeed) || 0;
-  spawnStatPop(scorer, "goal", "GOAL");
+  spawnStatPop(scorer, "goal", "fa-futbol");
   // Cancel any in-flight pending banner+flash from a previous goal so a
   // rapid back-to-back doesn't double-pop.
   clearTimeout(goalBannerShowTimer);
@@ -1592,19 +1609,49 @@ function hideReplayCard(){
   if (a) a.textContent = "";
 }
 
+// StatfeedEvent type → { color family class, Font Awesome icon class }.
+// Color family groups related events under one visual identity (e.g. epic
+// save shares save's teal); the icon differentiates the subtype. Keys are
+// substrings matched against the lowercased event name.
+// Holding-spot pattern: replace icon strings with brand SVG paths later.
+const STAT_POP_TYPES = [
+  // Order matters — more specific keywords first so "epic save" doesn't
+  // match the plain "save" rule, "hat" doesn't match "shot", etc.
+  { match: "hat",         cls: "goal",   icon: "fa-trophy"          },
+  { match: "aerial",      cls: "goal",   icon: "fa-plane"           },
+  { match: "bicycle",     cls: "goal",   icon: "fa-bicycle"         },
+  { match: "pool",        cls: "goal",   icon: "fa-baseball"        },
+  { match: "epicsave",    cls: "save",   icon: "fa-shield-halved"   },
+  { match: "epic save",   cls: "save",   icon: "fa-shield-halved"   },
+  { match: "save",        cls: "save",   icon: "fa-hand-fist"       },
+  { match: "highfive",    cls: "five",   icon: "fa-hand"            },
+  { match: "high five",   cls: "five",   icon: "fa-hand"            },
+  { match: "lowfive",     cls: "five",   icon: "fa-hand"            },
+  { match: "low five",    cls: "five",   icon: "fa-hand"            },
+  { match: "assist",      cls: "assist", icon: "fa-handshake"       },
+  { match: "shot",        cls: "shot",   icon: "fa-bullseye"        },
+  { match: "demolish",    cls: "demo",   icon: "fa-bomb"            },
+  { match: "demo",        cls: "demo",   icon: "fa-bomb"            },
+  { match: "centre",      cls: "pass",   icon: "fa-arrows-left-right" },
+  { match: "center",      cls: "pass",   icon: "fa-arrows-left-right" },
+  { match: "clear",       cls: "pass",   icon: "fa-arrow-up"        },
+  { match: "goal",        cls: "goal",   icon: "fa-futbol"          },
+];
+function lookupStatPop(type){
+  for (const t of STAT_POP_TYPES) if (type.includes(t.match)) return t;
+  return null;
+}
+
 function onStatfeed(data){
   const type = (data.Type || data.EventName || data.Event || "").toString().toLowerCase();
   // Pull the "main actor" name across the field-name variants RL has used.
   const mainName = (data.MainPlayer && data.MainPlayer.Name) ||
                    (data.MainTarget && data.MainTarget.Name) ||
                    data.MainPlayer || data.Name;
-  // Dedup the double-fire on Demolition statfeeds (~800ms apart in the live
-  // capture). Currently only applied to the demo branch — other types
-  // (Save/Assist/Shot) don't show consistent doubles in our captures. If they
-  // start, generalize this wrapper. Trade-off: chained demo-into-kickoff-demo
-  // under STATFEED_DEDUP_MS would lose the second pop — revisit if telemetry
-  // shows that pattern.
-  // Demos: attacker is the actor; also tally for the bottom statfeed counter.
+  // Demolitions need their own branch — attacker is the actor (not the
+  // demoed player), they double-fire (~800ms apart), and the bottom-bar
+  // demo counter is tallied here. All other event types fall through to
+  // the generic STAT_POP_TYPES lookup.
   if (type.includes("demo") || type.includes("demolish")){
     const attacker = (data.Attacker && data.Attacker.Name) || mainName;
     if (attacker){
@@ -1613,34 +1660,40 @@ function onStatfeed(data){
       if (now - (lastStatfeedFire[key] || 0) < STATFEED_DEDUP_MS) return;
       lastStatfeedFire[key] = now;
       demosByName[attacker] = (demosByName[attacker] || 0) + 1;
-      spawnStatPop(attacker, "demo", "DEMO");
+      spawnStatPop(attacker, "demo", "fa-bomb");
     }
     return;
   }
-  if (type.includes("save"))   { if (mainName) spawnStatPop(mainName, "save",   "SAVE");   return; }
-  if (type.includes("assist")) {
-    if (mainName) {
-      spawnStatPop(mainName, "assist", "ASSIST");
-      // Remember the most recent assist so the replay card can attribute it.
-      lastAssist = { player: mainName, time: performance.now() };
-    }
-    return;
+  // Goal pops are spawned from onGoalScored (the canonical trigger) to avoid
+  // double-popping if RL also fires a Goal-typed StatfeedEvent. Special-goal
+  // subtypes (hat-trick, aerial, bicycle, pool) DO come through statfeed and
+  // are handled below — they don't conflict with onGoalScored's plain "goal"
+  // because the StatfeedEvent type string carries the subtype keyword.
+  if (type === "goal" || type === "goalscored") return;
+
+  const meta = lookupStatPop(type);
+  if (!meta || !mainName) return;
+  spawnStatPop(mainName, meta.cls, meta.icon);
+  if (meta.cls === "assist") {
+    // Remember the most recent assist so the replay card can attribute it.
+    lastAssist = { player: mainName, time: performance.now() };
   }
-  if (type.includes("shot"))   { if (mainName) spawnStatPop(mainName, "shot",   "SHOT");   return; }
-  // Goal pops are spawned from onGoalScored (the canonical goal trigger) to
-  // avoid double-popping if RL also fires a Goal-typed StatfeedEvent.
 }
 
-// Add a transient color-coded badge into the matching player's .ptag.
-// Stacks vertically if multiple events land in quick succession.
-function spawnStatPop(playerName, cls, label){
+// Add a transient circular icon badge into the matching player's .ptag.
+// Stacks vertically if multiple events land in quick succession. Holds ~3s
+// then fades; per-pop self-cleanup removes the node after the fade.
+const STAT_POP_HOLD_MS = 3000;
+function spawnStatPop(playerName, cls, iconClass){
   const tag = document.querySelector('.ptag[data-name="' + cssEscape(playerName) + '"]');
   if (!tag) return;
   const host = tag.querySelector(".pops");
   if (!host) return;
   const pop = document.createElement("div");
   pop.className = "stat-pop " + cls;
-  pop.textContent = label;
+  const i = document.createElement("i");
+  i.className = "fa-solid " + iconClass;
+  pop.appendChild(i);
   host.appendChild(pop);
   // Force reflow so the show transition runs from the initial state.
   void pop.offsetWidth;
@@ -1649,7 +1702,7 @@ function spawnStatPop(playerName, cls, label){
     pop.classList.remove("show");
     pop.classList.add("fade");
     setTimeout(() => pop.remove(), 320);
-  }, 2200);
+  }, STAT_POP_HOLD_MS);
 }
 // Minimal CSS.escape polyfill for the rare case it's not present in the
 // Electron build's renderer; player names can contain quotes/brackets.
