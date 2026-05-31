@@ -1181,7 +1181,14 @@ function hideGoalBanner(){
 // NOTE: tuned against bot matches; human matches may have different lead-in
 // timing — re-verify against a real human game and adjust if drift returns.
 const KICKOFF_FIRST_DELAY_MS     = 750;
-const KICKOFF_FRESH_DELAY_MS     = 2500;
+// Dropped from 2500 → 1500 per the v0.5.4 admin-unpause capture analysis:
+// overlay "3" was firing 800ms late vs the in-game ball-drop. 1500 aligns
+// the admin pause/resume path (the case Alex reported). A mid-clip post-
+// spawn-animation kickoff in the same capture is structurally different
+// and still ends up ~500ms late at this value — that's a known trade-off
+// since one constant can't satisfy both regimes simultaneously. Revisit
+// if a human-match capture reveals a clearer split-point.
+const KICKOFF_FRESH_DELAY_MS     = 1500;
 const KICKOFF_POSTGOAL_DELAY_MS  = 900;
 const KICKOFF_POST_GOAL_WINDOW_MS = 15000;
 const KICKOFF_GO_HOLD_MS = 1300;
