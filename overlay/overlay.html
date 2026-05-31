@@ -718,7 +718,13 @@ let clockHitZero = false;
 let otAscendingFrames = 0;
 let inferredOT = false;
 let sawDescent = false;
+let clockAscending = false;       // last observed clock direction; gates final10
 const OT_ASCEND_HYSTERESIS = 3;
+// True from showGoalBanner() until clearGoalSequence() — gates the final10
+// counter so it doesn't re-show during the banner/replay/kickoff window when
+// RL freezes TimeSeconds at the goal moment (e.g., goal at clock 0:07 would
+// otherwise keep "7" pinned through the entire goal sequence).
+let goalSequenceActive = false;
 // Last GoalScored timestamp — used to pick the kickoff countdown delay
 // (post-goal kickoffs have less spawn lead-in than pause/restart kickoffs).
 let lastGoalTime = 0;
@@ -918,16 +924,30 @@ function onUpdateState(data){
   const hasTime = typeof game.TimeSeconds === "number";
   const rawTime = hasTime ? game.TimeSeconds : prevTimeSeconds;
   if (hasTime) {
-    if (rawTime <= 0.5) clockHitZero = true;
-    // Track descents so a mid-OT reconnect (never observed regulation→0) can
-    // still infer OT from "consistent ascending frames and no descent ever seen".
+    // clockHitZero — regulation-expiry breadcrumb for OT inference. Widened
+    // to 2.0 because RL's TimeSeconds quantizes near regulation expiry and
+    // frequently skips the (0, 0.5] window entirely. Gated on sawDescent so
+    // pre-kickoff TimeSeconds=0 frames at match start (no regulation descent
+    // observed yet) can't latch this and false-fire inferredOT.
+    if (rawTime <= 2.0 && sawDescent) clockHitZero = true;
+    // Track direction. clockAscending gates the final10 widget directly so
+    // we don't depend on a single threshold firing reliably under RL's
+    // quantization. Also feeds the OT-inference ascending counter.
     if (rawTime + 0.05 < prevTimeSeconds) {
       sawDescent = true;
+      clockAscending = false;
       otAscendingFrames = 0;
     } else if (rawTime > prevTimeSeconds + 0.05) {
+      clockAscending = true;
       otAscendingFrames++;
+      // Three triggers — any one fires inferredOT after the hysteresis count:
+      //   - clockHitZero (the canonical regulation-expiry breadcrumb)
+      //   - sawDescent never set (mid-OT reconnect fallback)
+      //   - prevTimeSeconds was already low (≤3s) when the ascend started —
+      //     covers regulation→OT handoffs where RL skipped the sub-2s window
+      //     entirely and jumped straight to the OT up-counter from a low tick.
       if (otAscendingFrames >= OT_ASCEND_HYSTERESIS &&
-          (clockHitZero || !sawDescent)) {
+          (clockHitZero || !sawDescent || prevTimeSeconds <= 3)) {
         inferredOT = true;
       }
     }
@@ -939,10 +959,14 @@ function onUpdateState(data){
   const t = Math.round(rawTime);
   clk.textContent = fmtClock(rawTime, isOT);
   clk.classList.toggle("ot", isOT);
-  // Final 10s of regulation — show big center-screen number, hidden during
-  // OT. Gated on !clockHitZero so the moment regulation expires the counter
-  // stops, even during the ~3-frame ascend window before OT is confirmed.
-  const showFinal10 = !isOT && !clockHitZero && t > 0 && t <= 10;
+  // Final 10s of regulation — show big center-screen number, hidden during:
+  //   - OT (via isOT)
+  //   - the clock ascending (covers OT ascend before inferredOT confirms,
+  //     without depending on a single quantization-fragile threshold)
+  //   - any active goal sequence (RL freezes TimeSeconds at the goal moment;
+  //     goalSequenceActive flips true in showGoalBanner so the counter hides
+  //     when the banner takes over, not 750ms earlier on GoalScored).
+  const showFinal10 = !isOT && !clockAscending && !goalSequenceActive && t > 0 && t <= 10;
   const f10 = $("final10");
   if (showFinal10){
     f10.textContent = String(t);
@@ -1051,6 +1075,10 @@ function fillGoalText(tpl, scorer, teamName){
 }
 
 function showGoalBanner(scorer, teamNum){
+  // Mark the goal sequence as active so the final10 widget hides while the
+  // banner / replay card / stinger / kickoff window plays out. Cleared in
+  // clearGoalSequence on next kickoff / disconnect / match end.
+  goalSequenceActive = true;
   const blue = teamNum === 0;
   const teamName = blue ? control.teamA.name : control.teamB.name;
   document.documentElement.style.setProperty("--goalc", blue ? "var(--blue)" : "var(--red)");
@@ -1342,6 +1370,7 @@ function clearGoalSequence(){
   // playStinger() (CountdownBegin / RoundStarted backstop path), and stripping
   // .run synchronously would cancel the stinger before the browser paints it.
   // playStinger owns its own 950ms teardown; let the animation complete.
+  goalSequenceActive = false;
   clearTimeout(goalBannerShowTimer);
   clearTimeout(replayCardShowTimer);
   clearTimeout(stingerShowTimer);
@@ -1494,6 +1523,8 @@ function resetMatch(){
   otAscendingFrames = 0;
   inferredOT = false;
   sawDescent = false;
+  clockAscending = false;
+  goalSequenceActive = false;
 }
 
 function connectGame(){
@@ -1516,6 +1547,12 @@ function connectGame(){
     inferredOT = false;
     prevTimeSeconds = 0;
     sawDescent = false;
+    clockAscending = false;
+    // Reset goal-sequence state too — a disconnect during a goal sequence
+    // shouldn't leave final10 suppressed for the rest of the match.
+    goalSequenceActive = false;
+    lastGoalTime = 0;
+    lastStingerTime = 0;
     updateStateStrip();
     setTimeout(connectGame, 1500);
   };
@@ -1568,6 +1605,12 @@ function connectGame(){
       inferredOT = false;
       prevTimeSeconds = 0;
       sawDescent = false;
+      clockAscending = false;
+      // Reset goal-sequence state so a stuck goalSequenceActive can't
+      // suppress final10 in the next match's final 10 seconds.
+      goalSequenceActive = false;
+      lastGoalTime = 0;
+      lastStingerTime = 0;
       updateStateStrip();
       finishKickoffCountdown();
     }
