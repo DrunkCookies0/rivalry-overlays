@@ -37,6 +37,13 @@
     --rivalry-green:#2ECC71;
     --rivalry-red:#E74C3C;
 
+    /* Scorebar geometry — team blocks 340 + scores 64 + clock 120, ×2 for
+       both sides. Used to cap the eventbar so an overlong event title can't
+       stretch the .top flex container and drag the subbar wider than the
+       scorebar. Update if any of those .team / .score / .clockwrap widths
+       change so the eventbar cap tracks. */
+    --scorebar-w: 928px;
+
     /* Brand font stacks. Use --font-display for italic display headlines,
        --font-stat for tabular numeric values, --font-body for everything else. */
     --font-display:'Exo 2','Segoe UI',system-ui,sans-serif;
@@ -55,11 +62,15 @@
   .top{position:fixed;top:0;left:50%;transform:translateX(-50%);
     display:flex;flex-direction:column;align-items:center;}
 
-  /* event title strip sitting above the bar */
+  /* Event title strip sitting above the scorebar. max-width caps it at the
+     scorebar's natural width so a long event title can't stretch the .top
+     flex container and drag the subbar wider than the scorebar (the subbar
+     uses width:100% of .top). overflow + ellipsis handles overlong titles. */
   .eventbar{background:var(--rivalry-yale-blue);color:rgba(241,238,238,.85);
     font-family:var(--font-display);font-style:italic;
     font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
     padding:5px 26px;border-radius:0 0 0 0;white-space:nowrap;
+    max-width:var(--scorebar-w);overflow:hidden;text-overflow:ellipsis;
     border-bottom:2px solid var(--rivalry-jet-black);box-shadow:var(--shadow);}
   .eventbar b{color:var(--ink);}
   /* State strip — narrow pill that sits BELOW the pip row in the subbar and
