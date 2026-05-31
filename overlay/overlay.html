@@ -698,6 +698,27 @@ let demosByName = {};
 // updateEventBar() reads these and chooses what to render.
 let currentOT = false;
 let inCountdown = false;
+// OT detection: RL never sets Game.IsOT in bot/private/freeplay matches (43k
+// frames across the v0.5.1 capture had zero hits). We keep the IsOT fast path
+// for real-RLCS matches and add a clock-direction hysteresis fallback:
+//   1. clockHitZero flips true when TimeSeconds first reaches 0 (regulation expiry)
+//   2. After that, count consecutive frames where TimeSeconds is increasing
+//   3. inferredOT flips true once that count reaches OT_ASCEND_HYSTERESIS
+// SECONDARY PATH for "connected mid-OT" (e.g., OBS source refresh during OT,
+// WS reconnect mid-OT): if we've never seen a descending frame this match AND
+// otAscendingFrames hits the threshold, also infer OT — covers the case where
+// we never observe the regulation→0 transition. sawDescent flips true on any
+// observed downward step in regulation.
+// Conservative threshold of 3 frames (~600ms at RL's 5fps UpdateState cadence)
+// because only one OT capture so far — revisit if real-match captures show
+// late detection or false positives. Worst case under reordered/jittery frames
+// is ~1.2s (one stale-frame reset). Reset on resetMatch / disconnect / match end.
+let prevTimeSeconds = 0;
+let clockHitZero = false;
+let otAscendingFrames = 0;
+let inferredOT = false;
+let sawDescent = false;
+const OT_ASCEND_HYSTERESIS = 3;
 // Last GoalScored timestamp — used to pick the kickoff countdown delay
 // (post-goal kickoffs have less spawn lead-in than pause/restart kickoffs).
 let lastGoalTime = 0;
@@ -887,19 +908,44 @@ function onUpdateState(data){
   const teams = game.Teams || [];
   if (teams[0]) $("scoreA").textContent = teams[0].Score ?? 0;
   if (teams[1]) $("scoreB").textContent = teams[1].Score ?? 0;
-  // Only trust the API's explicit OT flag. The previous fallback that called
-  // "time=0 with a ball present" overtime was wrong — a tied score at 0:00
-  // is just the end of regulation; OT doesn't begin until RL flips IsOT.
-  const isOT = !!(game.IsOT || game.isOT);
+  // Hybrid OT detector. Fast path is RL's explicit Game.IsOT — that's the
+  // truth when it's set. But in bot/private/freeplay matches RL never sets it,
+  // so we infer OT from a clock-direction breadcrumb: once the regulation
+  // clock has touched 0, count consecutive frames where TimeSeconds is going
+  // UP. Confirms OT after OT_ASCEND_HYSTERESIS ascending frames so a flicker
+  // doesn't trigger a false positive. Treats missing/null TimeSeconds as a
+  // no-op rather than coercing to 0 (would latch clockHitZero mid-regulation).
+  const hasTime = typeof game.TimeSeconds === "number";
+  const rawTime = hasTime ? game.TimeSeconds : prevTimeSeconds;
+  if (hasTime) {
+    if (rawTime <= 0.5) clockHitZero = true;
+    // Track descents so a mid-OT reconnect (never observed regulation→0) can
+    // still infer OT from "consistent ascending frames and no descent ever seen".
+    if (rawTime + 0.05 < prevTimeSeconds) {
+      sawDescent = true;
+      otAscendingFrames = 0;
+    } else if (rawTime > prevTimeSeconds + 0.05) {
+      otAscendingFrames++;
+      if (otAscendingFrames >= OT_ASCEND_HYSTERESIS &&
+          (clockHitZero || !sawDescent)) {
+        inferredOT = true;
+      }
+    }
+    prevTimeSeconds = rawTime;
+  }
+  const apiOT = !!(game.IsOT || game.isOT);
+  const isOT = apiOT || inferredOT;
   const clk = $("clock");
-  const t = Math.round(game.TimeSeconds || 0);
-  clk.textContent = fmtClock(game.TimeSeconds, isOT);
+  const t = Math.round(rawTime);
+  clk.textContent = fmtClock(rawTime, isOT);
   clk.classList.toggle("ot", isOT);
-  // Final 10s of regulation — show big center-screen number, hidden during OT.
-  const showFinal10 = !isOT && t > 0 && t <= 10;
+  // Final 10s of regulation — show big center-screen number, hidden during
+  // OT. Gated on !clockHitZero so the moment regulation expires the counter
+  // stops, even during the ~3-frame ascend window before OT is confirmed.
+  const showFinal10 = !isOT && !clockHitZero && t > 0 && t <= 10;
   const f10 = $("final10");
   if (showFinal10){
-    f10.textContent = t;
+    f10.textContent = String(t);
     f10.classList.add("show");
   } else {
     f10.classList.remove("show");
@@ -1441,6 +1487,13 @@ function resetMatch(){
   lastGoalFireByName = {};
   lastStatfeedFire = {};
   lastCountdownBeginTime = 0;
+  // OT detector — clear so a new match starts in regulation mode regardless
+  // of where the previous one ended.
+  prevTimeSeconds = 0;
+  clockHitZero = false;
+  otAscendingFrames = 0;
+  inferredOT = false;
+  sawDescent = false;
 }
 
 function connectGame(){
@@ -1455,6 +1508,14 @@ function connectGame(){
     finishKickoffCountdown();
     inCountdown = false;
     currentOT = false;
+    // Reset OT detector so the reconnect doesn't re-fire OVERTIME based on
+    // stale state from before the drop. sawDescent stays false so if we
+    // reconnect mid-OT, the "no descent ever observed" path can still infer.
+    clockHitZero = false;
+    otAscendingFrames = 0;
+    inferredOT = false;
+    prevTimeSeconds = 0;
+    sawDescent = false;
     updateStateStrip();
     setTimeout(connectGame, 1500);
   };
@@ -1501,6 +1562,12 @@ function connectGame(){
       clearGoalSequence();
       currentOT = false;
       inCountdown = false;
+      // Reset OT detector so the next match starts in regulation mode.
+      clockHitZero = false;
+      otAscendingFrames = 0;
+      inferredOT = false;
+      prevTimeSeconds = 0;
+      sawDescent = false;
       updateStateStrip();
       finishKickoffCountdown();
     }

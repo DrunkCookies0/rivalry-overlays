@@ -160,15 +160,32 @@ The app must be running for both.
 - Bottom stat feed bar for the focused player (Goals/Shots/Assists/Saves/Demos). Done.
   Demos are tallied from `StatfeedEvent` since they are not in `UpdateState`.
 - Radial boost gauge for the focused player (bottom right). Done.
-- Goal sequence (event-driven), all themeable and toggleable from the control panel:
-  - `GoalScored` -> custom banner sweeps across center, covering RL's in-game "X Scored"
-    text. Banner text is a template (`{SCORER} SCORES` by default; supports `{SCORER}`,
-    `{scorer}`, `{TEAM}`, `{team}`).
-  - `GoalReplayStart` -> banner hides, a built-in stinger wipe fires to mask the cut into
-    the in-game goal replay.
-  - `GoalReplayEnd` -> stinger fires again to mask the cut back to live.
-  - `CountdownBegin` / `RoundStarted` -> everything clears for kickoff.
+- Goal sequence (event-driven), all themeable. RL's canonical event names are
+  `ReplayPlaybackStart` / `ReplayWillEnd` / `ReplayPlaybackEnd` (pre-v0.5.2 code listened
+  for `GoalReplayStart` / `GoalReplayEnd` which never fired in real matches — fixed).
+  - `GoalScored` -> scoreboard GOAL flash over the scoring team's name + custom banner
+    sweeps across center with avatar, name, optional subtitle + badge slots (placeholder
+    test data until league API). Banner text is a template (`{SCORER} SCORED!` default).
+  - `ReplayPlaybackStart` -> banner hides; replay card timer left alive so the card
+    appears mid-replay with goal stats + MPH + assister attribution.
+  - `ReplayWillEnd` (~3s pre-warning) -> replay card hides early.
+  - `ReplayPlaybackEnd` -> stinger wipe fires to mask the cut back to live.
+  - `CountdownBegin` -> stinger backstop fires if needed; 3-2-1-GO! center countdown starts.
+  - `RoundStarted` -> GO! lands on ball drop.
+  Bot/freeplay matches don't emit `ReplayPlayback*` — fallback timers in `onGoalScored`
+  drive the same sequence and get cancelled when (and if) real events arrive. Goal banner
+  + replay card + stat pop visuals all dedup against RL's double-fire of `GoalScored`.
   Done.
+- Match-state indicators:
+  - OVERTIME state strip (red pulse below the pip row) — hybrid OT detector handles RL
+    matches that never set `Game.IsOT` (bot/private/freeplay) via clock-direction hysteresis.
+  - KICKOFF state strip (gold) during pre-round countdown.
+  - 3-2-1-GO! center-screen kickoff countdown with three delay regimes (first / fresh /
+    post-goal) tuned against bot matches.
+  - Final-10s upper-center gold pulsing seconds counter; suppressed during OT.
+  Done.
+- Stat-event pops (GOAL/AST/SAV/SHT/DMO) next to player tags on `StatfeedEvent`, with
+  per-event-type dedup. Done.
 - Control panel with live push, OBS-dock-friendly responsive layout. Done.
 - System tray, close-to-tray (bridge keeps running), auto-start with Windows. Done.
 - Replay collector with metadata sidecar. Done.
@@ -204,7 +221,13 @@ to do that is to log the raw frames once (the bridge already frames every messag
    locations (`data.Target`, `Game.Target`, `Spectated`, `Spectator.PlayerName`, etc.).
    This drives the stat feed bar and the radial boost gauge. Confirm the real field and
    simplify. If it is wrong, the stat bar/gauge may show the wrong or no player.
-3. Overtime / clock: `onUpdateState()` guesses the OT condition. Confirm the real OT flag.
+3. Overtime / clock: confirmed via live captures (v0.5.1 + v0.5.2) — `Game.IsOT` is never
+   set in bot/private/freeplay matches (43k+ frames, zero hits). `onUpdateState()` now uses
+   a hybrid detector: explicit `IsOT` fast path + a clock-direction hysteresis fallback
+   (clockHitZero breadcrumb + N consecutive ascending frames). Threshold `OT_ASCEND_HYSTERESIS`
+   is conservatively tuned at 3 frames against ONE bot OT capture. Re-tune against a real
+   human OT match when one is captured. The OT kickoff timing regime has not been added
+   for the same reason.
 4. Boost is only present when the broadcast PC is spectating; render `--` when absent (the
    overlay already does this).
 5. Installer is unsigned, so Windows SmartScreen warns on first manual install ("More info"
@@ -243,3 +266,62 @@ to do that is to log the raw frames once (the bridge already frames every messag
 4. Follow `AUTO-UPDATE-HANDOFF.md` to add auto-update and the release workflow.
 5. First release: set `version` in `package.json`, push tag `v1.0.0`, let CI build and
    publish the installer.
+
+---
+
+## 11. v0.5.x current state (as of v0.5.3)
+
+The 0.5.x line is a resilience + match-state polish series driven by live-capture audits
+of bot matches. Highlights of what each patch did:
+
+- **v0.5.0** — Goal experience polish (scoreboard GOAL flash, banner subtitle/badges, stat
+  pops, replay card with assist + MPH, OVERTIME/KICKOFF state strips, 3-2-1-GO! countdown,
+  final-10s big number, MatchEnded handler for golden-goal cleanup).
+- **v0.5.1** — Goal speed unit fix (GoalSpeed is KPH, not UU/s — was displaying ~2 MPH);
+  README feature list expanded.
+- **v0.5.2** — Resilience patch from live-capture audit. Critical fixes:
+  - Real RL replay event names (`ReplayPlayback*`, not the never-emitted `GoalReplay*`)
+  - `GoalScored` 100ms per-scorer dedup that preserves `GoalSpeed`
+  - `StatfeedEvent` Demolition 1000ms dedup
+  - WS disconnect tears down the goal sequence
+  - `clearGoalSequence` covers all timers (banner, exit, both flash pairs, deferred show)
+    but deliberately leaves the stinger animation alone
+  - `CountdownBegin` 500ms debounce
+  - `hideReplayCard` scrubs `has-assist` + assister text
+  - `resetMatch` wipes cross-match bleed state
+  - Bridge mock + main.js OBS auto-switch updated to canonical RL event names.
+- **v0.5.3** — OT detection hybrid (this patch). RL's `Game.IsOT` is never set in bot/
+  private/freeplay matches, so OVERTIME state strip + clock `+` prefix + `.ot` class were
+  unreachable in Alex's primary testing environment. Detector now uses explicit `IsOT`
+  fast path + `clockHitZero` breadcrumb + N-frame ascend hysteresis. Final-10s counter
+  gated on `!clockHitZero` so it stops the moment regulation ends; placeholder `OT` text
+  during the limbo frame.
+
+**Audit + analysis workflow** (lives in this session's transcript history):
+
+- Capture stack documented in the `live-capture-workflow` memory: Playwright observer
+  for JSONL event log + OBS MP4 recording, ffmpeg for frame extraction, alignment via
+  anchoring on goal moments.
+- ffmpeg installed at `C:\Users\Cookies\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_*\
+  ffmpeg-8.1.1-full_build\bin\` (not on PATH; reference by full path).
+- The audit found 14+ resilience issues across two live captures. Ship-ready fixes landed
+  in v0.5.2 + v0.5.3; bridge synthesis improvements (deduping at the relay layer, synthetic
+  OvertimeBegin / GoalReplayEnd) are held for v0.6.0+ pending overlay-side stability.
+
+**Held for v0.5.4+ (needs more capture data):**
+
+- Kickoff lead-in re-tuning vs human matches (current values tuned against bots; see the
+  `kickoff-timing-bot-vs-human` memory for diagnostic shortcut and constant references).
+- OT-specific kickoff regime — no real human OT data yet, would violate `dont-call-guesses-fixes`.
+- Bridge-level dedup + synthesis for double-fire goals, demolitions, and `OvertimeBegin`.
+
+**Memories that are load-bearing for this work:**
+
+- `ot-detection-hybrid` — hybrid OT detector design, hysteresis tuning notes
+- `rl-event-quirks` — canonical event names, double-fire patterns, empty-scorer phantoms
+- `live-capture-workflow` — capture stack, ffmpeg recipes, alignment procedure
+- `kickoff-timing-bot-vs-human` — kickoff delay constants, bot-vs-human caveat
+- `dont-call-guesses-fixes` — don't ship timer-value tweaks without verification
+- `overlay-baby-steps` — small focused patches over big refactors
+
+If you're picking this up in a fresh session, read those memories first.
