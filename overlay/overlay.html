@@ -274,8 +274,13 @@
   .col{position:fixed;top:18px;display:flex;flex-direction:column;gap:7px;width:250px;}
   .col.left{left:18px;}
   .col.right{right:18px;}
+  /* NOTE: overflow MUST stay visible. The .pops stat-event badges are absolute
+     children positioned OUTSIDE the tag (left/right: calc(100% + 8px)); an
+     overflow:hidden here clips every badge so none ever paint (they were
+     invisible through v0.6.2). The .fill bar is geometrically contained
+     (width <= 100%, 4px tall at the bottom), so it needs no clipping. */
   .ptag{position:relative;background:var(--panel);box-shadow:var(--shadow);
-    padding:8px 12px 10px;overflow:hidden;}
+    padding:8px 12px 10px;}
   .ptag .prow{display:flex;align-items:center;gap:10px;}
   .col.right .ptag .prow{flex-direction:row-reverse;text-align:right;}
   .ptag .pname{flex:1;font-family:var(--font-display);font-style:italic;
@@ -287,9 +292,12 @@
   .ptag .fill{position:absolute;left:0;bottom:0;height:4px;width:0;transition:width .12s linear;}
   .col.left .ptag .fill{background:var(--blue);}
   .col.right .ptag .fill{background:var(--red);right:0;left:auto;}
-  /* On the active tag the team color is now the background, so the team-color
-     fill bar would disappear. Switch it to white-smoke for contrast. */
-  .ptag.active .fill{background:var(--ink);}
+  /* On the active tag the team color is the background, so a team-colored fill
+     bar vanishes. Switch it to white-smoke for contrast. Must out-specify the
+     `.col.left/.right .ptag .fill` team-color rules above (which are (0,4,0));
+     scoping to .col.left/.right makes these (0,5,0) so the override wins. */
+  .col.left  .ptag.active .fill,
+  .col.right .ptag.active .fill{background:var(--ink);}
   /* Spectated player: swap the whole tag background to the team color so
      the highlight reads as identity (not a gold trim), with a soft ambient
      shadow tinted to match. Boost number + name stay legible on the
@@ -735,6 +743,10 @@ let demosByName = {};
 // updateEventBar() reads these and chooses what to render.
 let currentOT = false;
 let inCountdown = false;
+// True from MatchEnded/PodiumStart until the next kickoff or match reset.
+// Gates the final-10 widget so the held gold "0" at the regulation buzzer
+// doesn't stay pinned on screen through the podium after the match is over.
+let matchOver = false;
 // OT detection: RL never sets Game.IsOT in bot/private/freeplay matches (43k
 // frames across the v0.5.1 capture had zero hits). We keep the IsOT fast path
 // for real-RLCS matches and add a clock-direction hysteresis fallback:
@@ -1011,7 +1023,7 @@ function onUpdateState(data){
   //     when the banner takes over, not 750ms earlier on GoalScored).
   //   - the kickoff countdown (3-2-1-GO) — the big gold "0" shouldn't
   //     compete with the kickoff center text when OT kickoff begins.
-  const showFinal10 = !isOT && !clockAscending && !goalSequenceActive &&
+  const showFinal10 = !matchOver && !isOT && !clockAscending && !goalSequenceActive &&
                       !inCountdown && t >= 0 && t <= 10;
   const f10 = $("final10");
   if (showFinal10){
@@ -1063,9 +1075,13 @@ function renderBoost(col, players, cls){
     if (typeof p.Boost === "number") lastBoostByName[p.Name] = p.Boost;
     const boost = lastBoostByName[p.Name];
     const hasBoost = typeof boost === "number";
+    // Unknown boost shows 0 (not "--") per broadcast preference; RL only
+    // re-sends Boost on change, so an as-yet-unseen player reads 0 until the
+    // first value lands (brief, since boost changes constantly in play).
+    const shownBoost = hasBoost ? boost : 0;
     tag.querySelector(".pname").textContent = p.Name || "";
-    tag.querySelector(".pboost").textContent = hasBoost ? boost : "--";
-    tag.querySelector(".fill").style.width = (hasBoost ? boost : 0) + "%";
+    tag.querySelector(".pboost").textContent = shownBoost;
+    tag.querySelector(".fill").style.width = shownBoost + "%";
     tag.dataset.name = p.Name || "";
   });
 }
@@ -1092,14 +1108,14 @@ function updateFocus(p){
   // Same boost cache as renderBoost so the radial gauge doesn't flicker
   // to 0 / "--" on frames where RL omits the Boost field.
   const cachedBoost = lastBoostByName[p.Name];
-  const haveBoost = typeof p.Boost === "number" || typeof cachedBoost === "number";
   const boost = typeof p.Boost === "number" ? p.Boost
               : typeof cachedBoost === "number" ? cachedBoost : 0;
   const val = $("gaugeVal");
   val.style.stroke = blue ? "var(--blue)" : "var(--red)";
   val.style.strokeDasharray = GAUGE_CIRC;
   val.style.strokeDashoffset = GAUGE_CIRC * (1 - boost/100);
-  $("gaugeLabel").textContent = haveBoost ? boost : "--";
+  // Unknown boost shows 0 (not "--") per broadcast preference.
+  $("gaugeLabel").textContent = boost;
 }
 
 /* ---- Goal sequence (v0.5.5 layered model) --------------------------------
@@ -1803,6 +1819,7 @@ function resetMatch(){
   sawDescent = false;
   clockAscending = false;
   goalSequenceActive = false;
+  matchOver = false;
   // Scores get re-populated by the next UpdateState; reset so the RoundStarted
   // OT preemptive flip can't see stale tied scores carried from the prior match.
   lastScoreA = 0;
@@ -1868,6 +1885,7 @@ function connectGame(){
       const now = performance.now();
       if (now - lastCountdownBeginTime < COUNTDOWN_DEBOUNCE_MS) return;
       lastCountdownBeginTime = now;
+      matchOver = false; // a new kickoff means we're back in live play
       // If a goal happened since the last stinger fired, play the stinger NOW
       // to mask the cut to kickoff. playStinger hides the card itself.
       if (goalSequenceActive && lastGoalTime > lastStingerTime) {
@@ -1898,6 +1916,10 @@ function connectGame(){
       clearGoalSequence();
       currentOT = false;
       inCountdown = false;
+      // Match is over: hide the held final-10 "0" and gate it from re-showing
+      // if UpdateState keeps streaming a 0:00 clock through the podium.
+      matchOver = true;
+      $("final10").classList.remove("show");
       // Reset OT detector so the next match starts in regulation mode.
       clockHitZero = false;
       otAscendingFrames = 0;
