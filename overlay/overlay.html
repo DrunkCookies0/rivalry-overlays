@@ -4,12 +4,8 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>RIVALRY Overlay</title>
-<!-- Font Awesome 6 Free — used by the stat-pop badges (goal / assist / save /
-     shot / demo / center / clear / hat trick / aerial / bicycle / high five
-     icons). CDN matches the Google Fonts import pattern already in use; if
-     OBS later runs offline, switch to a self-hosted webfont copy. Holding-
-     spot until brand-custom SVG icons are designed. -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- Stat-pop badge icons are now inlined SVG (no CDN) so they render offline —
+     critical for a broadcast tool. See SVG_ICONS near spawnStatPop. -->
 <style>
   /* RIVALRY brand typography: Exo 2 italic 700 for display headlines
      (team names, scorer text, eyebrows), Space Mono for numeric/stat
@@ -310,11 +306,11 @@
     display:flex;flex-direction:column;gap:4px;pointer-events:none;z-index:10;}
   .col.left  .ptag .pops{left:calc(100% + 8px);align-items:flex-start;}
   .col.right .ptag .pops{right:calc(100% + 8px);align-items:flex-end;}
-  /* Circular icon badge — Font Awesome glyph centered, color-coded by the
+  /* Circular icon badge — inline SVG glyph centered, color-coded by the
      event family. Sized so a stack of 2-3 events stays under the player
      tag's vertical footprint; rapid 4+ events visibly stack overflow until
-     they auto-dismiss. Switch to brand SVG icons later by swapping the
-     <i class="fa..."> child rendered by spawnStatPop. */
+     they auto-dismiss. Swap to brand SVG icons later by editing SVG_ICONS
+     (the path data rendered by spawnStatPop). */
   .stat-pop{display:flex;align-items:center;justify-content:center;
     width:30px;height:30px;border-radius:50%;
     color:#fff;font-size:14px;line-height:1;
@@ -322,13 +318,15 @@
     box-shadow:0 4px 12px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08);
     opacity:0;transform:translateX(-12px) scale(.7);
     transition:opacity .35s ease-out,transform .35s cubic-bezier(.34,1.56,.64,1);}
+  /* SVG path uses fill:currentColor so it inherits the badge's text color. */
+  .stat-pop svg{display:block;}
   .col.right .ptag .stat-pop{transform:translateX(12px) scale(.7);}
   .stat-pop.show{opacity:1;transform:translateX(0) scale(1);}
   .stat-pop.fade{opacity:0;transform:translateX(0) scale(.85);
     transition:opacity .30s ease-in,transform .30s ease-in;}
   /* Color per event family — clearest possible distinction at a glance.
      Subtypes (epic-save, hat-trick, aerial-goal, bicycle-goal, pool-shot)
-     share their parent family's color and differ only by Font Awesome icon. */
+     share their parent family's color and differ only by SVG icon. */
   .stat-pop.goal{background:var(--gold);color:#1a1206;
     box-shadow:0 4px 14px rgba(241,196,15,.6),inset 0 0 0 1px rgba(0,0,0,.2);}
   .stat-pop.assist{background:#8e5fd9;
@@ -1447,7 +1445,7 @@ function onGoalScored(data){
   lastGoalFireByName[scorer] = now;
   lastGoalTime = now;
   lastGoalSpeed = Number(data.GoalSpeed) || 0;
-  spawnStatPop(scorer, "goal", "fa-futbol");
+  spawnStatPop(scorer, "goal", "futbol");
   // Cancel any in-flight pending banner+flash from a previous goal so a
   // rapid back-to-back doesn't double-pop.
   clearTimeout(goalBannerShowTimer);
@@ -1609,33 +1607,91 @@ function hideReplayCard(){
   if (a) a.textContent = "";
 }
 
-// StatfeedEvent type → { color family class, Font Awesome icon class }.
+// Inlined Font Awesome 6 Free (solid) icon paths, keyed by name. Inlining
+// keeps stat-pop badges offline-safe (no CDN fetch that can fail silently in
+// an OBS browser source). Swap these for brand-custom SVGs later — same
+// { viewBox, path } shape, just edit the entries.
+const SVG_ICONS = {
+  "futbol": {
+    viewBox: "0 0 512 512",
+    path: "M417.3 360.1l-71.6-4.8c-5.2-.3-10.3 1.1-14.5 4.2s-7.2 7.4-8.4 12.5l-17.6 69.6C289.5 445.8 273 448 256 448s-33.5-2.2-49.2-6.4L189.2 372c-1.3-5-4.3-9.4-8.4-12.5s-9.3-4.5-14.5-4.2l-71.6 4.8c-17.6-27.2-28.5-59.2-30.4-93.6L125 228.3c4.4-2.8 7.6-7 9.2-11.9s1.4-10.2-.5-15l-26.7-66.6C128 109.2 155.3 89 186.7 76.9l55.2 46c4 3.3 9 5.1 14.1 5.1s10.2-1.8 14.1-5.1l55.2-46c31.3 12.1 58.7 32.3 79.6 57.9l-26.7 66.6c-1.9 4.8-2.1 10.1-.5 15s4.9 9.1 9.2 11.9l60.7 38.2c-1.9 34.4-12.8 66.4-30.4 93.6zM256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm14.1-325.7c-8.4-6.1-19.8-6.1-28.2 0L194 221c-8.4 6.1-11.9 16.9-8.7 26.8l18.3 56.3c3.2 9.9 12.4 16.6 22.8 16.6h59.2c10.4 0 19.6-6.7 22.8-16.6l18.3-56.3c3.2-9.9-.3-20.7-8.7-26.8l-47.9-34.8z"
+  },
+  "trophy": {
+    viewBox: "0 0 576 512",
+    path: "M400 0H176c-26.5 0-48.1 21.8-47.1 48.2c.2 5.3 .4 10.6 .7 15.8H24C10.7 64 0 74.7 0 88c0 92.6 33.5 157 78.5 200.7c44.3 43.1 98.3 64.8 138.1 75.8c23.4 6.5 39.4 26 39.4 45.6c0 20.9-17 37.9-37.9 37.9H192c-17.7 0-32 14.3-32 32s14.3 32 32 32H384c17.7 0 32-14.3 32-32s-14.3-32-32-32H357.9C337 448 320 431 320 410.1c0-19.6 15.9-39.2 39.4-45.6c39.9-11 93.9-32.7 138.2-75.8C542.5 245 576 180.6 576 88c0-13.3-10.7-24-24-24H446.4c.3-5.2 .5-10.4 .7-15.8C448.1 21.8 426.5 0 400 0zM48.9 112h84.4c9.1 90.1 29.2 150.3 51.9 190.6c-24.9-11-50.8-26.5-73.2-48.3c-32-31.1-58-76-63-142.3zM464.1 254.3c-22.4 21.8-48.3 37.3-73.2 48.3c22.7-40.3 42.8-100.5 51.9-190.6h84.4c-5.1 66.3-31.1 111.2-63 142.3z"
+  },
+  "plane": {
+    viewBox: "0 0 576 512",
+    path: "M482.3 192c34.2 0 93.7 29 93.7 64c0 36-59.5 64-93.7 64l-116.6 0L265.2 495.9c-5.7 10-16.3 16.1-27.8 16.1l-56.2 0c-10.6 0-18.3-10.2-15.4-20.4l49-171.6L112 320 68.8 377.6c-3 4-7.8 6.4-12.8 6.4l-42 0c-7.8 0-14-6.3-14-14c0-1.3 .2-2.6 .5-3.9L32 256 .5 145.9c-.4-1.3-.5-2.6-.5-3.9c0-7.8 6.3-14 14-14l42 0c5 0 9.8 2.4 12.8 6.4L112 192l102.9 0-49-171.6C162.9 10.2 170.6 0 181.2 0l56.2 0c11.5 0 22.1 6.2 27.8 16.1L365.7 192l116.6 0z"
+  },
+  "bicycle": {
+    viewBox: "0 0 640 512",
+    path: "M312 32c-13.3 0-24 10.7-24 24s10.7 24 24 24h25.7l34.6 64H222.9l-27.4-38C191 99.7 183.7 96 176 96H120c-13.3 0-24 10.7-24 24s10.7 24 24 24h43.7l22.1 30.7-26.6 53.1c-10-2.5-20.5-3.8-31.2-3.8C57.3 224 0 281.3 0 352s57.3 128 128 128c65.3 0 119.1-48.9 127-112h49c8.5 0 16.3-4.5 20.7-11.8l84.8-143.5 21.7 40.1C402.4 276.3 384 312 384 352c0 70.7 57.3 128 128 128s128-57.3 128-128s-57.3-128-128-128c-13.5 0-26.5 2.1-38.7 6L375.4 48.8C369.8 38.4 359 32 347.2 32H312zM458.6 303.7l32.3 59.7c6.3 11.7 20.9 16 32.5 9.7s16-20.9 9.7-32.5l-32.3-59.7c3.6-.6 7.4-.9 11.2-.9c39.8 0 72 32.2 72 72s-32.2 72-72 72s-72-32.2-72-72c0-18.6 7-35.5 18.6-48.3zM133.2 368h65c-7.3 32.1-36 56-70.2 56c-39.8 0-72-32.2-72-72s32.2-72 72-72c1.7 0 3.4 .1 5.1 .2l-24.2 48.5c-9 18.1 4.1 39.4 24.3 39.4zm33.7-48l50.7-101.3 72.9 101.2-.1 .1H166.8zm90.6-128H365.9L317 274.8 257.4 192z"
+  },
+  "baseball": {
+    viewBox: "0 0 512 512",
+    path: "M62.7 223.4c-4.8 .4-9.7 .6-14.7 .6c-15.6 0-30.8-2-45.2-5.9C19.2 107.1 107.1 19.2 218.1 2.8C222 17.2 224 32.4 224 48c0 4.9-.2 9.8-.6 14.7c-.7 8.8 5.8 16.5 14.6 17.3s16.5-5.8 17.3-14.6c.5-5.7 .7-11.5 .7-17.3c0-16.5-1.9-32.6-5.6-47.9c1.8 0 3.7-.1 5.6-.1C397.4 0 512 114.6 512 256c0 1.9 0 3.7-.1 5.6c-15.4-3.6-31.4-5.6-47.9-5.6c-5.8 0-11.6 .2-17.3 .7c-8.8 .7-15.4 8.5-14.6 17.3s8.5 15.4 17.3 14.6c4.8-.4 9.7-.6 14.7-.6c15.6 0 30.8 2 45.2 5.9C492.8 404.9 404.9 492.8 293.9 509.2C290 494.8 288 479.6 288 464c0-4.9 .2-9.8 .6-14.7c.7-8.8-5.8-16.5-14.6-17.3s-16.5 5.8-17.3 14.6c-.5 5.7-.7 11.5-.7 17.3c0 16.5 1.9 32.6 5.6 47.9c-1.8 0-3.7 .1-5.6 .1C114.6 512 0 397.4 0 256c0-1.9 0-3.7 .1-5.6C15.4 254.1 31.5 256 48 256c5.8 0 11.6-.2 17.3-.7c8.8-.7 15.4-8.5 14.6-17.3s-8.5-15.4-17.3-14.6zM121.3 208c-8 3.7-11.6 13.2-7.9 21.2s13.2 11.6 21.2 7.9c45.2-20.8 81.7-57.2 102.5-102.5c3.7-8 .2-17.5-7.9-21.2s-17.5-.2-21.2 7.9c-17.6 38.3-48.5 69.2-86.7 86.7zm277.2 74.7c-3.7-8-13.2-11.6-21.2-7.9c-45.2 20.8-81.7 57.2-102.5 102.5c-3.7 8-.2 17.5 7.9 21.2s17.5 .2 21.2-7.9c17.6-38.3 48.5-69.2 86.7-86.7c8-3.7 11.6-13.2 7.9-21.2z"
+  },
+  "shield-halved": {
+    viewBox: "0 0 512 512",
+    path: "M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8V444.8C394 378 431.1 230.1 432 141.4L256 66.8l0 0z"
+  },
+  "hand-fist": {
+    viewBox: "0 0 448 512",
+    path: "M192 0c17.7 0 32 14.3 32 32V144H160V32c0-17.7 14.3-32 32-32zM64 64c0-17.7 14.3-32 32-32s32 14.3 32 32v80H64V64zm192 0c0-17.7 14.3-32 32-32s32 14.3 32 32v96c0 17.7-14.3 32-32 32s-32-14.3-32-32V64zm96 64c0-17.7 14.3-32 32-32s32 14.3 32 32v64c0 17.7-14.3 32-32 32s-32-14.3-32-32V128zm-96 88l0-.6c9.4 5.4 20.3 8.6 32 8.6c13.2 0 25.4-4 35.6-10.8c8.7 24.9 32.5 42.8 60.4 42.8c11.7 0 22.6-3.1 32-8.6V256c0 52.3-25.1 98.8-64 128v96c0 17.7-14.3 32-32 32H160c-17.7 0-32-14.3-32-32V401.6c-17.3-7.9-33.2-18.8-46.9-32.5L69.5 357.5C45.5 333.5 32 300.9 32 267V240c0-35.3 28.7-64 64-64h88c22.1 0 40 17.9 40 40s-17.9 40-40 40H128c-8.8 0-16 7.2-16 16s7.2 16 16 16h56c39.8 0 72-32.2 72-72z"
+  },
+  "hand": {
+    viewBox: "0 0 512 512",
+    path: "M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V240c0 8.8-7.2 16-16 16s-16-7.2-16-16V64c0-17.7-14.3-32-32-32s-32 14.3-32 32V336c0 1.5 0 3.1 .1 4.6L67.6 283c-16-15.2-41.3-14.6-56.6 1.4s-14.6 41.3 1.4 56.6L124.8 448c43.1 41.1 100.4 64 160 64H304c97.2 0 176-78.8 176-176V128c0-17.7-14.3-32-32-32s-32 14.3-32 32V240c0 8.8-7.2 16-16 16s-16-7.2-16-16V64c0-17.7-14.3-32-32-32s-32 14.3-32 32V240c0 8.8-7.2 16-16 16s-16-7.2-16-16V32z"
+  },
+  "handshake": {
+    viewBox: "0 0 640 512",
+    path: "M323.4 85.2l-96.8 78.4c-16.1 13-19.2 36.4-7 53.1c12.9 17.8 38 21.3 55.3 7.8l99.3-77.2c7-5.4 17-4.2 22.5 2.8s4.2 17-2.8 22.5l-20.9 16.2L512 316.8V128h-.7l-3.9-2.5L434.8 79c-15.3-9.8-33.2-15-51.4-15c-21.8 0-43 7.5-60 21.2zm22.8 124.4l-51.7 40.2C263 274.4 217.3 268 193.7 235.6c-22.2-30.5-16.6-73.1 12.7-96.8l83.2-67.3c-11.6-4.9-24.1-7.4-36.8-7.4C234 64 215.7 69.6 200 80l-72 48V352h28.2l91.4 83.4c19.6 17.9 49.9 16.5 67.8-3.1c5.5-6.1 9.2-13.2 11.1-20.6l17 15.6c19.5 17.9 49.9 16.6 67.8-2.9c4.5-4.9 7.8-10.6 9.9-16.5c19.4 13 45.8 10.3 62.1-7.5c17.9-19.5 16.6-49.9-2.9-67.8l-134.2-123zM16 128c-8.8 0-16 7.2-16 16V352c0 17.7 14.3 32 32 32H64c17.7 0 32-14.3 32-32V128H16zM48 320a16 16 0 1 1 0 32 16 16 0 1 1 0-32zM544 128V352c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V144c0-8.8-7.2-16-16-16H544zm32 208a16 16 0 1 1 32 0 16 16 0 1 1 -32 0z"
+  },
+  "bullseye": {
+    viewBox: "0 0 512 512",
+    path: "M448 256A192 192 0 1 0 64 256a192 192 0 1 0 384 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm256 80a80 80 0 1 0 0-160 80 80 0 1 0 0 160zm0-224a144 144 0 1 1 0 288 144 144 0 1 1 0-288zM224 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"
+  },
+  "bomb": {
+    viewBox: "0 0 512 512",
+    path: "M459.1 52.4L442.6 6.5C440.7 2.6 436.5 0 432.1 0s-8.5 2.6-10.4 6.5L405.2 52.4l-46 16.8c-4.3 1.6-7.3 5.9-7.2 10.4c0 4.5 3 8.7 7.2 10.2l45.7 16.8 16.8 45.8c1.5 4.4 5.8 7.5 10.4 7.5s8.9-3.1 10.4-7.5l16.5-45.8 45.7-16.8c4.2-1.5 7.2-5.7 7.2-10.2c0-4.6-3-8.9-7.2-10.4L459.1 52.4zm-132.4 53c-12.5-12.5-32.8-12.5-45.3 0l-2.9 2.9C256.5 100.3 232.7 96 208 96C93.1 96 0 189.1 0 304S93.1 512 208 512s208-93.1 208-208c0-24.7-4.3-48.5-12.2-70.5l2.9-2.9c12.5-12.5 12.5-32.8 0-45.3l-80-80zM200 192c-57.4 0-104 46.6-104 104v8c0 8.8-7.2 16-16 16s-16-7.2-16-16v-8c0-75.1 60.9-136 136-136h8c8.8 0 16 7.2 16 16s-7.2 16-16 16h-8z"
+  },
+  "arrows-left-right": {
+    viewBox: "0 0 512 512",
+    path: "M406.6 374.6l96-96c12.5-12.5 12.5-32.8 0-45.3l-96-96c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L402.7 224l-293.5 0 41.4-41.4c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-96 96c-12.5 12.5-12.5 32.8 0 45.3l96 96c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 288l293.5 0-41.4 41.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0z"
+  },
+  "arrow-up": {
+    viewBox: "0 0 384 512",
+    path: "M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"
+  },
+};
+
+// StatfeedEvent type → { color family class, SVG_ICONS key }.
 // Color family groups related events under one visual identity (e.g. epic
 // save shares save's teal); the icon differentiates the subtype. Keys are
 // substrings matched against the lowercased event name.
-// Holding-spot pattern: replace icon strings with brand SVG paths later.
 const STAT_POP_TYPES = [
   // Order matters — more specific keywords first so "epic save" doesn't
   // match the plain "save" rule, "hat" doesn't match "shot", etc.
-  { match: "hat",         cls: "goal",   icon: "fa-trophy"          },
-  { match: "aerial",      cls: "goal",   icon: "fa-plane"           },
-  { match: "bicycle",     cls: "goal",   icon: "fa-bicycle"         },
-  { match: "pool",        cls: "goal",   icon: "fa-baseball"        },
-  { match: "epicsave",    cls: "save",   icon: "fa-shield-halved"   },
-  { match: "epic save",   cls: "save",   icon: "fa-shield-halved"   },
-  { match: "save",        cls: "save",   icon: "fa-hand-fist"       },
-  { match: "highfive",    cls: "five",   icon: "fa-hand"            },
-  { match: "high five",   cls: "five",   icon: "fa-hand"            },
-  { match: "lowfive",     cls: "five",   icon: "fa-hand"            },
-  { match: "low five",    cls: "five",   icon: "fa-hand"            },
-  { match: "assist",      cls: "assist", icon: "fa-handshake"       },
-  { match: "shot",        cls: "shot",   icon: "fa-bullseye"        },
-  { match: "demolish",    cls: "demo",   icon: "fa-bomb"            },
-  { match: "demo",        cls: "demo",   icon: "fa-bomb"            },
-  { match: "centre",      cls: "pass",   icon: "fa-arrows-left-right" },
-  { match: "center",      cls: "pass",   icon: "fa-arrows-left-right" },
-  { match: "clear",       cls: "pass",   icon: "fa-arrow-up"        },
-  { match: "goal",        cls: "goal",   icon: "fa-futbol"          },
+  { match: "hat",         cls: "goal",   icon: "trophy"          },
+  { match: "aerial",      cls: "goal",   icon: "plane"           },
+  { match: "bicycle",     cls: "goal",   icon: "bicycle"         },
+  { match: "pool",        cls: "goal",   icon: "baseball"        },
+  { match: "epicsave",    cls: "save",   icon: "shield-halved"   },
+  { match: "epic save",   cls: "save",   icon: "shield-halved"   },
+  { match: "save",        cls: "save",   icon: "hand-fist"       },
+  { match: "highfive",    cls: "five",   icon: "hand"            },
+  { match: "high five",   cls: "five",   icon: "hand"            },
+  { match: "lowfive",     cls: "five",   icon: "hand"            },
+  { match: "low five",    cls: "five",   icon: "hand"            },
+  { match: "assist",      cls: "assist", icon: "handshake"       },
+  { match: "shot",        cls: "shot",   icon: "bullseye"        },
+  { match: "demolish",    cls: "demo",   icon: "bomb"            },
+  { match: "demo",        cls: "demo",   icon: "bomb"            },
+  { match: "centre",      cls: "pass",   icon: "arrows-left-right" },
+  { match: "center",      cls: "pass",   icon: "arrows-left-right" },
+  { match: "clear",       cls: "pass",   icon: "arrow-up"        },
+  { match: "goal",        cls: "goal",   icon: "futbol"          },
 ];
 function lookupStatPop(type){
   for (const t of STAT_POP_TYPES) if (type.includes(t.match)) return t;
@@ -1660,7 +1716,7 @@ function onStatfeed(data){
       if (now - (lastStatfeedFire[key] || 0) < STATFEED_DEDUP_MS) return;
       lastStatfeedFire[key] = now;
       demosByName[attacker] = (demosByName[attacker] || 0) + 1;
-      spawnStatPop(attacker, "demo", "fa-bomb");
+      spawnStatPop(attacker, "demo", "bomb");
     }
     return;
   }
@@ -1684,16 +1740,27 @@ function onStatfeed(data){
 // Stacks vertically if multiple events land in quick succession. Holds ~3s
 // then fades; per-pop self-cleanup removes the node after the fade.
 const STAT_POP_HOLD_MS = 3000;
-function spawnStatPop(playerName, cls, iconClass){
+function spawnStatPop(playerName, cls, iconKey){
   const tag = document.querySelector('.ptag[data-name="' + cssEscape(playerName) + '"]');
   if (!tag) return;
   const host = tag.querySelector(".pops");
   if (!host) return;
   const pop = document.createElement("div");
   pop.className = "stat-pop " + cls;
-  const i = document.createElement("i");
-  i.className = "fa-solid " + iconClass;
-  pop.appendChild(i);
+  // Build the badge icon as inline SVG from SVG_ICONS (offline-safe; no CDN).
+  const def = SVG_ICONS[iconKey];
+  if (def) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", def.viewBox);
+    svg.setAttribute("width", "16");
+    svg.setAttribute("height", "16");
+    svg.setAttribute("aria-hidden", "true");
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", def.path);
+    p.setAttribute("fill", "currentColor");
+    svg.appendChild(p);
+    pop.appendChild(svg);
+  }
   host.appendChild(pop);
   // Force reflow so the show transition runs from the initial state.
   void pop.offsetWidth;

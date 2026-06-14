@@ -1,6 +1,6 @@
 {
   "name": "rivalry-overlay",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "RIVALRY in-house Rocket League broadcast overlay. Bridges Rocket League's official Stats API into the browser and serves an OBS overlay + control panel. Ships as a Windows installer.",
   "main": "main.js",
