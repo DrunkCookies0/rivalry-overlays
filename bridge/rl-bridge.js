@@ -398,14 +398,22 @@ function startMockFeed(broadcastGame) {
       event: "GoalScored",
       data: { MatchGuid: "mock-match", GoalSpeed: 88, Scorer: { Name: scorer, TeamNum: team } },
     });
-    // Use the canonical RL Stats API event names so `npm run mock` exercises
-    // the same dispatch path real matches do.
-    setTimeout(() => broadcastGame({ event: "ReplayPlaybackStart", data: {} }), 3000);
-    setTimeout(() => broadcastGame({ event: "ReplayWillEnd", data: {} }), 8000);
-    setTimeout(() => broadcastGame({ event: "ReplayPlaybackEnd", data: {} }), 8800);
-    setTimeout(() => broadcastGame({ event: "CountdownBegin", data: {} }), 10000);
+    // Canonical RL Stats API event names + timings mirroring the 2026-06-14
+    // live WS capture (relative to the GoalScored at t=0), so `npm run mock`
+    // exercises the same dispatch path and pacing real matches do.
+    setTimeout(() => broadcastGame({ event: "GoalReplayStart", data: {} }), 3500);
+    setTimeout(() => broadcastGame({ event: "GoalReplayWillEnd", data: {} }), 10800);
+    setTimeout(() => broadcastGame({ event: "GoalReplayEnd", data: {} }), 13800);
+    // CountdownBegin coincides with GoalReplayEnd in the live capture; keep it
+    // as a separate timer at the same delay.
+    setTimeout(() => broadcastGame({ event: "CountdownBegin", data: {} }), 13800);
+    // CountdownBegin → RoundStarted ~3988ms; emit RoundStarted so mock also
+    // exercises the kickoff GO! path.
+    setTimeout(() => broadcastGame({ event: "RoundStarted", data: {} }), 17800);
   }
-  setInterval(runGoalSequence, 14000);
+  // Full sequence now runs ~17.8s to RoundStarted; widen the interval so
+  // back-to-back sequences don't overlap.
+  setInterval(runGoalSequence, 20000);
 }
 
 module.exports = { runSetup, startBridge, GAME_WS_PORT, CONTROL_WS_PORT, RL_TCP_PORT };

@@ -479,9 +479,9 @@ function onGameEventForObs(env) {
     // never composited into the broadcast. The replay-start handler below
     // will swap to the replay scene once RL fires it.
     obsController.switchScene(map.goal);
-  } else if (ev === "ReplayPlaybackStart" && map.replay) {
+  } else if (ev === "GoalReplayStart" && map.replay) {
     obsController.switchScene(map.replay);
-  } else if ((ev === "ReplayPlaybackEnd" || ev === "CountdownBegin" || ev === "RoundStarted") && map.live) {
+  } else if ((ev === "GoalReplayEnd" || ev === "CountdownBegin" || ev === "RoundStarted") && map.live) {
     obsController.switchScene(map.live);
   } else if (ev === "UpdateState" && map.postMatch) {
     // Match-end heuristic: Game.Winner becomes a non-empty team name.

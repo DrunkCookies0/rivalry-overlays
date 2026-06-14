@@ -789,12 +789,12 @@ let replayCardShowTimer = null;
 // celebration lands. Captured so clearGoalSequence + rapid back-to-back goals
 // can cancel a pending show before it pops over podium / next-goal state.
 let goalBannerShowTimer = null;
-// Stinger fallback timer — ReplayPlaybackEnd is the canonical trigger but RL's
+// Stinger fallback timer — GoalReplayEnd is the canonical trigger but RL's
 // Stats API drops that event in bot/freeplay/private matches. Same fallback
 // pattern as the replay card: fire on a timer; clear if the real event arrives.
 let stingerShowTimer = null;
 // Tracks when the stinger last fired so CountdownBegin can trigger it
-// on demand without double-firing if ReplayPlaybackEnd already played it.
+// on demand without double-firing if GoalReplayEnd already played it.
 let lastStingerTime = 0;
 // GoalScored dedup — RL fires every goal twice ~4-15ms apart; the second
 // payload typically lacks GoalSpeed and would zero out our captured speed
@@ -1054,6 +1054,10 @@ function renderBoost(col, players, cls){
       col.appendChild(t);
     });
   }
+  // Prune stale names so the cache stays bounded to the active roster (and a
+  // returning name can't pick up a previous occupant's last-seen boost).
+  const present = new Set(players.map(p => p.Name));
+  for (const k in lastBoostByName) if (!present.has(k)) delete lastBoostByName[k];
   players.forEach((p, i) => {
     const tag = col.children[i];
     if (typeof p.Boost === "number") lastBoostByName[p.Name] = p.Boost;
@@ -1107,11 +1111,11 @@ function updateFocus(p){
  * ──────────────────    ──────────────────────────────────────────────────
  * GoalScored            START banner (+750ms), card (+4350ms), stinger
  *                       fallback (+13750ms — bot/freeplay path)
- * ReplayPlaybackStart   END banner; cancel stinger fallback
+ * GoalReplayStart       END banner; cancel stinger fallback
  *                       (card show timer LEFT ALIVE — fires mid-replay)
- * ReplayWillEnd         START stinger (+STINGER_LEAD_AFTER_WILLEND_MS,
+ * GoalReplayWillEnd     START stinger (+STINGER_LEAD_AFTER_WILLEND_MS,
  *                       so the wipe-in is mid-animation at the cut)
- * ReplayPlaybackEnd     BACKSTOP — fire stinger only if WillEnd didn't
+ * GoalReplayEnd         BACKSTOP — fire stinger only if WillEnd didn't
  *                       (deduped on lastStingerTime within ~1.5s)
  * CountdownBegin        Kickoff 3-2-1 starts; stinger BACKSTOP if no goal
  *                       was covered yet this cycle; clearGoalSequence
@@ -1119,8 +1123,8 @@ function updateFocus(p){
  *
  * The stinger is the topmost cover layer. It is the SINGLE OWNER of the
  * replay-card hide — the card disappears simultaneously with stinger start,
- * with the wipe-in covering the swap from the viewer. ReplayWillEnd and
- * ReplayPlaybackEnd never hide the card directly under this model.
+ * with the wipe-in covering the swap from the viewer. GoalReplayWillEnd and
+ * GoalReplayEnd never hide the card directly under this model.
  *
  * Bot/freeplay/private matches don't emit Replay* events — the +13750ms
  * fallback in onGoalScored drives the stinger and gets cancelled if the
@@ -1398,7 +1402,7 @@ function hideGoalFlash(teamNum){
 // the replay card as it fires — the card disappears simultaneously with
 // the wipe-in starting, and the wipe-in covers the card-vacate frame from
 // the viewer. Per the layered ownership model: the stinger is the single
-// authority on "card is gone now", not ReplayWillEnd / ReplayPlaybackEnd.
+// authority on "card is gone now", not GoalReplayWillEnd / GoalReplayEnd.
 // Also cancels any pending replay-card show timer — a very short replay
 // (shorter than the +4350ms scheduled show) could otherwise fire the timer
 // AFTER the stinger has already cut to live, popping the card on top of
@@ -1427,7 +1431,7 @@ function onGoalScored(data){
   const scorer = (data.Scorer && data.Scorer.Name) || "";
   const teamNum = (data.Scorer && data.Scorer.TeamNum);
   // Don't render a "name-less" banner. Some game modes / own-goals fire
-  // GoalScored with an empty Scorer.Name (also fires on every ReplayPlaybackEnd
+  // GoalScored with an empty Scorer.Name (also fires on every GoalReplayEnd
   // as a phantom payload). Skip — and skip BEFORE the dedup map update so the
   // phantom doesn't poison the last-fire key.
   if (!scorer) return;
@@ -1454,7 +1458,7 @@ function onGoalScored(data){
     showGoalFlash(teamNum);
   }, GOAL_BANNER_DELAY_MS);
   // Schedule the replay card to fade in once the goal banner has wiped
-  // out. Replay events (ReplayPlaybackStart/End) don't fire in every game
+  // out. Replay events (GoalReplayStart/End) don't fire in every game
   // mode, so we drive the card off the same trigger as the banner with
   // a longer delay. onGoalReplayStart/End / clearGoalSequence cancel this
   // if RL does fire those.
@@ -1463,7 +1467,7 @@ function onGoalScored(data){
     () => showReplayCard(scorer, teamNum),
     GOAL_BANNER_DELAY_MS + 3600
   );
-  // Same fallback pattern for the stinger — ReplayPlaybackEnd doesn't fire in
+  // Same fallback pattern for the stinger — GoalReplayEnd doesn't fire in
   // bot/freeplay/private matches, so trigger the wipe on a timer ~9s after
   // the replay card lands (13.75s after the goal). onGoalReplayEnd /
   // clearGoalSequence cancel this if the real event arrives so we don't
@@ -1480,15 +1484,15 @@ function onGoalReplayStart(){
   // Real replay started. Cancel the stinger fallback only — the replay card
   // show timer is INTENTIONALLY left alive so the card still appears at its
   // scheduled moment (after the banner has exited), which lines up with the
-  // replay playback. RL fires ReplayPlaybackStart ~1-3s after the goal, well
+  // replay playback. RL fires GoalReplayStart ~1-3s after the goal, well
   // before the replay-card show timer at GOAL_BANNER_DELAY_MS + 3600ms.
   clearTimeout(stingerShowTimer);
   hideGoalBanner();
 }
-// RL fires ReplayWillEnd ~3s before ReplayPlaybackEnd. Under the v0.5.5
+// RL fires GoalReplayWillEnd ~3s before GoalReplayEnd. Under the v0.5.5
 // layered model this is the STINGER START trigger — not a card cleanup
 // event. We schedule the stinger to fire shortly before the expected cut
-// so the wipe-in is mid-animation when ReplayPlaybackEnd lands (covering
+// so the wipe-in is mid-animation when GoalReplayEnd lands (covering
 // the cut from viewers). The replay card stays up the entire time; the
 // stinger hides it simultaneously when it fires, with the wipe-in
 // covering the swap. Tuned against [[live-capture-workflow]] data.
@@ -1503,9 +1507,9 @@ function onGoalReplayWillEnd(){
   clearTimeout(stingerShowTimer);
   stingerShowTimer = setTimeout(playStinger, STINGER_LEAD_AFTER_WILLEND_MS);
 }
-// Backstop only. By the time ReplayPlaybackEnd fires, the stinger should
-// already be running (started ~500ms ago from ReplayWillEnd). If for some
-// reason it didn't — e.g., ReplayWillEnd never fired, or the WillEnd→End
+// Backstop only. By the time GoalReplayEnd fires, the stinger should
+// already be running (started ~500ms ago from GoalReplayWillEnd). If for some
+// reason it didn't — e.g., GoalReplayWillEnd never fired, or the WillEnd→End
 // gap was shorter than STINGER_LEAD_AFTER_WILLEND_MS — fire it now so the
 // cut to live isn't completely uncovered. Dedup on lastStingerTime so a
 // successful WillEnd-triggered stinger isn't double-fired.
@@ -1523,7 +1527,7 @@ function onGoalReplayEnd(){
   clearTimeout(replayCardShowTimer);
   const now = performance.now();
   if (now - lastStingerTime < STINGER_BACKSTOP_DEDUP_MS) {
-    // Stinger already running from ReplayWillEnd — nothing to do. It's
+    // Stinger already running from GoalReplayWillEnd — nothing to do. It's
     // already hiding the card and covering the cut.
     return;
   }
@@ -1848,13 +1852,15 @@ function connectGame(){
     const data = msg.data || {};
     if (ev === "UpdateState") onUpdateState(data);
     else if (ev === "GoalScored") onGoalScored(data);
-    // Canonical RL replay event names. Legacy GoalReplayStart/End names that
-    // never actually fired in real matches were the cause of the stinger-late
-    // bug pre-0.5.2; the bot/freeplay fallback timers in onGoalScored remain
-    // as the safety net for modes that drop replay events entirely.
-    else if (ev === "ReplayPlaybackStart") onGoalReplayStart();
-    else if (ev === "ReplayWillEnd")       onGoalReplayWillEnd();
-    else if (ev === "ReplayPlaybackEnd")   onGoalReplayEnd();
+    // Canonical RL replay event names: GoalReplayStart / GoalReplayWillEnd /
+    // GoalReplayEnd (confirmed via live WS capture 2026-06-14). The prior
+    // ReplayPlayback* / ReplayWillEnd names were the dead-handler bug (RL
+    // never emitted them, so these branches never matched). Bot/freeplay/private
+    // modes may not fire the replay events at all, so the onGoalScored fallback
+    // timers remain as the safety net for modes that drop them entirely.
+    else if (ev === "GoalReplayStart")   onGoalReplayStart();
+    else if (ev === "GoalReplayWillEnd") onGoalReplayWillEnd();
+    else if (ev === "GoalReplayEnd")     onGoalReplayEnd();
     else if (ev === "CountdownBegin") {
       // Debounce — RL sometimes fires CountdownBegin twice after pause/resume,
       // and the second would re-anchor the kickoff timer with a different
@@ -1885,7 +1891,7 @@ function connectGame(){
     }
     else if (ev === "StatfeedEvent") onStatfeed(data);
     else if (ev === "MatchCreated" || ev === "MatchInitialized") resetMatch();
-    // Golden-goal OT ends the match without firing ReplayPlaybackEnd, which
+    // Golden-goal OT ends the match without firing GoalReplayEnd, which
     // would leave the replay card pinned on screen. MatchEnded / PodiumStart
     // force a full clear of the goal sequence and the OT/kickoff takeovers.
     else if (ev === "MatchEnded" || ev === "PodiumStart") {
@@ -1911,6 +1917,13 @@ function connectGame(){
       firstKickoffPending = true;
       lastScoreA = 0;
       lastScoreB = 0;
+      // Reset the per-match tally maps here too. These normally clear in
+      // resetMatch (MatchCreated/MatchInitialized), but bot/private modes
+      // don't reliably emit those — without this, stale demo counts / goal
+      // dedup keys / statfeed dedup keys could carry into the next match.
+      demosByName = {};
+      lastGoalFireByName = {};
+      lastStatfeedFire = {};
       updateStateStrip();
       finishKickoffCountdown();
     }
