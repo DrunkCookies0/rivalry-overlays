@@ -314,26 +314,26 @@
      prototype (_prototype-stat-events.html). Tunables: --evtint (plate tint
      %, default 38%) and STAT_POP_HOLD_MS (hold, in JS). v0.6.5 fine-tunes. */
   .ptag.ev-goal{--evc:var(--gold);}  .ptag.ev-assist{--evc:#8e5fd9;}
-  .ptag.ev-save{--evc:#1abc9c;}       .ptag.ev-shot{--evc:#ff7601;}
+  .ptag.ev-save{--evc:#1abc9c;}       .ptag.ev-shot{--evc:#e84393;}  /* magenta, NOT team orange */
   .ptag.ev-demo{--evc:#e74c3c;}       .ptag.ev-pass{--evc:#2f7dff;}
   .ptag.ev-five{--evc:#2ECC71;}
   .ptag{transition:background .28s ease-out,box-shadow .28s ease-out;}
   /* Plate fill during the event. --evtint defaults to 100% (solid event
      color); mixing toward near-black (not the teal panel) keeps bright hues
-     true at lower %. Scoped to .col.left/.right so it out-specifies the
-     (0,4,0) .ptag.active team-color rule above (later in source -> wins), so
-     the fill shows even on the spectated player. */
-  .col.left  .ptag.statev,
-  .col.right .ptag.statev{
+     true at lower %. Applies ONLY to the non-focused player via :not(.active)
+     -- the focused (spectated) player keeps their team-color plate and just
+     shows the event icon in the boost slot. */
+  .col.left  .ptag.statev:not(.active),
+  .col.right .ptag.statev:not(.active){
     background:color-mix(in srgb,var(--evc) var(--evtint,100%),#0a0f14);
     box-shadow:0 8px 24px color-mix(in srgb,var(--evc) 30%,transparent);}
-  /* Bright event colors need DARK text + icon for legibility (white is hard to
-     read on them: gold 1.6, orange 2.6, teal 2.4, green 2.0 contrast). Dark
-     event colors (demo red, assist purple, pass blue) keep the default white. */
-  .ptag.statev.ev-goal .pname, .ptag.statev.ev-goal .pboost .num, .ptag.statev.ev-goal .pboost .slot,
-  .ptag.statev.ev-shot .pname, .ptag.statev.ev-shot .pboost .num, .ptag.statev.ev-shot .pboost .slot,
-  .ptag.statev.ev-save .pname, .ptag.statev.ev-save .pboost .num, .ptag.statev.ev-save .pboost .slot,
-  .ptag.statev.ev-five .pname, .ptag.statev.ev-five .pboost .num, .ptag.statev.ev-five .pboost .slot{
+  /* Bright event colors need DARK text + icon for legibility (white contrast:
+     gold 1.6, teal 2.4, green 2.0). Other event colors (demo red, shot magenta,
+     assist purple, pass blue) keep white. Skipped on the focused player, whose
+     plate stays the team color (so its text stays white like the active tag). */
+  .ptag.statev.ev-goal:not(.active) .pname, .ptag.statev.ev-goal:not(.active) .pboost .num, .ptag.statev.ev-goal:not(.active) .pboost .slot,
+  .ptag.statev.ev-save:not(.active) .pname, .ptag.statev.ev-save:not(.active) .pboost .num, .ptag.statev.ev-save:not(.active) .pboost .slot,
+  .ptag.statev.ev-five:not(.active) .pname, .ptag.statev.ev-five:not(.active) .pboost .num, .ptag.statev.ev-five:not(.active) .pboost .slot{
     color:#141414;}
   /* Boost number -> event icon, swapped in the boost-number slot. */
   .pboost .num{display:inline-block;
