@@ -346,6 +346,13 @@
   .ptag.statev.ev-goal::before{opacity:1;}
   .ptag.statev.ev-goal .pname{color:#141414;}
   .ptag.statev.ev-goal .pboost .slot{color:#141414;}
+  /* Gold also owns the boost bar: lock it to the same near-black, independent
+     of focus. Otherwise the fill flips white (.active) -> team color the moment
+     the spectator camera cuts off the scorer mid-replay, flickering under the
+     gold. Scoped to the column so it out-specifies the .active fill (0,5,0) and
+     team-color fill (0,4,0) rules -> (0,6,0). */
+  .col.left  .ptag.statev.ev-goal .fill,
+  .col.right .ptag.statev.ev-goal .fill{background:#141414;}
   /* Boost number -> event icon, swapped in the boost-number slot. */
   .pboost .num{display:inline-block;
     transition:opacity .2s ease-out,transform .26s cubic-bezier(.2,.8,.2,1);}
