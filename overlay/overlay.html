@@ -284,7 +284,8 @@
   .col.right .ptag .prow{flex-direction:row-reverse;text-align:right;}
   .ptag .pname{flex:1;font-family:var(--font-display);font-style:italic;
     font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;
-    text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.5px;}
+    text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.5px;
+    transition:color .3s ease-out;}  /* sync to the goal gold-plate fade */
   .ptag .pboost{font-family:var(--font-stat);font-size:18px;font-weight:700;
     min-width:40px;text-align:center;font-variant-numeric:tabular-nums;
     position:relative;}  /* anchors the in-slot event icon to the boost slot */
@@ -335,6 +336,16 @@
   .ptag.statev.ev-goal:not(.active) .pboost .slot,
   .ptag.statev.ev-save:not(.active) .pboost .slot,
   .ptag.statev.ev-five:not(.active) .pboost .slot{color:#141414;}
+  /* GOAL scorer = full celebratory SOLID-GOLD plate + black name/icon. A goal
+     is the marquee event, so it overrides BOTH the gradient-fade plate and the
+     focused-player "keep team plate" rule: the whole card goes solid gold,
+     painted on ::before (above the plate bg, below the name), shown even when
+     the scorer is the focused (.active) player. */
+  .col.left  .ptag.ev-goal::before,
+  .col.right .ptag.ev-goal::before{background:var(--gold);}
+  .ptag.statev.ev-goal::before{opacity:1;}
+  .ptag.statev.ev-goal .pname{color:#141414;}
+  .ptag.statev.ev-goal .pboost .slot{color:#141414;}
   /* Boost number -> event icon, swapped in the boost-number slot. */
   .pboost .num{display:inline-block;
     transition:opacity .2s ease-out,transform .26s cubic-bezier(.2,.8,.2,1);}
