@@ -318,23 +318,23 @@
   .ptag.ev-demo{--evc:#e74c3c;}       .ptag.ev-pass{--evc:#2f7dff;}
   .ptag.ev-five{--evc:#2ECC71;}
   .ptag{transition:background .28s ease-out,box-shadow .28s ease-out;}
-  /* Plate fill during the event. --evtint defaults to 100% (solid event
-     color); mixing toward near-black (not the teal panel) keeps bright hues
-     true at lower %. Applies ONLY to the non-focused player via :not(.active)
-     -- the focused (spectated) player keeps their team-color plate and just
-     shows the event icon in the boost slot. */
-  .col.left  .ptag.statev:not(.active),
-  .col.right .ptag.statev:not(.active){
-    background:color-mix(in srgb,var(--evc) var(--evtint,100%),#0a0f14);
-    box-shadow:0 8px 24px color-mix(in srgb,var(--evc) 30%,transparent);}
-  /* Bright event colors need DARK text + icon for legibility (white contrast:
-     gold 1.6, teal 2.4, green 2.0). Other event colors (demo red, shot magenta,
-     assist purple, pass blue) keep white. Skipped on the focused player, whose
-     plate stays the team color (so its text stays white like the active tag). */
-  .ptag.statev.ev-goal:not(.active) .pname, .ptag.statev.ev-goal:not(.active) .pboost .num, .ptag.statev.ev-goal:not(.active) .pboost .slot,
-  .ptag.statev.ev-save:not(.active) .pname, .ptag.statev.ev-save:not(.active) .pboost .num, .ptag.statev.ev-save:not(.active) .pboost .slot,
-  .ptag.statev.ev-five:not(.active) .pname, .ptag.statev.ev-five:not(.active) .pboost .num, .ptag.statev.ev-five:not(.active) .pboost .slot{
-    color:#141414;}
+  /* Plate treatment during the event = GRADIENT FADE: the event color is
+     strong at the icon (boost-slot) side and fades to the dark plate toward
+     the name side. Painted on a ::before overlay whose OPACITY fades in/out
+     (.3s ease) so it transitions smoothly both ways -- CSS can't transition
+     between gradients directly. Only on the NON-focused player (:not(.active));
+     the focused player keeps their team-color plate and just shows the icon. */
+  .ptag::before{content:"";position:absolute;inset:0;z-index:0;opacity:0;
+    pointer-events:none;transition:opacity .3s ease-out;}
+  .col.left  .ptag::before{background:linear-gradient(90deg,transparent 20%,var(--evc,transparent));}
+  .col.right .ptag::before{background:linear-gradient(90deg,var(--evc,transparent),transparent 80%);}
+  .ptag.statev:not(.active)::before{opacity:1;}
+  /* The icon sits at the strong-color end of the gradient, so bright event
+     colors (gold/teal/green) need a DARK icon for legibility. The name sits
+     over the dark end and stays white; other event colors keep a white icon. */
+  .ptag.statev.ev-goal:not(.active) .pboost .slot,
+  .ptag.statev.ev-save:not(.active) .pboost .slot,
+  .ptag.statev.ev-five:not(.active) .pboost .slot{color:#141414;}
   /* Boost number -> event icon, swapped in the boost-number slot. */
   .pboost .num{display:inline-block;
     transition:opacity .2s ease-out,transform .26s cubic-bezier(.2,.8,.2,1);}
