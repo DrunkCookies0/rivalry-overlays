@@ -286,7 +286,8 @@
     font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;
     text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.5px;}
   .ptag .pboost{font-family:var(--font-stat);font-size:18px;font-weight:700;
-    min-width:40px;text-align:center;font-variant-numeric:tabular-nums;}
+    min-width:40px;text-align:center;font-variant-numeric:tabular-nums;
+    position:relative;}  /* anchors the in-slot event icon to the boost slot */
   /* boost fill line along the bottom of the tag */
   .ptag .fill{position:absolute;left:0;bottom:0;height:4px;width:0;transition:width .12s linear;z-index:1;}
   .col.left .ptag .fill{background:var(--blue);}
@@ -317,14 +318,23 @@
   .ptag.ev-demo{--evc:#e74c3c;}       .ptag.ev-pass{--evc:#2f7dff;}
   .ptag.ev-five{--evc:#2ECC71;}
   .ptag{transition:background .28s ease-out,box-shadow .28s ease-out;}
-  /* Muted plate tint during the event. Scoped to .col.left/.right so it
-     out-specifies the (0,4,0) .ptag.active team-color rule above (equal
-     specificity, later in source -> wins), so the tint shows even on the
-     spectated player. */
+  /* Plate fill during the event. --evtint defaults to 100% (solid event
+     color); mixing toward near-black (not the teal panel) keeps bright hues
+     true at lower %. Scoped to .col.left/.right so it out-specifies the
+     (0,4,0) .ptag.active team-color rule above (later in source -> wins), so
+     the fill shows even on the spectated player. */
   .col.left  .ptag.statev,
   .col.right .ptag.statev{
-    background:color-mix(in srgb,var(--evc) var(--evtint,38%),var(--panel-solid));
-    box-shadow:0 8px 24px color-mix(in srgb,var(--evc) 26%,transparent);}
+    background:color-mix(in srgb,var(--evc) var(--evtint,100%),#0a0f14);
+    box-shadow:0 8px 24px color-mix(in srgb,var(--evc) 30%,transparent);}
+  /* Bright event colors need DARK text + icon for legibility (white is hard to
+     read on them: gold 1.6, orange 2.6, teal 2.4, green 2.0 contrast). Dark
+     event colors (demo red, assist purple, pass blue) keep the default white. */
+  .ptag.statev.ev-goal .pname, .ptag.statev.ev-goal .pboost .num, .ptag.statev.ev-goal .pboost .slot,
+  .ptag.statev.ev-shot .pname, .ptag.statev.ev-shot .pboost .num, .ptag.statev.ev-shot .pboost .slot,
+  .ptag.statev.ev-save .pname, .ptag.statev.ev-save .pboost .num, .ptag.statev.ev-save .pboost .slot,
+  .ptag.statev.ev-five .pname, .ptag.statev.ev-five .pboost .num, .ptag.statev.ev-five .pboost .slot{
+    color:#141414;}
   /* Boost number -> event icon, swapped in the boost-number slot. */
   .pboost .num{display:inline-block;
     transition:opacity .2s ease-out,transform .26s cubic-bezier(.2,.8,.2,1);}
