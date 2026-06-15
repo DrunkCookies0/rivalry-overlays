@@ -985,6 +985,18 @@ function onUpdateState(data){
     // pre-kickoff TimeSeconds=0 frames at match start (no regulation descent
     // observed yet) can't latch this and false-fire inferredOT.
     if (rawTime <= 2.0 && sawDescent) clockHitZero = true;
+    // OT flip at REGULATION END (deterministic). When the regulation clock
+    // reaches 0 with tied scores after a descent was observed, RL always goes
+    // to OT (no draws), so latch currentOT now -- BEFORE the OT CountdownBegin.
+    // This is what lets the state strip show OVERTIME for the whole OT kickoff
+    // instead of flashing KICKOFF then swapping. The ascending-frame hysteresis
+    // below stays as a fallback (e.g. mid-OT reconnect). If it somehow isn't OT,
+    // MatchEnded / PodiumStart reset currentOT=false.
+    if (clockHitZero && !currentOT && lastScoreA === lastScoreB){
+      inferredOT = true;
+      currentOT = true;
+      updateStateStrip();
+    }
     // Track direction. clockAscending gates the final10 widget directly so
     // we don't depend on a single threshold firing reliably under RL's
     // quantization. Also feeds the OT-inference ascending counter.
@@ -1288,6 +1300,69 @@ let kickoffTimers = [];
 // Set when fireKickoffGo runs; prevents the fallback timer and RoundStarted
 // from both showing GO! and producing a flicker. Cleared on finish.
 let kickoffGoShown = false;
+
+// WALL-CLOCK ANCHORED KICKOFF COUNTDOWN.
+// OBS browser sources (CEF) throttle setTimeout/setInterval to ~1Hz (worse
+// after minutes) when the source is off the active scene or OBS is minimized,
+// which made the chained-setTimeout 3-2-1-GO drop / bunch / arrive late. We
+// now stamp a start time + chosen delay at CountdownBegin and let an
+// un-throttled tick re-render the CORRECT digit for the actual elapsed wall
+// time every ~60ms. A missed/clamped tick self-heals: it shows the right
+// digit for the real elapsed time and jumps straight to GO! if behind.
+let kickoffStartMs = 0;        // performance.now() stamped at CountdownBegin
+let kickoffDelayMs = 0;        // chosen per-scenario lead-in for this kickoff
+let kickoffActive = false;     // true between start and finish (gates the tick)
+let kickoffLastDigit = null;   // last rendered digit/state, so we only re-render on change
+// Tick source. A Web Worker's timers are NOT throttled when the page is
+// backgrounded, so its 60ms ping keeps reaching the main thread (whose
+// handler runs even when the page's own timers are clamped). Built inline via
+// a Blob URL so this file stays self-contained. If Worker construction throws
+// (restricted env), we fall back to a main-thread setInterval — the render
+// reads wall-clock either way, so even a clamped ~1Hz fallback shows correct
+// digits (they only change at 1Hz anyway).
+let kickoffWorker = null;
+let kickoffFallbackTimer = null;
+function startKickoffTick(){
+  stopKickoffTick();
+  if (!kickoffWorker){
+    try {
+      kickoffWorker = new Worker(URL.createObjectURL(new Blob(
+        ["let i;onmessage=e=>{if(e.data==='start'){clearInterval(i);i=setInterval(()=>postMessage(0),60)}else{clearInterval(i)}}"],
+        {type:'text/javascript'})));
+      kickoffWorker.onmessage = kickoffTick;
+    } catch (err) {
+      kickoffWorker = null;   // restricted env — fall back to main-thread timer
+    }
+  }
+  if (kickoffWorker){
+    kickoffWorker.postMessage('start');
+  } else {
+    kickoffFallbackTimer = setInterval(kickoffTick, 60);
+  }
+}
+function stopKickoffTick(){
+  if (kickoffWorker) kickoffWorker.postMessage('stop');
+  if (kickoffFallbackTimer){ clearInterval(kickoffFallbackTimer); kickoffFallbackTimer = null; }
+}
+// Render the correct digit for the elapsed wall time, re-rendering only on a
+// change. Windows: [delay, delay+1000)->"3", [+1000,+2000)->"2",
+// [+2000,+3000)->"1", >= delay+3000 -> GO!. Before `delay` we hold (no digit
+// shown yet). GO! is idempotent via fireKickoffGo's kickoffGoShown guard.
+function kickoffTick(){
+  if (!kickoffActive) return;
+  const elapsed = performance.now() - kickoffStartMs;
+  if (elapsed < kickoffDelayMs) return;        // pre-roll: nothing shown yet
+  const since = elapsed - kickoffDelayMs;
+  if (since >= 3000){
+    if (kickoffLastDigit !== "GO"){ kickoffLastDigit = "GO"; fireKickoffGo(); }
+    return;
+  }
+  const digit = since >= 2000 ? "1" : since >= 1000 ? "2" : "3";
+  if (digit !== kickoffLastDigit){
+    kickoffLastDigit = digit;
+    showKickoffValue(digit, false);
+  }
+}
 function showKickoffValue(text, isGo){
   const el = $("kickoffCount");
   if (!el) return;
@@ -1300,55 +1375,51 @@ function showKickoffValue(text, isGo){
 function startKickoffCountdown(){
   finishKickoffCountdown();
   const postGoal = (performance.now() - lastGoalTime) < KICKOFF_POST_GOAL_WINDOW_MS;
-  // OT-kickoff detection at CountdownBegin — same gate as the
-  // fireKickoffGo OT preemptive flip, but evaluated here so we can pick
-  // the shorter OT delay (~4800ms ball-drop) instead of the admin-pause
-  // delay (~7770ms ball-drop). Requires regulation descent to have been
-  // observed (rules out match start), prior clock at ~0 (regulation just
-  // expired), teams tied (OT condition), and not the very first kickoff.
-  const otKickoff = !currentOT && sawDescent && prevTimeSeconds <= 2 &&
-                    lastScoreA === lastScoreB && !firstKickoffPending;
+  // Deterministic delay pick. currentOT is now reliable BEFORE the OT kickoff
+  // (regulation-buzzer flip in onUpdateState), so OT no longer races the old
+  // sawDescent/prevTimeSeconds/tied heuristic. Order: FIRST kickoff after
+  // MatchCreated, else OT (~4800ms ball-drop), else POST-GOAL (celebration
+  // covered spawn), else FRESH (admin pause/resume, ~7770ms ball-drop).
   const delay = firstKickoffPending ? KICKOFF_FIRST_DELAY_MS
-              : otKickoff            ? KICKOFF_OT_DELAY_MS
+              : currentOT            ? KICKOFF_OT_DELAY_MS
               : postGoal             ? KICKOFF_POSTGOAL_DELAY_MS
               :                        KICKOFF_FRESH_DELAY_MS;
   firstKickoffPending = false;
-  ["3", "2", "1"].forEach((text, i) => {
-    kickoffTimers.push(setTimeout(() => showKickoffValue(text, false),
-      delay + i * 1000));
-  });
-  // Fallback GO! in case RoundStarted never arrives (e.g., spectator API quirk).
-  kickoffTimers.push(setTimeout(fireKickoffGo, delay + 3000));
+  // Anchor to wall-clock and start the un-throttled tick. The tick renders the
+  // correct digit for the actual elapsed time (3 -> 2 -> 1 -> GO!), so a CEF
+  // timer clamp can't drop / bunch digits — a late tick self-heals to the
+  // right value and jumps to GO! if behind. GO! fires from the tick at
+  // delay+3000; RoundStarted no longer drives it.
+  kickoffStartMs = performance.now();
+  kickoffDelayMs = delay;
+  kickoffLastDigit = null;
+  kickoffActive = true;
+  startKickoffTick();
 }
-// Primary trigger: the delay+3000 fallback timer scheduled in
-// startKickoffCountdown — that's now the canonical GO! anchor because it
-// targets ball-drop, not RoundStarted (which RL fires ~4650ms BEFORE
-// ball-drop in admin-pause kickoffs and ~805ms BEFORE ball-drop in OT).
-// RoundStarted still calls this as a safety backstop in case the timer
-// gets cleared. Idempotent via kickoffGoShown so the two paths can't
+// GO! anchor. Driven by the wall-clock tick (kickoffTick) at delay+3000, which
+// targets ball-drop, not RoundStarted (which RL fires ~4650ms BEFORE ball-drop
+// in admin-pause kickoffs and ~805ms BEFORE ball-drop in OT). RoundStarted no
+// longer calls this. Idempotent via kickoffGoShown so a re-entrant tick can't
 // double-fire.
 function fireKickoffGo(){
   if (kickoffGoShown) return;
   kickoffGoShown = true;
+  kickoffLastDigit = "GO";
+  // The digit tick is done once GO! shows — stop it so it can't keep pinging.
+  // (currentOT is already true for OT kickoffs from the regulation-buzzer flip
+  // in onUpdateState, so no OT flip is needed here anymore.)
+  stopKickoffTick();
   kickoffTimers.forEach(clearTimeout);
   kickoffTimers = [];
-  // OT preemptive flip — was on RoundStarted pre-v0.5.11, moved here so
-  // OVERTIME latches at the GO! moment (ball-drop) instead of between
-  // "1" and "GO!". Same gate as the OT-kickoff delay heuristic above:
-  // requires regulation descent observed, prior clock at ~0, teams tied,
-  // and not the very first kickoff. Covers bot/private matches where
-  // Game.IsOT is never set so the 3-frame ascend hysteresis would
-  // otherwise leave the strip blank for ~600ms after GO!.
-  if (!currentOT && sawDescent && prevTimeSeconds <= 2 &&
-      lastScoreA === lastScoreB && !firstKickoffPending) {
-    inferredOT = true;
-    currentOT = true;
-    updateStateStrip();
-  }
   showKickoffValue("GO!", true);
+  // GO!-hold teardown is a single one-shot timer (not a sequence), so a CEF
+  // clamp only delays the teardown harmlessly.
   kickoffTimers.push(setTimeout(finishKickoffCountdown, KICKOFF_GO_HOLD_MS));
 }
 function finishKickoffCountdown(){
+  stopKickoffTick();
+  kickoffActive = false;
+  kickoffLastDigit = null;
   kickoffTimers.forEach(clearTimeout);
   kickoffTimers = [];
   kickoffGoShown = false;
@@ -1804,6 +1875,9 @@ function cssEscape(s){
 }
 
 function resetMatch(){
+  // Tear down any in-flight kickoff tick so a mid-kickoff match reset can't
+  // leak a running tick into the next match.
+  finishKickoffCountdown();
   demosByName = {};
   firstKickoffPending = true;
   // Clear per-match state that could bleed into the next match if matches
@@ -1840,7 +1914,7 @@ function connectGame(){
     // doesn't leave the banner / replay card / stinger pinned on screen
     // for the rest of the broadcast.
     clearGoalSequence();
-    finishKickoffCountdown();
+    finishKickoffCountdown();   // stops the kickoff tick + clears the anchor
     inCountdown = false;
     currentOT = false;
     // Reset OT detector so the reconnect doesn't re-fire OVERTIME based on
