@@ -274,14 +274,13 @@
   .col{position:fixed;top:18px;display:flex;flex-direction:column;gap:7px;width:250px;}
   .col.left{left:18px;}
   .col.right{right:18px;}
-  /* NOTE: overflow MUST stay visible. The .pops stat-event badges are absolute
-     children positioned OUTSIDE the tag (left/right: calc(100% + 8px)); an
-     overflow:hidden here clips every badge so none ever paint (they were
-     invisible through v0.6.2). The .fill bar is geometrically contained
-     (width <= 100%, 4px tall at the bottom), so it needs no clipping. */
+  /* .ptag overflow left visible (default). The v0.6.0-0.6.3 floating stat-event
+     badges lived OUTSIDE the tag and an overflow:hidden clipped them invisible;
+     v0.6.4's in-plate treatment (tint + in-slot icon + shimmer) stays within
+     the tag, so this no longer matters either way. The shimmer clips itself. */
   .ptag{position:relative;background:var(--panel);box-shadow:var(--shadow);
     padding:8px 12px 10px;}
-  .ptag .prow{display:flex;align-items:center;gap:10px;}
+  .ptag .prow{display:flex;align-items:center;gap:10px;position:relative;z-index:1;}
   .col.right .ptag .prow{flex-direction:row-reverse;text-align:right;}
   .ptag .pname{flex:1;font-family:var(--font-display);font-style:italic;
     font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;
@@ -289,7 +288,7 @@
   .ptag .pboost{font-family:var(--font-stat);font-size:18px;font-weight:700;
     min-width:40px;text-align:center;font-variant-numeric:tabular-nums;}
   /* boost fill line along the bottom of the tag */
-  .ptag .fill{position:absolute;left:0;bottom:0;height:4px;width:0;transition:width .12s linear;}
+  .ptag .fill{position:absolute;left:0;bottom:0;height:4px;width:0;transition:width .12s linear;z-index:1;}
   .col.left .ptag .fill{background:var(--blue);}
   .col.right .ptag .fill{background:var(--red);right:0;left:auto;}
   /* On the active tag the team color is the background, so a team-colored fill
@@ -307,48 +306,41 @@
   .col.right .ptag.active{background:var(--red);
     box-shadow:0 8px 24px rgba(255,118,1,.55);}
 
-  /* Stat-event pop badges — float to the inside of each player tag (right
-     side of left col, left side of right col), stack vertically when a
-     player picks up multiple events in quick succession, auto-dismiss. */
-  .ptag .pops{position:absolute;top:50%;transform:translateY(-50%);
-    display:flex;flex-direction:column;gap:4px;pointer-events:none;z-index:10;}
-  .col.left  .ptag .pops{left:calc(100% + 8px);align-items:flex-start;}
-  .col.right .ptag .pops{right:calc(100% + 8px);align-items:flex-end;}
-  /* Circular icon badge — inline SVG glyph centered, color-coded by the
-     event family. Sized so a stack of 2-3 events stays under the player
-     tag's vertical footprint; rapid 4+ events visibly stack overflow until
-     they auto-dismiss. Swap to brand SVG icons later by editing SVG_ICONS
-     (the path data rendered by spawnStatPop). */
-  .stat-pop{display:flex;align-items:center;justify-content:center;
-    width:30px;height:30px;border-radius:50%;
-    color:#fff;font-size:14px;line-height:1;
-    background:var(--bar);
-    box-shadow:0 4px 12px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.08);
-    opacity:0;transform:translateX(-12px) scale(.7);
-    transition:opacity .35s ease-out,transform .35s cubic-bezier(.34,1.56,.64,1);}
-  /* SVG path uses fill:currentColor so it inherits the badge's text color. */
-  .stat-pop svg{display:block;}
-  .col.right .ptag .stat-pop{transform:translateX(12px) scale(.7);}
-  .stat-pop.show{opacity:1;transform:translateX(0) scale(1);}
-  .stat-pop.fade{opacity:0;transform:translateX(0) scale(.85);
-    transition:opacity .30s ease-in,transform .30s ease-in;}
-  /* Color per event family — clearest possible distinction at a glance.
-     Subtypes (epic-save, hat-trick, aerial-goal, bicycle-goal, pool-shot)
-     share their parent family's color and differ only by SVG icon. */
-  .stat-pop.goal{background:var(--gold);color:#1a1206;
-    box-shadow:0 4px 14px rgba(241,196,15,.6),inset 0 0 0 1px rgba(0,0,0,.2);}
-  .stat-pop.assist{background:#8e5fd9;
-    box-shadow:0 4px 12px rgba(142,95,217,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
-  .stat-pop.save{background:#1abc9c;
-    box-shadow:0 4px 12px rgba(26,188,156,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
-  .stat-pop.shot{background:#ff7601;
-    box-shadow:0 4px 12px rgba(255,118,1,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
-  .stat-pop.demo{background:#e74c3c;
-    box-shadow:0 4px 12px rgba(231,76,60,.55),inset 0 0 0 1px rgba(255,255,255,.12);}
-  .stat-pop.pass{background:#2f7dff;
-    box-shadow:0 4px 12px rgba(47,125,255,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
-  .stat-pop.five{background:#2ECC71;
-    box-shadow:0 4px 12px rgba(46,204,113,.5),inset 0 0 0 1px rgba(255,255,255,.12);}
+  /* ===================== STAT-EVENT TREATMENT (Option B, v0.6.4) ============
+     On a stat event the player's nameplate gets a MUTED tint of the event-
+     family color, the boost number is replaced by the event icon in-slot,
+     and a single subtle shimmer sweeps the plate. Mirrors the chosen
+     prototype (_prototype-stat-events.html). Tunables: --evtint (plate tint
+     %, default 38%) and STAT_POP_HOLD_MS (hold, in JS). v0.6.5 fine-tunes. */
+  .ptag.ev-goal{--evc:var(--gold);}  .ptag.ev-assist{--evc:#8e5fd9;}
+  .ptag.ev-save{--evc:#1abc9c;}       .ptag.ev-shot{--evc:#ff7601;}
+  .ptag.ev-demo{--evc:#e74c3c;}       .ptag.ev-pass{--evc:#2f7dff;}
+  .ptag.ev-five{--evc:#2ECC71;}
+  .ptag{transition:background .28s ease-out,box-shadow .28s ease-out;}
+  /* Muted plate tint during the event. Scoped to .col.left/.right so it
+     out-specifies the (0,4,0) .ptag.active team-color rule above (equal
+     specificity, later in source -> wins), so the tint shows even on the
+     spectated player. */
+  .col.left  .ptag.statev,
+  .col.right .ptag.statev{
+    background:color-mix(in srgb,var(--evc) var(--evtint,38%),var(--panel-solid));
+    box-shadow:0 8px 24px color-mix(in srgb,var(--evc) 26%,transparent);}
+  /* Boost number -> event icon, swapped in the boost-number slot. */
+  .pboost .num{display:inline-block;
+    transition:opacity .2s ease-out,transform .26s cubic-bezier(.2,.8,.2,1);}
+  .pboost.statev .num{opacity:0;transform:scale(.7);}
+  .pboost .slot{position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;color:#fff;opacity:0;transform:scale(.55);
+    transition:opacity .22s ease-out,transform .28s cubic-bezier(.2,.8,.2,1);}
+  .pboost.statev .slot{opacity:1;transform:scale(1);}
+  .pboost .slot svg{width:17px;height:17px;display:block;}
+  /* Subtle one-pass shimmer across the plate (below name/boost via z-index;
+     .prow + .fill are lifted to z-index:1). */
+  .ptag .shimmer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+  .ptag .shimmer::after{content:"";position:absolute;inset:0;transform:translateX(-130%);
+    background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.18) 50%,transparent 58%);}
+  .ptag.statev .shimmer::after{animation:statShine .8s ease-out .1s 1;}
+  @keyframes statShine{to{transform:translateX(130%);}}
 
   /* ===================== BOTTOM STATFEED BAR ====================== */
   /* While the goal sequence is in flight (banner → replay → card → stinger
@@ -1062,7 +1054,7 @@ function renderBoost(col, players, cls){
     players.forEach(() => {
       const t = document.createElement("div");
       t.className = "ptag";
-      t.innerHTML = `<div class="prow"><span class="pname"></span><span class="pboost nums"></span></div><div class="fill"></div><div class="pops"></div>`;
+      t.innerHTML = `<span class="shimmer"></span><div class="prow"><span class="pname"></span><span class="pboost nums"><span class="num"></span><span class="slot"></span></span></div><div class="fill"></div>`;
       col.appendChild(t);
     });
   }
@@ -1080,7 +1072,7 @@ function renderBoost(col, players, cls){
     // first value lands (brief, since boost changes constantly in play).
     const shownBoost = hasBoost ? boost : 0;
     tag.querySelector(".pname").textContent = p.Name || "";
-    tag.querySelector(".pboost").textContent = shownBoost;
+    tag.querySelector(".pboost .num").textContent = shownBoost;
     tag.querySelector(".fill").style.width = shownBoost + "%";
     tag.dataset.name = p.Name || "";
   });
@@ -1756,39 +1748,42 @@ function onStatfeed(data){
   }
 }
 
-// Add a transient circular icon badge into the matching player's .ptag.
-// Stacks vertically if multiple events land in quick succession. Holds ~3s
-// then fades; per-pop self-cleanup removes the node after the fade.
-const STAT_POP_HOLD_MS = 3000;
+// Stat-event treatment (Option B, v0.6.4): muted plate tint + boost number
+// replaced by the event icon in-slot + a subtle one-pass shimmer. Mirrors
+// the chosen prototype. Re-firing within the hold crossfades to the new icon
+// and restarts the tint/shimmer. Hold tunable here (v0.6.5).
+const STAT_POP_HOLD_MS = 2000;
+const EV_FAMILIES = ["ev-goal","ev-assist","ev-save","ev-shot","ev-demo","ev-pass","ev-five"];
 function spawnStatPop(playerName, cls, iconKey){
   const tag = document.querySelector('.ptag[data-name="' + cssEscape(playerName) + '"]');
   if (!tag) return;
-  const host = tag.querySelector(".pops");
-  if (!host) return;
-  const pop = document.createElement("div");
-  pop.className = "stat-pop " + cls;
-  // Build the badge icon as inline SVG from SVG_ICONS (offline-safe; no CDN).
+  const pb = tag.querySelector(".pboost");
+  const slot = tag.querySelector(".pboost .slot");
+  if (!pb || !slot) return;
+  // Put the event icon in the boost-number slot (inline SVG; offline-safe).
   const def = SVG_ICONS[iconKey];
+  slot.innerHTML = "";
   if (def) {
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", def.viewBox);
-    svg.setAttribute("width", "16");
-    svg.setAttribute("height", "16");
     svg.setAttribute("aria-hidden", "true");
     const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
     p.setAttribute("d", def.path);
     p.setAttribute("fill", "currentColor");
     svg.appendChild(p);
-    pop.appendChild(svg);
+    slot.appendChild(svg);
   }
-  host.appendChild(pop);
-  // Force reflow so the show transition runs from the initial state.
-  void pop.offsetWidth;
-  pop.classList.add("show");
-  setTimeout(() => {
-    pop.classList.remove("show");
-    pop.classList.add("fade");
-    setTimeout(() => pop.remove(), 320);
+  // Event-family color drives the muted plate tint via --evc.
+  tag.classList.remove(...EV_FAMILIES);
+  tag.classList.add("ev-" + cls);
+  // Restart cleanly so a rapid re-fire replays the shimmer + transitions.
+  tag.classList.remove("statev"); pb.classList.remove("statev");
+  void tag.offsetWidth;
+  tag.classList.add("statev"); pb.classList.add("statev");
+  clearTimeout(tag._statT);
+  tag._statT = setTimeout(() => {
+    tag.classList.remove("statev");
+    pb.classList.remove("statev");
   }, STAT_POP_HOLD_MS);
 }
 // Minimal CSS.escape polyfill for the rare case it's not present in the
