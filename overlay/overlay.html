@@ -787,6 +787,12 @@ const OT_ASCEND_HYSTERESIS = 3;
 // RL freezes TimeSeconds at the goal moment (e.g., goal at clock 0:07 would
 // otherwise keep "7" pinned through the entire goal sequence).
 let goalSequenceActive = false;
+// The scorer's side tag holding the persistent GOLD treatment. The goal gold
+// rides the goal-sequence lifecycle (set in onGoalScored, cleared in
+// clearGoalSequence) instead of the generic STAT_POP_HOLD_MS timer, so it
+// holds through the banner + replay and clears exactly when the sequence ends
+// (kickoff). clearGoalGold() is the single teardown.
+let goalGoldTag = null;
 // Last GoalScored timestamp — used to pick the kickoff countdown delay
 // (post-goal kickoffs have less spawn lead-in than pause/restart kickoffs).
 let lastGoalTime = 0;
@@ -1549,7 +1555,12 @@ function onGoalScored(data){
   lastGoalFireByName[scorer] = now;
   lastGoalTime = now;
   lastGoalSpeed = Number(data.GoalSpeed) || 0;
-  spawnStatPop(scorer, "goal", "futbol");
+  // The scorer's card goes full gold and HOLDS through the whole goal sequence
+  // (banner + replay), not the generic 2s stat-pop timer — cleared in
+  // clearGoalSequence when the next kickoff begins. Clear any prior gold first
+  // (defensive: a rare back-to-back goal by a different player).
+  clearGoalGold();
+  goalGoldTag = spawnStatPop(scorer, "goal", "futbol", true);
   // Cancel any in-flight pending banner+flash from a previous goal so a
   // rapid back-to-back doesn't double-pop.
   clearTimeout(goalBannerShowTimer);
@@ -1635,7 +1646,19 @@ function onGoalReplayEnd(){
   clearTimeout(stingerShowTimer);
   playStinger();
 }
+// Remove the scorer's persistent gold treatment. Safe to call when no gold is
+// active. Single teardown for goalGoldTag, called from clearGoalSequence (all
+// the kickoff / disconnect / match-end paths route through it) and resetMatch.
+function clearGoalGold(){
+  if (!goalGoldTag) return;
+  goalGoldTag.classList.remove("statev");
+  const gpb = goalGoldTag.querySelector(".pboost");
+  if (gpb) gpb.classList.remove("statev");
+  goalGoldTag = null;
+}
+
 function clearGoalSequence(){
+  clearGoalGold();
   // Cancel every in-flight timer that drives a piece of the goal sequence so
   // a match boundary / disconnect / next goal can't leave any element stuck
   // on screen. NOTE: deliberately does NOT touch the stinger's .run class or
@@ -1846,9 +1869,12 @@ function onStatfeed(data){
 // and restarts the tint/shimmer. Hold tunable here (v0.6.5).
 const STAT_POP_HOLD_MS = 2000;
 const EV_FAMILIES = ["ev-goal","ev-assist","ev-save","ev-shot","ev-demo","ev-pass","ev-five"];
-function spawnStatPop(playerName, cls, iconKey){
+// persist=true skips the auto-clear timer; the caller owns teardown (used for
+// the goal gold, which rides the goal-sequence lifecycle). Returns the tag so
+// the caller can track it.
+function spawnStatPop(playerName, cls, iconKey, persist){
   const tag = document.querySelector('.ptag[data-name="' + cssEscape(playerName) + '"]');
-  if (!tag) return;
+  if (!tag) return null;
   const pb = tag.querySelector(".pboost");
   const slot = tag.querySelector(".pboost .slot");
   if (!pb || !slot) return;
@@ -1873,10 +1899,14 @@ function spawnStatPop(playerName, cls, iconKey){
   void tag.offsetWidth;
   tag.classList.add("statev"); pb.classList.add("statev");
   clearTimeout(tag._statT);
-  tag._statT = setTimeout(() => {
-    tag.classList.remove("statev");
-    pb.classList.remove("statev");
-  }, STAT_POP_HOLD_MS);
+  tag._statT = null;
+  if (!persist) {
+    tag._statT = setTimeout(() => {
+      tag.classList.remove("statev");
+      pb.classList.remove("statev");
+    }, STAT_POP_HOLD_MS);
+  }
+  return tag;
 }
 // Minimal CSS.escape polyfill for the rare case it's not present in the
 // Electron build's renderer; player names can contain quotes/brackets.
@@ -1891,6 +1921,7 @@ function resetMatch(){
   finishKickoffCountdown();
   demosByName = {};
   firstKickoffPending = true;
+  clearGoalGold();
   // Clear per-match state that could bleed into the next match if matches
   // start back-to-back within the assist/goal-dedup windows.
   lastAssist = { player: null, time: 0 };
