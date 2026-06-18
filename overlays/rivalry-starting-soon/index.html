@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RIVALRY — Starting Soon</title>
+<link rel="stylesheet" href="../shared/rivalry-theme.css" />
+<style>
+/* Fill the OBS Browser Source viewport; rivalry-fit.js scales the 1920x1080 stage into it. */
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+.scene-root[data-scene="starting-soon"]{position:absolute;inset:0;overflow:hidden;font-family:var(--rv-font-body);color:var(--rv-ink);background:var(--rv-jet-black);}
+.scene-root[data-scene="starting-soon"] .ss-bg{position:absolute;inset:0;background:radial-gradient(120% 90% at 18% 12%,var(--rv-surface-2) 0%,var(--rv-yale-blue) 34%,var(--rv-jet-black) 78%,#0c1f29 100%);}
+.scene-root[data-scene="starting-soon"] .ss-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(47,125,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(47,125,255,.06) 1px,transparent 1px);background-size:44px 44px;opacity:.7;-webkit-mask-image:radial-gradient(120% 100% at 50% 40%,#000 55%,transparent 100%);mask-image:radial-gradient(120% 100% at 50% 40%,#000 55%,transparent 100%);}
+.scene-root[data-scene="starting-soon"] .ss-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 90px,rgba(241,238,238,.04) 90px 92px);animation:ssDrift 18s linear infinite;}
+@keyframes ssDrift{from{transform:translateX(0);}to{transform:translateX(92px);}}
+.scene-root[data-scene="starting-soon"] .ss-glowA{position:absolute;left:-6%;bottom:4%;width:760px;height:760px;border-radius:50%;background:radial-gradient(circle,rgba(47,125,255,.34),transparent 62%);filter:blur(8px);}
+.scene-root[data-scene="starting-soon"] .ss-glowB{position:absolute;right:-8%;top:0%;width:720px;height:720px;border-radius:50%;background:radial-gradient(circle,rgba(255,118,1,.28),transparent 62%);filter:blur(8px);}
+.scene-root[data-scene="starting-soon"] .ss-slab{position:absolute;top:-12%;height:124%;width:360px;transform:skewX(-12deg);opacity:.5;filter:blur(.5px);}
+.scene-root[data-scene="starting-soon"] .ss-slab-a{left:-150px;background:linear-gradient(180deg,rgba(47,125,255,.30),rgba(47,125,255,0));}
+.scene-root[data-scene="starting-soon"] .ss-slab-b{right:-150px;background:linear-gradient(180deg,rgba(255,118,1,.26),rgba(255,118,1,0));}
+.scene-root[data-scene="starting-soon"] .ss-frame{position:absolute;inset:48px;display:flex;flex-direction:column;}
+.scene-root[data-scene="starting-soon"] .ss-top{display:flex;align-items:center;justify-content:space-between;}
+.scene-root[data-scene="starting-soon"] .ss-brand{display:flex;align-items:center;gap:20px;}
+.scene-root[data-scene="starting-soon"] .ss-mark{width:78px;height:53px;background:var(--rv-white-smoke);-webkit-mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;filter:drop-shadow(0 0 12px rgba(47,125,255,.5));}
+.scene-root[data-scene="starting-soon"] .ss-brandtxt{display:flex;flex-direction:column;gap:4px;}
+.scene-root[data-scene="starting-soon"] .ss-league{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:32px;letter-spacing:.14em;line-height:1;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,.6);}
+.scene-root[data-scene="starting-soon"] .ss-event{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:17px;letter-spacing:.22em;text-transform:uppercase;color:var(--rv-jet-black);background:var(--rv-gold);padding:5px 16px;align-self:flex-start;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));}
+.scene-root[data-scene="starting-soon"] .ss-round{font-family:var(--rv-font-stat);font-weight:700;font-size:15px;letter-spacing:.20em;text-transform:uppercase;color:var(--rv-muted);padding:12px 22px;background:rgba(0,0,0,.42);box-shadow:inset 0 0 0 1px rgba(241,238,238,.12);}
+.scene-root[data-scene="starting-soon"] .ss-hero{margin-top:40px;}
+.scene-root[data-scene="starting-soon"] .ss-eyebrow{display:block;font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:24px;letter-spacing:.42em;text-transform:uppercase;color:var(--rv-gold);text-indent:.42em;margin-bottom:8px;animation:ssFadeUp .6s var(--rv-ease-wipe) both;}
+.scene-root[data-scene="starting-soon"] .ss-title{margin:0;font-family:var(--rv-font-display);font-style:italic;font-weight:800;line-height:.88;text-transform:uppercase;display:flex;gap:30px;align-items:baseline;}
+.scene-root[data-scene="starting-soon"] .ss-title .ss-w1{font-size:150px;color:var(--rv-white-smoke);text-shadow:0 10px 34px rgba(0,0,0,.7),0 2px 0 rgba(0,0,0,.5);animation:ssIn .7s var(--rv-ease-bounce) both;}
+.scene-root[data-scene="starting-soon"] .ss-title .ss-w2{font-style:italic;font-size:150px;color:var(--rv-gold);text-shadow:0 0 38px rgba(241,196,15,.55),0 10px 34px rgba(0,0,0,.7);animation:ssIn .7s .08s var(--rv-ease-bounce) both,ss-glow 3.2s 1s ease-in-out infinite;}
+@keyframes ssIn{from{opacity:0;transform:translateX(-40px) skewX(-8deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
+@keyframes ssFadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes ss-glow{0%,100%{text-shadow:0 0 30px rgba(241,196,15,.45),0 10px 34px rgba(0,0,0,.7);}50%{text-shadow:0 0 50px rgba(255,220,90,.8),0 10px 34px rgba(0,0,0,.7);}}
+.scene-root[data-scene="starting-soon"] .ss-underbar{display:block;margin-top:20px;width:560px;height:8px;background:linear-gradient(90deg,var(--rv-blue),var(--rv-teal) 60%,var(--rv-gold));transform:skewX(-12deg);transform-origin:left;box-shadow:0 0 22px rgba(47,125,255,.6);animation:ssWipe .8s .2s var(--rv-ease-wipe) both;}
+@keyframes ssWipe{from{transform:skewX(-12deg) scaleX(0);}to{transform:skewX(-12deg) scaleX(1);}}
+.scene-root[data-scene="starting-soon"] .ss-match{margin-top:auto;margin-bottom:30px;display:flex;align-items:center;justify-content:space-between;gap:24px;}
+.scene-root[data-scene="starting-soon"] .ss-team{display:flex;align-items:center;gap:28px;flex:1 1 0;animation:ssFadeUp .7s .3s var(--rv-ease-wipe) both;}
+.scene-root[data-scene="starting-soon"] .ss-team-b{flex-direction:row-reverse;text-align:right;animation-delay:.38s;}
+.scene-root[data-scene="starting-soon"] .ss-logo{position:relative;width:132px;height:132px;flex:0 0 auto;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:var(--rv-surface-1);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));}
+.scene-root[data-scene="starting-soon"] .ss-team-a .ss-logo{box-shadow:inset 0 0 0 3px rgba(47,125,255,.85),0 0 30px rgba(47,125,255,.4);}
+.scene-root[data-scene="starting-soon"] .ss-team-b .ss-logo{box-shadow:inset 0 0 0 3px rgba(255,118,1,.85),0 0 30px rgba(255,118,1,.4);}
+.scene-root[data-scene="starting-soon"] .ss-mono{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:72px;text-shadow:0 4px 12px rgba(0,0,0,.6);}
+.scene-root[data-scene="starting-soon"] .ss-team-a .ss-mono{color:var(--rv-white-smoke);background:linear-gradient(150deg,var(--rv-surface-2),var(--rv-jet-black));}
+.scene-root[data-scene="starting-soon"] .ss-team-b .ss-mono{color:var(--rv-white-smoke);background:linear-gradient(150deg,#2a2418,var(--rv-jet-black));}
+.scene-root[data-scene="starting-soon"] .ss-team-meta{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.scene-root[data-scene="starting-soon"] .ss-seed{font-family:var(--rv-font-stat);font-weight:700;font-size:24px;color:var(--rv-gold);letter-spacing:.04em;}
+.scene-root[data-scene="starting-soon"] .ss-name{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:56px;line-height:.96;text-transform:uppercase;color:var(--rv-white-smoke);text-shadow:0 4px 14px rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.scene-root[data-scene="starting-soon"] .ss-sub{display:flex;align-items:center;gap:14px;}
+.scene-root[data-scene="starting-soon"] .ss-team-b .ss-sub{justify-content:flex-end;}
+.scene-root[data-scene="starting-soon"] .ss-tag{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.16em;padding:4px 12px;background:rgba(0,0,0,.42);color:var(--rv-ink);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));}
+.scene-root[data-scene="starting-soon"] .ss-rec{font-family:var(--rv-font-stat);font-weight:700;font-size:22px;color:var(--rv-muted);font-style:normal;}
+.scene-root[data-scene="starting-soon"] .ss-vs{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:12px;padding:0 12px;}
+.scene-root[data-scene="starting-soon"] .ss-vs-mark{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:80px;line-height:1;color:var(--rv-white-smoke);text-shadow:0 0 28px rgba(241,196,15,.4),0 8px 24px rgba(0,0,0,.7);}
+.scene-root[data-scene="starting-soon"] .ss-bo{font-family:var(--rv-font-stat);font-weight:700;font-size:15px;letter-spacing:.18em;color:var(--rv-jet-black);background:var(--rv-gold);padding:6px 16px;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));white-space:nowrap;}
+.scene-root[data-scene="starting-soon"] .ss-bo b{font-family:var(--rv-font-stat);}
+.scene-root[data-scene="starting-soon"] .ss-foot{display:flex;align-items:center;justify-content:center;gap:18px;}
+.scene-root[data-scene="starting-soon"] .ss-pulse{width:15px;height:15px;border-radius:50%;background:var(--rv-gold);box-shadow:0 0 16px rgba(241,196,15,.9);animation:ss-pulse 1.6s ease-in-out infinite;}
+@keyframes ss-pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.4;transform:scale(.7);}}
+.scene-root[data-scene="starting-soon"] .ss-foot-label{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:22px;letter-spacing:.28em;text-transform:uppercase;color:var(--rv-muted);}
+.scene-root[data-scene="starting-soon"] .ss-time{font-family:var(--rv-font-stat);font-weight:700;font-size:30px;color:var(--rv-white-smoke);letter-spacing:.04em;}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="starting-soon">
+<div class="ss-bg"></div>
+<div class="ss-grid"></div>
+<div class="ss-lines"></div>
+<div class="ss-glowA"></div>
+<div class="ss-glowB"></div>
+<div class="ss-slab ss-slab-a"></div>
+<div class="ss-slab ss-slab-b"></div>
+
+<div class="ss-frame">
+  <header class="ss-top">
+    <div class="ss-brand">
+      <div class="ss-mark"></div>
+      <div class="ss-brandtxt">
+        <span class="ss-league" data-field="brand.leagueName">RIVALRY</span>
+        <span class="ss-event" data-field="eventTitle">RIVALRY SEASON 1</span>
+      </div>
+    </div>
+    <span class="ss-round" data-field="round">UPPER BRACKET • ROUND 1</span>
+  </header>
+
+  <div class="ss-hero">
+    <span class="ss-eyebrow">THE BROADCAST BEGINS</span>
+    <h1 class="ss-title"><span class="ss-w1">STARTING</span><em class="ss-w2">SOON</em></h1>
+    <span class="ss-underbar"></span>
+  </div>
+
+  <section class="ss-match">
+    <div class="ss-team ss-team-a">
+      <div class="ss-logo" data-bg="teamA.logo"><span class="ss-mono" data-mono="teamA.name">G</span></div>
+      <div class="ss-team-meta">
+        <span class="ss-seed" data-field="teamA.seed">#1</span>
+        <span class="ss-name" data-field="teamA.name">GUARDIANS</span>
+        <span class="ss-sub"><b class="ss-tag" data-field="teamA.tag">NA</b><i class="ss-rec" data-field="teamA.record">12-3</i></span>
+      </div>
+    </div>
+
+    <div class="ss-vs">
+      <span class="ss-vs-mark">VS</span>
+      <span class="ss-bo">BEST OF <b data-field="bestOf">5</b></span>
+    </div>
+
+    <div class="ss-team ss-team-b">
+      <div class="ss-team-meta">
+        <span class="ss-seed" data-field="teamB.seed">#4</span>
+        <span class="ss-name" data-field="teamB.name">SENTINELS</span>
+        <span class="ss-sub"><i class="ss-rec" data-field="teamB.record">9-6</i><b class="ss-tag" data-field="teamB.tag">NA</b></span>
+      </div>
+      <div class="ss-logo" data-bg="teamB.logo"><span class="ss-mono" data-mono="teamB.name">S</span></div>
+    </div>
+  </section>
+
+  <footer class="ss-foot">
+    <span class="ss-pulse"></span>
+    <span class="ss-foot-label">FIRST MATCH</span>
+    <span class="ss-time" data-field="startTime">8:00 PM ET</span>
+  </footer>
+</div>
+    </div>
+  </div>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+    // Control-only scene: subscribe to the control bus (auto-mocks on file://).
+    var rl = RivalryOverlay.connect({ game: false });
+    RivalryBind(document.querySelector('.scene-root'), rl);
+    // Resolution-independent: scale the 1920x1080 design to fill any source size.
+    // Append ?fit=cover to the source URL to fill+crop instead of letterbox on non-16:9.
+    RivalryFit('.rv-stage');
+  </script>
+</body>
+</html>

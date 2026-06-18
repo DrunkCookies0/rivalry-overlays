@@ -1,0 +1,92 @@
+/* =============================================================================
+ * RIVALRY Overlay Theme  v1
+ * -----------------------------------------------------------------------------
+ * Shared design tokens extracted from the live gameplay overlay so every scene
+ * (Starting Soon, Match Preview, etc.) inherits one visual identity. Import this
+ * in an overlay, then build on the --rv-* variables and .rv-* utilities.
+ *
+ *   <link rel="stylesheet" href="../shared/rivalry-theme.css" />
+ *
+ * Source of truth is overlay/overlay.html's :root; keep these in sync if the
+ * brand palette moves.
+ * ===========================================================================*/
+
+@import url("https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,600;0,700;0,800;1,600;1,700;1,800&family=Roboto:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap");
+
+:root {
+  /* --- brand palette (synced with the league brand) --- */
+  --rv-yale-blue: #20496f;
+  --rv-jet-black: #132e3b;
+  --rv-white-smoke: #f1eeee;
+  --rv-surface-1: #1a3d4d;
+  --rv-surface-2: #20496f;
+  --rv-gold: #f1c40f;
+  --rv-teal: #1abc9c;
+  --rv-green: #2ecc71;
+  --rv-red: #e74c3c;
+
+  /* --- team accents (overridden live by control panel) --- */
+  --rv-blue: #2f7dff;   /* team A */
+  --rv-orange: #ff7601; /* team B */
+
+  /* --- text --- */
+  --rv-ink: var(--rv-white-smoke);
+  --rv-muted: rgba(241, 238, 238, 0.65);
+
+  /* --- surfaces --- */
+  --rv-panel: rgba(19, 46, 59, 0.94);
+  --rv-panel-solid: #132e3b;
+  --rv-bar: #1a3d4d;
+  --rv-seg-off: #475a6e;
+
+  /* --- elevation / fx --- */
+  --rv-shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
+  --rv-shadow-soft: 0 6px 20px rgba(0, 0, 0, 0.4);
+  --rv-cut: 18px; /* "Rivalry Cut" diagonal corner size */
+
+  /* --- type --- */
+  --rv-font-display: "Exo 2", "Segoe UI", system-ui, sans-serif; /* italic 700 for headlines */
+  --rv-font-stat: "Space Mono", "SF Mono", Consolas, monospace;  /* numbers, clocks, scores */
+  --rv-font-body: "Roboto", "Segoe UI", system-ui, sans-serif;
+
+  /* --- motion --- */
+  --rv-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1); /* punch-in (goals, kickoff) */
+  --rv-ease-wipe: cubic-bezier(0.6, 0, 0.2, 1);        /* stinger sweep */
+  --rv-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* --- stage: every overlay is a fixed, transparent 1920x1080 canvas --- */
+.rv-stage {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: transparent;
+  color: var(--rv-ink);
+  font-family: var(--rv-font-body);
+}
+
+/* --- type utilities --- */
+.rv-display { font-family: var(--rv-font-display); font-style: italic; font-weight: 800; text-transform: uppercase; }
+.rv-stat { font-family: var(--rv-font-stat); font-variant-numeric: tabular-nums; }
+.rv-label { font-family: var(--rv-font-display); font-style: italic; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: var(--rv-muted); }
+
+/* --- the signature diagonal-corner clip ("Rivalry Cut") --- */
+.rv-cut {
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--rv-cut)) 0,
+    100% var(--rv-cut),
+    100% 100%,
+    var(--rv-cut) 100%,
+    0 calc(100% - var(--rv-cut))
+  );
+}
+
+/* --- team color helpers: set --team to --rv-blue / --rv-orange on a wrapper --- */
+.rv-teamA { --team: var(--rv-blue); }
+.rv-teamB { --team: var(--rv-orange); }
+
+/* --- a panel surface matching the scorebar language --- */
+.rv-panel { background: var(--rv-panel); box-shadow: var(--rv-shadow); }
+.rv-panel-grad { background: linear-gradient(180deg, var(--rv-surface-1), var(--rv-jet-black)); }

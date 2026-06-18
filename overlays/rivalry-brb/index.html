@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RIVALRY — Be Right Back</title>
+<link rel="stylesheet" href="../shared/rivalry-theme.css" />
+<style>
+/* Fill the OBS Browser Source viewport; rivalry-fit.js scales the 1920x1080 stage into it. */
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+.scene-root[data-scene="brb"]{position:absolute;inset:0;overflow:hidden;font-family:var(--rv-font-body);color:var(--rv-ink);background:var(--rv-jet-black);}
+.scene-root[data-scene="brb"] .brb-bg{position:absolute;inset:0;background:radial-gradient(110% 100% at 50% 38%,var(--rv-yale-blue) 0%,var(--rv-jet-black) 62%,#0a1a23 100%);}
+.scene-root[data-scene="brb"] .brb-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(47,125,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(47,125,255,.05) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(90% 90% at 50% 50%,#000 50%,transparent 100%);mask-image:radial-gradient(90% 90% at 50% 50%,#000 50%,transparent 100%);}
+.scene-root[data-scene="brb"] .brb-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 120px,rgba(241,238,238,.03) 120px 122px);animation:brbDrift 24s linear infinite;}
+@keyframes brbDrift{from{transform:translateX(0);}to{transform:translateX(122px);}}
+.scene-root[data-scene="brb"] .brb-sweep{position:absolute;top:0;bottom:0;width:46%;left:-60%;background:linear-gradient(100deg,transparent,rgba(47,125,255,.14) 45%,rgba(26,188,156,.10) 55%,transparent);transform:skewX(-12deg);animation:brbSweep 9s var(--rv-ease-wipe) infinite;}
+@keyframes brbSweep{0%{left:-60%;}55%{left:120%;}100%{left:120%;}}
+.scene-root[data-scene="brb"] .brb-frame{position:absolute;inset:48px;display:flex;flex-direction:column;}
+.scene-root[data-scene="brb"] .brb-top{display:flex;align-items:center;justify-content:center;}
+.scene-root[data-scene="brb"] .brb-brand{display:flex;align-items:center;gap:18px;}
+.scene-root[data-scene="brb"] .brb-mark{width:66px;height:45px;background:var(--rv-white-smoke);-webkit-mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;filter:drop-shadow(0 0 10px rgba(47,125,255,.4));}
+.scene-root[data-scene="brb"] .brb-brandtxt{display:flex;flex-direction:column;gap:3px;align-items:center;}
+.scene-root[data-scene="brb"] .brb-league{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:26px;letter-spacing:.16em;text-transform:uppercase;}
+.scene-root[data-scene="brb"] .brb-event{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:14px;letter-spacing:.22em;text-transform:uppercase;color:var(--rv-gold);}
+.scene-root[data-scene="brb"] .brb-center{margin:auto;text-align:center;display:flex;flex-direction:column;align-items:center;}
+.scene-root[data-scene="brb"] .brb-eyebrow{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:24px;letter-spacing:.46em;text-transform:uppercase;color:var(--rv-muted);text-indent:.46em;margin-bottom:14px;}
+.scene-root[data-scene="brb"] .brb-title{margin:0;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:128px;line-height:.88;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;text-shadow:0 10px 36px rgba(0,0,0,.6);color:var(--rv-white-smoke);}
+.scene-root[data-scene="brb"] .brb-title span{animation:brbIn .8s var(--rv-ease-bounce) both;}
+.scene-root[data-scene="brb"] .brb-title .brb-accent{font-style:italic;color:var(--rv-gold);text-shadow:0 0 36px rgba(241,196,15,.55),0 10px 36px rgba(0,0,0,.6);animation:brbIn .8s .08s var(--rv-ease-bounce) both;}
+@keyframes brbIn{from{opacity:0;transform:translateY(26px) skewX(-6deg);}to{opacity:1;transform:translateY(0) skewX(0);}}
+.scene-root[data-scene="brb"] .brb-underbar{display:block;margin:24px auto 0;width:380px;height:7px;background:linear-gradient(90deg,transparent,var(--rv-blue),var(--rv-teal) 70%,var(--rv-gold));transform:skewX(-12deg);box-shadow:0 0 22px rgba(26,188,156,.5);}
+.scene-root[data-scene="brb"] .brb-note{margin:26px auto 0;max-width:720px;font-family:var(--rv-font-body);font-weight:400;font-size:24px;line-height:1.5;color:var(--rv-muted);letter-spacing:.02em;}
+.scene-root[data-scene="brb"] .brb-dots{display:flex;gap:16px;margin-top:30px;}
+.scene-root[data-scene="brb"] .brb-dots i{width:14px;height:14px;border-radius:50%;background:var(--rv-gold);opacity:.3;animation:brb-dot 1.4s ease-in-out infinite;}
+.scene-root[data-scene="brb"] .brb-dots i:nth-child(2){animation-delay:.2s;}
+.scene-root[data-scene="brb"] .brb-dots i:nth-child(3){animation-delay:.4s;}
+@keyframes brb-dot{0%,100%{opacity:.25;transform:scale(.8);}40%{opacity:1;transform:scale(1.15);box-shadow:0 0 14px rgba(241,196,15,.8);}}
+.scene-root[data-scene="brb"] .brb-foot{display:flex;justify-content:center;}
+.scene-root[data-scene="brb"] .brb-round{font-family:var(--rv-font-stat);font-weight:700;font-size:15px;letter-spacing:.22em;text-transform:uppercase;color:var(--rv-muted);padding:12px 26px;background:rgba(0,0,0,.42);box-shadow:inset 0 0 0 1px rgba(241,238,238,.10);}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="brb">
+<div class="brb-bg"></div>
+<div class="brb-grid"></div>
+<div class="brb-lines"></div>
+<div class="brb-sweep"></div>
+
+<div class="brb-frame">
+  <header class="brb-top">
+    <div class="brb-brand">
+      <div class="brb-mark"></div>
+      <div class="brb-brandtxt">
+        <span class="brb-league" data-field="brand.leagueName">RIVALRY</span>
+        <span class="brb-event" data-field="eventTitle">RIVALRY SEASON 1</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="brb-center">
+    <span class="brb-eyebrow">STREAM PAUSED</span>
+    <h1 class="brb-title"><span>BE RIGHT</span><em class="brb-accent">BACK</em></h1>
+    <span class="brb-underbar"></span>
+    <p class="brb-note">Grab a drink. The action resumes in a moment.</p>
+    <div class="brb-dots"><i></i><i></i><i></i></div>
+  </div>
+
+  <footer class="brb-foot">
+    <span class="brb-round" data-field="round">UPPER BRACKET • ROUND 1</span>
+  </footer>
+</div>
+    </div>
+  </div>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+    // Control-only scene: subscribe to the control bus (auto-mocks on file://).
+    var rl = RivalryOverlay.connect({ game: false });
+    RivalryBind(document.querySelector('.scene-root'), rl);
+    // Resolution-independent: scale the 1920x1080 design to fill any source size.
+    // Append ?fit=cover to the source URL to fill+crop instead of letterbox on non-16:9.
+    RivalryFit('.rv-stage');
+  </script>
+</body>
+</html>

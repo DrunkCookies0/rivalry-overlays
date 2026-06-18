@@ -1,0 +1,35 @@
+/* =============================================================================
+ * Base stage styles for a RIVALRY overlay.
+ * The page FILLS the Browser Source viewport; rivalry-fit.js scales the fixed
+ * 1920x1080 #stage to fit it (resolution-independent, 16:9 preserved). The page
+ * stays transparent so it composites over OBS game capture. Keep these rules;
+ * build your own design inside #stage.
+ * ===========================================================================*/
+
+@import url("https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap");
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent; /* never paint a background — OBS shows the game behind */
+}
+
+/* The fixed 1920x1080 design canvas. rivalry-fit.js scales it to the viewport,
+ * so the OBS Browser Source can be any 16:9 size (1920x1080 recommended). */
+#stage {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+}
+
+/* Optional 5% title-safe guide while designing. Toggle with body.safe-guides. */
+body.safe-guides #stage::after {
+  content: "";
+  position: absolute;
+  inset: 54px 96px;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}

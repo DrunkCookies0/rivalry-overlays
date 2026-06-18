@@ -53,7 +53,7 @@
     --font-body:'Roboto','Segoe UI',system-ui,sans-serif;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;width:1920px;height:1080px;background:transparent;overflow:hidden;
+  html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;
     font-family:var(--font-body);color:var(--ink);
     -webkit-font-smoothing:antialiased;}
   .nums{font-family:var(--font-stat);font-weight:700;font-variant-numeric:tabular-nums;}
@@ -624,9 +624,11 @@
 
   #status{position:fixed;top:2px;right:4px;font-size:10px;color:var(--muted);
     font-family:monospace;opacity:.6;}
+  .rv-stage{position:relative;width:1920px;height:1080px;transform-origin:center center;}
 </style>
 </head>
 <body>
+  <div class="rv-stage">
   <div id="status">connecting...</div>
 
   <!-- TOP SCOREBAR -->
@@ -697,7 +699,7 @@
   <div class="goal-banner" id="goalBanner">
     <div class="gb-back"></div>
     <div class="gb-bg" id="gbBg"></div>
-    <img class="gb-avatar" id="gbAvatar" src="../assets/rivalry-logo.svg" alt="" />
+    <img class="gb-avatar" id="gbAvatar" src="../../assets/rivalry-logo.svg" alt="" />
     <div class="gb-stack">
       <div class="gb-text" id="gbText">GOAL</div>
       <div class="gb-sub" id="gbSub"></div>
@@ -715,7 +717,7 @@
       <span class="rpc-speed" id="rpcSpeed"></span>
     </div>
     <div class="rpc-identity">
-      <img class="rpc-avatar" id="rpcAvatar" src="../assets/rivalry-logo.svg" alt="" />
+      <img class="rpc-avatar" id="rpcAvatar" src="../../assets/rivalry-logo.svg" alt="" />
       <div class="rpc-name" id="rpcName">-</div>
     </div>
     <div class="rpc-assist">Assist <b id="rpcAssister">-</b></div>
@@ -732,10 +734,12 @@
   <div class="stinger" id="stinger">
     <div class="panel p2"></div>
     <div class="panel p1"></div>
-    <div class="slogo" id="stingerLogo" style="background-image:url('../assets/rivalry-logo.svg')"></div>
+    <div class="slogo" id="stingerLogo" style="background-image:url('../../assets/rivalry-logo.svg')"></div>
   </div>
 
-<script>
+  </div>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
 const GAME_WS = "ws://localhost:49124";
 const CONTROL_WS = "ws://localhost:49777";
 
@@ -858,7 +862,7 @@ const COUNTDOWN_DEBOUNCE_MS = 500;
 // RV logo as the universal avatar/logo placeholder for team-, player-, and
 // franchise-level slots that don't yet have a real asset. League API can
 // override per row when it lands.
-const RV_LOGO = "../assets/rivalry-logo.svg";
+const RV_LOGO = "../../assets/rivalry-logo.svg";
 
 // Eventbar shows the operator-set event title only — match-state takeovers
 // (OVERTIME / KICKOFF) live in the state strip below the pip row.
@@ -2104,5 +2108,6 @@ applyControl();
 connectGame();
 connectControl();
 </script>
+  <script>RivalryFit('.rv-stage');</script>
 </body>
 </html>

@@ -24,6 +24,12 @@ module.exports = {
     "control/**/*",
     "config/**/*",
     "assets/**/*",
+    // Multi-scene overlay system: ship scenes + sdk + shared + the PUBLIC key.
+    "overlays/**/*",
+    "!overlays/keys/*-private.pem", // NEVER ship the signing private key
+    "!overlays/_template/**/*", // authoring starter, not a real scene
+    "!overlays/_prototype-*.html", // throwaway design galleries
+    "!overlays/**/*.md", // authoring docs (CONTRACT / MANIFEST-SPEC / README)
   ],
   extraMetadata: {
     name: "rivalry-overlay-beta",

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "template",
+  "name": "Template",
+  "author": "RIVALRY",
+  "version": "0.1.0",
+  "scene": "gameplay",
+  "entry": "index.html",
+  "needs": ["game", "control"],
+  "contract": "1.x",
+  "description": "Starter template — copy this folder, rename it, and build your overlay here.",
+  "approval": null
+}

@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<title>RIVALRY — Casters</title>
+<link rel="stylesheet" href="../shared/rivalry-theme.css" />
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+.scene-root[data-scene="caster"]{position:relative;width:1920px;height:1080px;font-family:var(--rv-font-body);color:var(--rv-ink);overflow:hidden;background:var(--rv-jet-black);}
+.scene-root[data-scene="caster"] .cs-bg{position:absolute;inset:0;background:
+  radial-gradient(120% 80% at 20% 0%, rgba(47,125,255,.20), transparent 55%),
+  radial-gradient(120% 80% at 82% 100%, rgba(255,118,1,.16), transparent 55%),
+  linear-gradient(160deg,#163140 0%,#0d2330 46%,#0a1b25 100%);}
+.scene-root[data-scene="caster"] .cs-grid-tex{position:absolute;inset:0;opacity:.12;
+  background-image:linear-gradient(rgba(241,238,238,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(241,238,238,.10) 1px,transparent 1px);
+  background-size:64px 64px;-webkit-mask-image:radial-gradient(110% 90% at 50% 40%,#000 30%,transparent 80%);mask-image:radial-gradient(110% 90% at 50% 40%,#000 30%,transparent 80%);}
+.scene-root[data-scene="caster"] .cs-seam{position:absolute;top:-10%;height:120%;left:-150px;width:380px;transform:skewX(-12deg);
+  background:linear-gradient(180deg,rgba(241,196,15,.18),rgba(241,196,15,0));filter:blur(2px);}
+
+.scene-root[data-scene="caster"] .cs-top{position:absolute;top:54px;left:64px;right:64px;display:flex;align-items:flex-start;justify-content:space-between;}
+.scene-root[data-scene="caster"] .cs-brand{display:flex;align-items:center;gap:20px;}
+.scene-root[data-scene="caster"] .cs-mark{width:74px;height:50px;background:var(--rv-white-smoke);
+  -webkit-mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;filter:drop-shadow(0 4px 12px rgba(0,0,0,.6));}
+.scene-root[data-scene="caster"] .cs-league{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:30px;letter-spacing:.14em;text-shadow:0 2px 8px rgba(0,0,0,.6);}
+.scene-root[data-scene="caster"] .cs-titleblock{position:absolute;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;}
+.scene-root[data-scene="caster"] .cs-kick{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:20px;letter-spacing:.42em;color:var(--rv-gold);text-indent:.42em;}
+.scene-root[data-scene="caster"] .cs-title{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:62px;line-height:.96;margin:2px 0 0;letter-spacing:.02em;text-transform:uppercase;}
+.scene-root[data-scene="caster"] .cs-underbar{margin-top:8px;width:150px;height:4px;background:linear-gradient(90deg,var(--rv-gold),rgba(241,196,15,0));}
+.scene-root[data-scene="caster"] .cs-event{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:17px;letter-spacing:.20em;color:var(--rv-muted);text-align:right;max-width:420px;}
+
+.scene-root[data-scene="caster"] .cs-cams{position:absolute;left:0;right:0;top:212px;bottom:92px;display:flex;align-items:center;justify-content:center;gap:36px;padding:0 64px;}
+.scene-root[data-scene="caster"] .cs-frame{position:relative;aspect-ratio:16/9;background:linear-gradient(180deg,#15303d,#0a1922);
+  box-shadow:0 20px 56px rgba(0,0,0,.55), inset 0 0 0 2px rgba(241,196,15,.22), inset 0 0 0 4px rgba(0,0,0,.4);}
+.scene-root[data-scene="caster"] .cs-cams[data-count="1"] .cs-frame{height:78%;}
+.scene-root[data-scene="caster"] .cs-cams[data-count="2"] .cs-frame{width:46%;}
+.scene-root[data-scene="caster"] .cs-cams[data-count="3"] .cs-frame{width:31.5%;}
+.scene-root[data-scene="caster"] .cs-vid{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;}
+.scene-root[data-scene="caster"] .cs-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  background:radial-gradient(80% 80% at 50% 38%, rgba(32,73,111,.5), rgba(10,25,34,.9));}
+.scene-root[data-scene="caster"] .cs-mono{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:120px;line-height:1;color:rgba(241,238,238,.16);}
+.scene-root[data-scene="caster"] .cs-wait{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:14px;letter-spacing:.32em;color:var(--rv-muted);}
+.scene-root[data-scene="caster"] .cs-plate{position:absolute;left:0;right:0;bottom:0;padding:18px 22px 16px;display:flex;flex-direction:column;gap:2px;
+  background:linear-gradient(0deg, rgba(8,14,20,.94) 10%, rgba(8,14,20,.55) 60%, transparent);}
+.scene-root[data-scene="caster"] .cs-plate::before{content:"";position:absolute;left:0;top:0;width:64px;height:4px;background:var(--rv-gold);}
+.scene-root[data-scene="caster"] .cs-name{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:30px;text-transform:uppercase;letter-spacing:.02em;}
+.scene-root[data-scene="caster"] .cs-role{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:13px;letter-spacing:.24em;color:var(--rv-gold);text-transform:uppercase;}
+
+.scene-root[data-scene="caster"] .cs-foot{position:absolute;left:0;right:0;bottom:34px;text-align:center;
+  font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.28em;color:var(--rv-muted);text-transform:uppercase;}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="caster">
+      <div class="cs-bg"></div>
+      <div class="cs-grid-tex"></div>
+      <div class="cs-seam"></div>
+      <header class="cs-top">
+        <div class="cs-brand">
+          <div class="cs-mark"></div>
+          <span class="cs-league" data-field="brand.leagueName">RIVALRY</span>
+        </div>
+        <div class="cs-titleblock">
+          <span class="cs-kick">ON THE</span>
+          <h1 class="cs-title">CALL</h1>
+          <span class="cs-underbar"></span>
+        </div>
+        <span class="cs-event" data-field="eventTitle">RIVALRY SEASON 1</span>
+      </header>
+      <div class="cs-cams" id="csCams" data-count="1"></div>
+      <footer class="cs-foot" data-field="round">CASTERS</footer>
+    </div>
+  </div>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+  (function () {
+    var root = document.querySelector('.scene-root');
+    var rl = RivalryOverlay.connect({ game: false }); // control-only
+    RivalryBind(root, rl);                              // header: league / event / round
+    RivalryFit('.rv-stage');
+    var cams = document.getElementById('csCams');
+
+    // Turn a caster's "stream" field into a safe VDO.Ninja embed URL. Accepts a
+    // full vdo.ninja URL OR a bare stream ID; rejects anything else (no
+    // javascript:/data:/arbitrary embeds, even though control data is trusted).
+    function vdoSrc(stream) {
+      var s = String(stream || '').trim();
+      if (!s) return '';
+      if (/^https?:\/\//i.test(s)) {
+        try { var u = new URL(s); if (/(^|\.)vdo\.ninja$/i.test(u.hostname)) return s; } catch (e) {}
+        return '';
+      }
+      if (/^[A-Za-z0-9_-]+$/.test(s)) return 'https://vdo.ninja/?view=' + encodeURIComponent(s) + '&cleanoutput&autostart';
+      return '';
+    }
+
+    function frame(c) {
+      var f = document.createElement('div');
+      f.className = 'cs-frame rv-cut';
+      var src = vdoSrc(c.stream);
+      if (src) {
+        var ifr = document.createElement('iframe');
+        ifr.className = 'cs-vid';
+        ifr.src = src;
+        ifr.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+        ifr.setAttribute('frameborder', '0');
+        f.appendChild(ifr);
+      } else {
+        var ph = document.createElement('div'); ph.className = 'cs-ph';
+        var mono = document.createElement('span'); mono.className = 'cs-mono';
+        mono.textContent = (c.name || '?').trim().charAt(0).toUpperCase();
+        var wait = document.createElement('span'); wait.className = 'cs-wait';
+        wait.textContent = c.name ? 'WAITING FOR FEED' : 'NO CASTER';
+        ph.appendChild(mono); ph.appendChild(wait); f.appendChild(ph);
+      }
+      var plate = document.createElement('div'); plate.className = 'cs-plate';
+      var nm = document.createElement('span'); nm.className = 'cs-name'; nm.textContent = c.name || '';
+      plate.appendChild(nm);
+      if (c.role) { var role = document.createElement('span'); role.className = 'cs-role'; role.textContent = c.role; plate.appendChild(role); }
+      f.appendChild(plate);
+      return f;
+    }
+
+    function renderCams(casters) {
+      var active = (casters || []).filter(function (c) { return c && (c.name || c.stream); }).slice(0, 3);
+      if (!active.length) active = [{ name: '', role: '' }]; // one placeholder so the scene isn't blank
+      cams.setAttribute('data-count', String(active.length));
+      cams.innerHTML = '';
+      active.forEach(function (c) { cams.appendChild(frame(c)); });
+    }
+
+    // Only re-render when the caster set actually changes, so unrelated control
+    // pushes don't reload the VDO.Ninja iframes (which would drop the feeds).
+    var lastKey = null;
+    rl.onControl(function (c) {
+      var casters = (c && c.casters) || [];
+      var key = JSON.stringify(casters.map(function (x) { return [x && x.name, x && x.role, x && x.stream]; }));
+      if (key === lastKey) return;
+      lastKey = key;
+      renderCams(casters);
+    });
+    renderCams([]); // initial placeholder before any control data
+  })();
+  </script>
+</body>
+</html>

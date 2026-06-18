@@ -10,3 +10,6 @@ rockpload/
 Recordings/
 *.exe
 *.mp4
+
+# Overlay signing — public key is committed, private key never is
+overlays/keys/*-private.pem

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<title>RIVALRY Overlay — Template</title>
+
+<!--
+  STARTER TEMPLATE
+  ----------------
+  Copy this folder, rename it, edit manifest.json, then build your overlay here.
+  This file is a minimal working example: it connects via the SDK, populates a
+  little scoreboard from the control bus + game feed, and prints an event log so
+  you can SEE the data flowing.
+
+  Run it three ways:
+    1. Design loop (no app, no Rocket League): just open this file in a browser.
+       The SDK detects file:// and feeds you the built-in mock automatically.
+    2. Real feed: run the RIVALRY app in dev mode pointed at this repo, then add
+       http://localhost:49080/overlays/_template/index.html as an OBS Browser
+       Source (1920x1080). Real RL data flows in.
+    3. Force mock while served: append ?mock=1 to the URL.
+
+  The data you receive is defined in ../CONTRACT.md. The SDK API is documented
+  at the top of ../sdk/rivalry-overlay-sdk.js. When you're done, hand the folder
+  to Alex to review + sign (see ../README.md) — until then it shows a PREVIEW
+  badge and won't load in the packaged app.
+-->
+
+<link rel="stylesheet" href="overlay.css" />
+<!-- Path is relative: when served by the app, the SDK lives one level up in /overlays/sdk/ -->
+<script src="../sdk/rivalry-overlay-sdk.js"></script>
+<script src="../sdk/rivalry-fit.js"></script>
+<style>
+  /* Everything below is EXAMPLE chrome — delete it and build your own. */
+  .scorebug {
+    position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: stretch; gap: 0;
+    font-family: "Exo 2", system-ui, sans-serif; color: #fff;
+    box-shadow: 0 8px 30px rgba(0,0,0,.5); border-radius: 10px; overflow: hidden;
+  }
+  .team { display: flex; align-items: center; gap: 14px; padding: 14px 22px; min-width: 240px; background: #161a22; }
+  .team.b { flex-direction: row-reverse; }
+  .team .name { font-weight: 800; font-size: 26px; letter-spacing: .04em; }
+  .team .bar { width: 8px; align-self: stretch; }
+  .score { display: flex; align-items: center; justify-content: center; min-width: 72px; font-weight: 800; font-size: 40px; background: #0c0e13; }
+  .clock { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 26px; background: #0c0e13; }
+  .clock .t { font-family: "Space Mono", monospace; font-size: 30px; font-weight: 700; }
+  .clock .ev { font-size: 11px; letter-spacing: .22em; color: #9aa3b2; margin-top: 4px; }
+  .title { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font-family: "Exo 2", sans-serif; font-size: 14px; letter-spacing: .26em; color: #c7cedd; text-transform: uppercase; }
+
+  /* Dev event log — remove for production overlays. */
+  .devlog { position: absolute; right: 18px; bottom: 18px; width: 340px; max-height: 260px; overflow: hidden;
+    font-family: "Space Mono", monospace; font-size: 12px; color: #9ff; background: rgba(8,10,14,.7);
+    border: 1px solid rgba(120,160,200,.25); border-radius: 8px; padding: 10px 12px; }
+  .devlog .row { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .9; }
+  .devlog .status { color: #ffd23f; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+  <!-- 1920x1080 transparent stage. Build inside #stage. -->
+  <div id="stage">
+
+    <div class="title" id="eventTitle">RIVALRY</div>
+
+    <div class="scorebug">
+      <div class="team a">
+        <div class="bar" id="barA"></div>
+        <div class="name" id="nameA">BLUE</div>
+      </div>
+      <div class="score" id="scoreA">0</div>
+      <div class="clock">
+        <div class="t" id="clock">5:00</div>
+        <div class="ev" id="clockEv">1ST HALF</div>
+      </div>
+      <div class="score" id="scoreB">0</div>
+      <div class="team b">
+        <div class="bar" id="barB"></div>
+        <div class="name" id="nameB">ORANGE</div>
+      </div>
+    </div>
+
+    <div class="devlog">
+      <div class="status" id="connStatus">connecting…</div>
+      <div id="log"></div>
+    </div>
+
+  </div>
+
+<script>
+  // ---- wire the SDK -------------------------------------------------------
+  const $ = (id) => document.getElementById(id);
+  const rl = RivalryOverlay.connect(); // game + control, auto-mock on file://
+
+  // Resolution independence: scale the fixed 1920x1080 #stage to fill any OBS
+  // Browser Source size (720p/1080p/1440p), centered with letterbox on non-16:9.
+  // Append ?fit=cover to the source URL to fill+crop instead. See ../sdk/rivalry-fit.js.
+  RivalryFit('#stage');
+
+  // Connection status (helpful while building; delete for production).
+  rl.onConnection((s) => {
+    $("connStatus").textContent = `game: ${s.game}   control: ${s.control}`;
+  });
+
+  // Branding from the control bus (manual now, database-driven later — same shape).
+  rl.onControl((c) => {
+    $("eventTitle").textContent = c.eventTitle || "RIVALRY";
+    $("nameA").textContent = (c.teamA && c.teamA.name) || "BLUE";
+    $("nameB").textContent = (c.teamB && c.teamB.name) || "ORANGE";
+  });
+
+  // Live match state from the game feed.
+  rl.on("UpdateState", (data) => {
+    const [a, b] = rl.scores(data);
+    $("scoreA").textContent = a;
+    $("scoreB").textContent = b;
+    const ot = rl.isOvertime(data);
+    $("clock").textContent = rl.format.clock(data.Game && data.Game.TimeSeconds, { ot });
+    $("clockEv").textContent = ot ? "OVERTIME" : "REGULATION";
+    $("barA").style.background = rl.teamColor(0, data);
+    $("barB").style.background = rl.teamColor(1, data);
+  });
+
+  // A tiny event log so you can watch goals/replays/kickoffs fire.
+  const logEl = $("log");
+  rl.onAny((event) => {
+    if (event === "UpdateState") return; // too chatty to log
+    const row = document.createElement("div");
+    row.className = "row";
+    row.textContent = "→ " + event;
+    logEl.prepend(row);
+    while (logEl.childElementCount > 12) logEl.lastChild.remove();
+  });
+</script>
+</body>
+</html>

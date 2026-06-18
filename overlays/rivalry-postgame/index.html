@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<title>RIVALRY — Post-Game Results</title>
+<link rel="stylesheet" href="../shared/rivalry-theme.css" />
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+.scene-root[data-scene="postgame"]{position:absolute;inset:0;overflow:hidden;font-family:var(--rv-font-body);color:var(--rv-ink);background:var(--rv-jet-black);}
+
+/* --- layered background (matches Kinetic Bold) --- */
+.scene-root[data-scene="postgame"] .pg-bg{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 42%,var(--rv-yale-blue) 0%,var(--rv-jet-black) 62%,#091820 100%);}
+.scene-root[data-scene="postgame"] .pg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(47,125,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(47,125,255,.05) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(120% 100% at 50% 46%,#000 52%,transparent 100%);mask-image:radial-gradient(120% 100% at 50% 46%,#000 52%,transparent 100%);}
+.scene-root[data-scene="postgame"] .pg-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 108px,rgba(241,238,238,.03) 108px 110px);animation:pgDrift 22s linear infinite;}
+@keyframes pgDrift{from{transform:translateX(0);}to{transform:translateX(110px);}}
+
+/* --- team-color side washes (blue left / orange right) --- */
+.scene-root[data-scene="postgame"] .pg-side{position:absolute;top:0;bottom:0;width:46%;pointer-events:none;}
+.scene-root[data-scene="postgame"] .pg-side-a{left:0;background:radial-gradient(80% 70% at 26% 44%,rgba(47,125,255,.30),transparent 64%),linear-gradient(100deg,rgba(47,125,255,.20),transparent 76%);clip-path:polygon(0 0,100% 0,74% 100%,0 100%);}
+.scene-root[data-scene="postgame"] .pg-side-b{right:0;background:radial-gradient(80% 70% at 74% 44%,rgba(255,118,1,.28),transparent 64%),linear-gradient(260deg,rgba(255,118,1,.18),transparent 76%);clip-path:polygon(26% 0,100% 0,100% 100%,0 100%);}
+
+/* --- the signature glowing diagonal gold seam --- */
+.scene-root[data-scene="postgame"] .pg-seam{position:absolute;top:-6%;bottom:-6%;left:50%;width:9px;transform:translateX(-50%) skewX(-12deg);background:linear-gradient(180deg,transparent,var(--rv-teal) 28%,var(--rv-gold) 58%,transparent);box-shadow:0 0 28px rgba(241,196,15,.55);opacity:.9;}
+
+.scene-root[data-scene="postgame"] .pg-frame{position:absolute;inset:48px;display:flex;flex-direction:column;}
+
+/* --- header --- */
+.scene-root[data-scene="postgame"] .pg-top{display:flex;align-items:flex-start;justify-content:space-between;}
+.scene-root[data-scene="postgame"] .pg-brand{display:flex;align-items:center;gap:18px;padding-top:6px;}
+.scene-root[data-scene="postgame"] .pg-mark{width:70px;height:47px;background:var(--rv-white-smoke);-webkit-mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;filter:drop-shadow(0 0 12px rgba(47,125,255,.5));}
+.scene-root[data-scene="postgame"] .pg-brandtxt{display:flex;flex-direction:column;gap:4px;}
+.scene-root[data-scene="postgame"] .pg-league{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:28px;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,.6);}
+.scene-root[data-scene="postgame"] .pg-event{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:14px;letter-spacing:.22em;text-transform:uppercase;color:var(--rv-jet-black);background:var(--rv-gold);padding:5px 14px;align-self:flex-start;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));}
+
+.scene-root[data-scene="postgame"] .pg-headblock{display:flex;flex-direction:column;align-items:flex-end;}
+.scene-root[data-scene="postgame"] .pg-round{font-family:var(--rv-font-stat);font-weight:700;font-size:16px;letter-spacing:.22em;text-transform:uppercase;color:var(--rv-muted);margin-bottom:4px;}
+.scene-root[data-scene="postgame"] .pg-final{margin:0;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:96px;line-height:.84;text-transform:uppercase;color:var(--rv-gold);text-shadow:0 0 38px rgba(241,196,15,.4),0 10px 28px rgba(0,0,0,.65);}
+.scene-root[data-scene="postgame"] .pg-underbar{display:block;margin-top:12px;width:300px;height:7px;background:linear-gradient(90deg,var(--rv-blue),var(--rv-teal) 60%,var(--rv-gold));transform:skewX(-12deg);box-shadow:0 0 18px rgba(241,196,15,.45);}
+
+/* --- center final-score band --- */
+.scene-root[data-scene="postgame"] .pg-score{margin-top:30px;display:flex;align-items:center;justify-content:center;gap:40px;z-index:5;}
+.scene-root[data-scene="postgame"] .pg-st{display:flex;align-items:center;gap:24px;flex:1 1 0;}
+.scene-root[data-scene="postgame"] .pg-st-a{justify-content:flex-end;}
+.scene-root[data-scene="postgame"] .pg-st-b{justify-content:flex-start;}
+.scene-root[data-scene="postgame"] .pg-slab{position:relative;width:128px;height:128px;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,var(--rv-surface-2),var(--rv-jet-black));clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));box-shadow:0 14px 36px rgba(0,0,0,.6);}
+.scene-root[data-scene="postgame"] .pg-st-a .pg-slab{box-shadow:inset 0 0 0 4px rgba(47,125,255,.9),0 0 40px rgba(47,125,255,.32),0 14px 36px rgba(0,0,0,.6);}
+.scene-root[data-scene="postgame"] .pg-st-b .pg-slab{box-shadow:inset 0 0 0 4px rgba(255,118,1,.9),0 0 40px rgba(255,118,1,.32),0 14px 36px rgba(0,0,0,.6);}
+.scene-root[data-scene="postgame"] .pg-mono{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:82px;color:var(--rv-white-smoke);text-shadow:0 6px 20px rgba(0,0,0,.6);}
+.scene-root[data-scene="postgame"] .pg-stmeta{display:flex;flex-direction:column;gap:10px;align-items:flex-start;}
+.scene-root[data-scene="postgame"] .pg-stmeta-r{align-items:flex-end;}
+.scene-root[data-scene="postgame"] .pg-name{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:52px;line-height:.94;text-transform:uppercase;color:var(--rv-white-smoke);text-shadow:0 5px 18px rgba(0,0,0,.7);}
+.scene-root[data-scene="postgame"] .pg-tag{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.18em;text-transform:uppercase;color:var(--rv-jet-black);background:var(--rv-gold);padding:6px 14px;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));box-shadow:0 0 18px rgba(241,196,15,.35);}
+
+.scene-root[data-scene="postgame"] .pg-tally{flex:0 0 auto;display:flex;align-items:center;gap:24px;padding:0 8px;}
+.scene-root[data-scene="postgame"] .pg-pts{font-family:var(--rv-font-stat);font-weight:700;font-size:148px;line-height:1;font-variant-numeric:tabular-nums;color:var(--rv-white-smoke);text-shadow:0 10px 30px rgba(0,0,0,.7);}
+.scene-root[data-scene="postgame"] .pg-pts-a{color:#9cc4ff;text-shadow:0 0 34px rgba(47,125,255,.45),0 10px 30px rgba(0,0,0,.7);}
+.scene-root[data-scene="postgame"] .pg-pts-b{color:#ffc191;text-shadow:0 0 34px rgba(255,118,1,.45),0 10px 30px rgba(0,0,0,.7);}
+.scene-root[data-scene="postgame"] .pg-dash{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:80px;color:var(--rv-gold);opacity:.85;text-shadow:0 0 24px rgba(241,196,15,.4);}
+
+/* --- box-score boards --- */
+.scene-root[data-scene="postgame"] .pg-boards{flex:1 1 auto;min-height:0;margin-top:34px;display:flex;align-items:stretch;justify-content:center;gap:34px;z-index:4;}
+.scene-root[data-scene="postgame"] .pg-board{flex:1 1 0;display:flex;flex-direction:column;background:linear-gradient(170deg,var(--rv-surface-1),var(--rv-jet-black));box-shadow:0 18px 48px rgba(0,0,0,.5);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));overflow:hidden;}
+.scene-root[data-scene="postgame"] .pg-board-a{border-top:6px solid var(--rv-blue);}
+.scene-root[data-scene="postgame"] .pg-board-b{border-top:6px solid var(--rv-orange);}
+
+.scene-root[data-scene="postgame"] .pg-board-head{display:flex;align-items:center;justify-content:space-between;padding:20px 30px 14px;}
+.scene-root[data-scene="postgame"] .pg-board-b .pg-board-head{flex-direction:row;}
+.scene-root[data-scene="postgame"] .pg-board-team{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:34px;text-transform:uppercase;color:var(--rv-white-smoke);text-shadow:0 4px 14px rgba(0,0,0,.7);}
+.scene-root[data-scene="postgame"] .pg-board-side{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.20em;text-transform:uppercase;color:var(--rv-jet-black);padding:6px 14px;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));}
+.scene-root[data-scene="postgame"] .pg-board-a .pg-board-side{background:var(--rv-blue);}
+.scene-root[data-scene="postgame"] .pg-board-b .pg-board-side{background:var(--rv-orange);}
+
+.scene-root[data-scene="postgame"] .pg-table{flex:1 1 auto;display:flex;flex-direction:column;padding:0 24px 22px;}
+
+/* column geometry shared by header + rows */
+.scene-root[data-scene="postgame"] .pg-thead,
+.scene-root[data-scene="postgame"] .pg-row{display:grid;grid-template-columns:1fr 56px 56px 56px 56px 56px 116px;align-items:center;column-gap:6px;}
+.scene-root[data-scene="postgame"] .pg-thead{padding:8px 18px 10px;border-bottom:2px solid rgba(241,238,238,.14);}
+.scene-root[data-scene="postgame"] .pg-thead span{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--rv-muted);text-align:center;}
+.scene-root[data-scene="postgame"] .pg-thead .pg-c-name{text-align:left;}
+.scene-root[data-scene="postgame"] .pg-thead .pg-c-score{text-align:right;color:var(--rv-gold);}
+
+.scene-root[data-scene="postgame"] .pg-row{margin-top:12px;padding:14px 18px;background:linear-gradient(100deg,rgba(26,61,77,.55),rgba(19,46,59,.55));box-shadow:0 8px 22px rgba(0,0,0,.3);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));}
+.scene-root[data-scene="postgame"] .pg-board-a .pg-row{border-left:6px solid rgba(47,125,255,.85);}
+.scene-root[data-scene="postgame"] .pg-board-b .pg-row{border-left:6px solid rgba(255,118,1,.85);}
+
+.scene-root[data-scene="postgame"] .pg-p-name{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:30px;text-transform:uppercase;color:var(--rv-white-smoke);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 3px 10px rgba(0,0,0,.6);}
+.scene-root[data-scene="postgame"] .pg-p-stat{font-family:var(--rv-font-stat);font-weight:700;font-size:30px;font-variant-numeric:tabular-nums;color:var(--rv-white-smoke);text-align:center;}
+.scene-root[data-scene="postgame"] .pg-p-score{font-family:var(--rv-font-stat);font-weight:700;font-size:34px;font-variant-numeric:tabular-nums;color:var(--rv-gold);text-align:right;text-shadow:0 0 16px rgba(241,196,15,.3);}
+
+/* --- MVP highlight: gold accent on the flagged row --- */
+.scene-root[data-scene="postgame"] .pg-row.is-mvp{background:linear-gradient(100deg,rgba(241,196,15,.20),rgba(241,196,15,.05));box-shadow:inset 0 0 0 1px rgba(241,196,15,.55),0 0 26px rgba(241,196,15,.22),0 8px 22px rgba(0,0,0,.35);border-left-color:var(--rv-gold)!important;}
+.scene-root[data-scene="postgame"] .pg-row.is-mvp .pg-p-name{color:var(--rv-gold);text-shadow:0 0 18px rgba(241,196,15,.4);}
+.scene-root[data-scene="postgame"] .pg-row.is-mvp .pg-p-stat{color:var(--rv-white-smoke);}
+
+/* --- center MVP callout --- */
+.scene-root[data-scene="postgame"] .pg-mvp{flex:0 0 248px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:28px 18px;text-align:center;background:linear-gradient(180deg,var(--rv-surface-2),var(--rv-jet-black));clip-path:polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px));box-shadow:0 0 46px rgba(241,196,15,.30),0 18px 48px rgba(0,0,0,.6),inset 0 0 0 2px rgba(241,196,15,.5);}
+.scene-root[data-scene="postgame"] .pg-mvp-kick{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:18px;letter-spacing:.26em;text-transform:uppercase;color:var(--rv-jet-black);background:var(--rv-gold);padding:7px 16px;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));}
+.scene-root[data-scene="postgame"] .pg-mvp-name{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:48px;line-height:.92;text-transform:uppercase;color:var(--rv-gold);text-shadow:0 0 30px rgba(241,196,15,.45),0 6px 18px rgba(0,0,0,.6);}
+.scene-root[data-scene="postgame"] .pg-mvp-team{font-family:var(--rv-font-stat);font-weight:700;font-size:18px;letter-spacing:.10em;text-transform:uppercase;color:var(--rv-muted);}
+
+/* --- footer --- */
+.scene-root[data-scene="postgame"] .pg-foot{display:flex;justify-content:center;margin-top:22px;}
+.scene-root[data-scene="postgame"] .pg-foot-label{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:18px;letter-spacing:.40em;text-transform:uppercase;color:var(--rv-muted);text-indent:.40em;}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="postgame">
+<div class="pg-bg"></div>
+<div class="pg-grid"></div>
+<div class="pg-lines"></div>
+<div class="pg-side pg-side-a"></div>
+<div class="pg-side pg-side-b"></div>
+<div class="pg-seam"></div>
+
+<div class="pg-frame">
+  <header class="pg-top">
+    <div class="pg-brand">
+      <div class="pg-mark"></div>
+      <div class="pg-brandtxt">
+        <span class="pg-league" data-field="brand.leagueName">RIVALRY</span>
+        <span class="pg-event" data-field="event.title">RIVALRY SEASON 1</span>
+      </div>
+    </div>
+    <div class="pg-headblock">
+      <span class="pg-round" data-field="event.round">UPPER BRACKET • ROUND 1</span>
+      <h1 class="pg-final">FINAL</h1>
+      <span class="pg-underbar"></span>
+    </div>
+  </header>
+
+  <section class="pg-score">
+    <div class="pg-st pg-st-a">
+      <div class="pg-slab"><span class="pg-mono" data-mono="teamA.name">G</span></div>
+      <div class="pg-stmeta">
+        <span class="pg-name" data-field="teamA.name">GUARDIANS</span>
+        <span class="pg-tag pg-tag-win">WINNER</span>
+      </div>
+    </div>
+
+    <div class="pg-tally">
+      <span class="pg-pts pg-pts-a" data-field="teamA.score">4</span>
+      <span class="pg-dash">—</span>
+      <span class="pg-pts pg-pts-b" data-field="teamB.score">2</span>
+    </div>
+
+    <div class="pg-st pg-st-b">
+      <div class="pg-stmeta pg-stmeta-r">
+        <span class="pg-name" data-field="teamB.name">SENTINELS</span>
+      </div>
+      <div class="pg-slab"><span class="pg-mono" data-mono="teamB.name">S</span></div>
+    </div>
+  </section>
+
+  <section class="pg-boards">
+    <!-- TEAM A / blue / left -->
+    <div class="pg-board pg-board-a">
+      <div class="pg-board-head">
+        <span class="pg-board-team" data-field="teamA.name">GUARDIANS</span>
+        <span class="pg-board-side">HOME</span>
+      </div>
+      <div class="pg-table">
+        <div class="pg-thead">
+          <span class="pg-c-name">PLAYER</span>
+          <span class="pg-c-stat">G</span>
+          <span class="pg-c-stat">A</span>
+          <span class="pg-c-stat">SV</span>
+          <span class="pg-c-stat">SH</span>
+          <span class="pg-c-stat">DM</span>
+          <span class="pg-c-score">SCORE</span>
+        </div>
+
+        <div class="pg-row is-mvp" data-slot="teamA.players.0">
+          <span class="pg-p-name" data-field="teamA.players.0.name">VECTOR</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.goals">2</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.assists">1</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.saves">3</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.shots">5</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.demos">2</span>
+          <span class="pg-p-score" data-field="teamA.players.0.score">612</span>
+        </div>
+        <div class="pg-row" data-slot="teamA.players.1">
+          <span class="pg-p-name" data-field="teamA.players.1.name">HALO</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.goals">1</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.assists">2</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.saves">4</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.shots">3</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.demos">1</span>
+          <span class="pg-p-score" data-field="teamA.players.1.score">548</span>
+        </div>
+        <div class="pg-row" data-slot="teamA.players.2">
+          <span class="pg-p-name" data-field="teamA.players.2.name">RAMPART</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.goals">1</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.assists">1</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.saves">6</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.shots">2</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.demos">0</span>
+          <span class="pg-p-score" data-field="teamA.players.2.score">503</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MVP center callout -->
+    <div class="pg-mvp">
+      <span class="pg-mvp-kick">MATCH MVP</span>
+      <span class="pg-mvp-name" data-field="mvp.name">VECTOR</span>
+      <span class="pg-mvp-team" data-field="mvp.team">GUARDIANS</span>
+    </div>
+
+    <!-- TEAM B / orange / right -->
+    <div class="pg-board pg-board-b">
+      <div class="pg-board-head">
+        <span class="pg-board-side">AWAY</span>
+        <span class="pg-board-team" data-field="teamB.name">SENTINELS</span>
+      </div>
+      <div class="pg-table">
+        <div class="pg-thead">
+          <span class="pg-c-name">PLAYER</span>
+          <span class="pg-c-stat">G</span>
+          <span class="pg-c-stat">A</span>
+          <span class="pg-c-stat">SV</span>
+          <span class="pg-c-stat">SH</span>
+          <span class="pg-c-stat">DM</span>
+          <span class="pg-c-score">SCORE</span>
+        </div>
+
+        <div class="pg-row" data-slot="teamB.players.0">
+          <span class="pg-p-name" data-field="teamB.players.0.name">WARDEN</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.goals">1</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.assists">1</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.saves">2</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.shots">4</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.demos">1</span>
+          <span class="pg-p-score" data-field="teamB.players.0.score">441</span>
+        </div>
+        <div class="pg-row" data-slot="teamB.players.1">
+          <span class="pg-p-name" data-field="teamB.players.1.name">VIGIL</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.goals">0</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.assists">1</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.saves">5</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.shots">2</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.demos">0</span>
+          <span class="pg-p-score" data-field="teamB.players.1.score">389</span>
+        </div>
+        <div class="pg-row" data-slot="teamB.players.2">
+          <span class="pg-p-name" data-field="teamB.players.2.name">BULWARK</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.goals">1</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.assists">0</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.saves">3</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.shots">3</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.demos">2</span>
+          <span class="pg-p-score" data-field="teamB.players.2.score">357</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pg-foot">
+    <span class="pg-foot-label">FINAL RESULT</span>
+  </footer>
+</div>
+    </div>
+  </div>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+(function () {
+  var root = document.querySelector('.scene-root');
+  var rl = RivalryOverlay.connect();            // game + control (auto-mock on file://)
+  RivalryFit('.rv-stage');
+  var control = {}, lastGood = null, frozen = null, frozenGuid = null, demos = {};
+  rl.onControl(function (c) { control = c || {}; rebuild(); });
+  // Latch the last LIVE frame; ignore the zeroed UpdateState RL streams at podium.
+  // While frozen, a new MatchGuid means the next match started -> unfreeze even if
+  // MatchCreated/MatchInitialized never fired (bot/private/some modes don't emit them).
+  rl.on('UpdateState', function (d) {
+    if (frozen) {
+      if (d && d.MatchGuid && frozenGuid && d.MatchGuid !== frozenGuid) reset();
+      else return;
+    }
+    if (d && d.Players && d.Players.length) { lastGood = d; rebuild(); }
+  });
+  rl.on('StatfeedEvent', function (d) {
+    if (frozen || !d) return;
+    if ((d.Type || '').toLowerCase() === 'demolition') {
+      var n = (d.Attacker && d.Attacker.Name) || (d.MainTarget && d.MainTarget.Name) || (d.MainPlayer && d.MainPlayer.Name);
+      if (n) demos[n] = (demos[n] || 0) + 1;
+    }
+  });
+  function reset() { lastGood = null; frozen = null; frozenGuid = null; demos = {}; rebuild(); }
+  rl.on('MatchCreated', reset); rl.on('MatchInitialized', reset);
+  rl.on('MatchEnded', freeze); rl.on('PodiumStart', freeze);   // freeze on the FIRST of the two
+  function freeze() { if (frozen || !lastGood) return; frozenGuid = lastGood.MatchGuid || null; frozen = build(lastGood); rebuild(); }
+  function build(d) {
+    d = d || { Game: { Teams: [] }, Players: [] };
+    var teams = (d.Game && d.Game.Teams) || [], players = d.Players || [];
+    function col(t) { return players.filter(function (p) { return p.TeamNum === t; }).map(function (p) {
+      return { name: p.Name, goals: p.Goals || 0, assists: p.Assists || 0, saves: p.Saves || 0, shots: p.Shots || 0, demos: (demos[p.Name] || p.Demos || 0), score: p.Score || 0 };
+    }); }
+    var A = col(0), B = col(1);
+    var all = A.map(function (x) { return { x: x, t: 0 }; }).concat(B.map(function (x) { return { x: x, t: 1 }; }));
+    var mvp = null; all.forEach(function (e) { if (!mvp || e.x.score > mvp.x.score) mvp = e; });
+    var tA = (control.teamA && control.teamA.name) || (teams[0] && teams[0].Name) || 'BLUE';
+    var tB = (control.teamB && control.teamB.name) || (teams[1] && teams[1].Name) || 'ORANGE';
+    return {
+      brand: { leagueName: (control.brand && control.brand.leagueName) || 'RIVALRY' },
+      event: { title: control.eventTitle || 'RIVALRY', round: control.round || '' },
+      teamA: { name: tA, score: (teams[0] && teams[0].Score) || 0, players: A },
+      teamB: { name: tB, score: (teams[1] && teams[1].Score) || 0, players: B },
+      mvp: mvp ? { name: mvp.x.name, team: (mvp.t === 0 ? tA : tB) } : { name: '', team: '' }
+    };
+  }
+  function rebuild() {
+    var data = frozen || build(lastGood);
+    RivalryBind(root, null, data);
+    var rows = root.querySelectorAll('.pg-row');
+    rows.forEach(function (r) { r.classList.remove('is-mvp'); });
+    if (data.mvp && data.mvp.name) rows.forEach(function (r) {
+      var nm = r.querySelector('[data-field$=".name"]'); if (nm && nm.textContent === data.mvp.name) r.classList.add('is-mvp');
+    });
+  }
+  rebuild();
+})();
+</script>
+</body>
+</html>

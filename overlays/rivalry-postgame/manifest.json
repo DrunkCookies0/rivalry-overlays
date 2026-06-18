@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-postgame",
+  "name": "Post-Game Results",
+  "author": "RIVALRY",
+  "version": "1.0.0",
+  "scene": "postgame",
+  "entry": "index.html",
+  "needs": [
+    "game",
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Post-match results board (box score + MVP), latched from the live feed.",
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "7a480bcdda58029e94b49bc27aaf68324c99c88b21bbdb0133d3894800be10c4",
+    "signature": "t4TZbUpLFk/3N4+WUjy0lJZpKYDI4HbgLZalZwwdx8ah19U/WbgVE1lQIVzxd90SXV7Q2AaDvdeQLAIoQH6mCQ==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-06-18T14:17:37.016Z"
+  }
+}

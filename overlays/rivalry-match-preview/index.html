@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RIVALRY — Match Preview</title>
+<link rel="stylesheet" href="../shared/rivalry-theme.css" />
+<style>
+/* Fill the OBS Browser Source viewport; rivalry-fit.js scales the 1920x1080 stage into it. */
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+.scene-root[data-scene="match-preview"]{position:absolute;inset:0;overflow:hidden;font-family:var(--rv-font-body);color:var(--rv-ink);background:var(--rv-jet-black);}
+.scene-root[data-scene="match-preview"] .mp-bg{position:absolute;inset:0;background:radial-gradient(120% 120% at 50% 46%,var(--rv-yale-blue) 0%,var(--rv-jet-black) 64%,#091820 100%);}
+.scene-root[data-scene="match-preview"] .mp-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(47,125,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(47,125,255,.05) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(120% 100% at 50% 50%,#000 50%,transparent 100%);mask-image:radial-gradient(120% 100% at 50% 50%,#000 50%,transparent 100%);}
+.scene-root[data-scene="match-preview"] .mp-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 110px,rgba(241,238,238,.03) 110px 112px);animation:mpDrift 22s linear infinite;}
+@keyframes mpDrift{from{transform:translateX(0);}to{transform:translateX(112px);}}
+.scene-root[data-scene="match-preview"] .mp-side{position:absolute;top:0;bottom:0;width:48%;pointer-events:none;}
+.scene-root[data-scene="match-preview"] .mp-side-a{left:0;background:radial-gradient(90% 80% at 28% 46%,rgba(47,125,255,.40),transparent 64%),linear-gradient(100deg,rgba(47,125,255,.28),transparent 78%);clip-path:polygon(0 0,100% 0,72% 100%,0 100%);animation:mpSlideL .8s var(--rv-ease-wipe) both;}
+.scene-root[data-scene="match-preview"] .mp-side-b{right:0;background:radial-gradient(90% 80% at 72% 46%,rgba(255,118,1,.38),transparent 64%),linear-gradient(260deg,rgba(255,118,1,.26),transparent 78%);clip-path:polygon(28% 0,100% 0,100% 100%,0 100%);animation:mpSlideR .8s var(--rv-ease-wipe) both;}
+@keyframes mpSlideL{from{opacity:0;transform:translateX(-60px);}to{opacity:1;transform:translateX(0);}}
+@keyframes mpSlideR{from{opacity:0;transform:translateX(60px);}to{opacity:1;transform:translateX(0);}}
+.scene-root[data-scene="match-preview"] .mp-split{position:absolute;top:-6%;bottom:-6%;left:50%;width:9px;transform:translateX(-50%) skewX(-12deg);background:linear-gradient(180deg,transparent,var(--rv-teal) 30%,var(--rv-gold) 60%,transparent);box-shadow:0 0 28px rgba(241,196,15,.55);opacity:.9;}
+.scene-root[data-scene="match-preview"] .mp-frame{position:absolute;inset:48px;display:flex;flex-direction:column;}
+.scene-root[data-scene="match-preview"] .mp-top{display:flex;align-items:center;justify-content:space-between;z-index:5;}
+.scene-root[data-scene="match-preview"] .mp-brand{display:flex;align-items:center;gap:18px;}
+.scene-root[data-scene="match-preview"] .mp-mark{width:72px;height:48px;background:var(--rv-white-smoke);-webkit-mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;filter:drop-shadow(0 0 12px rgba(47,125,255,.5));}
+.scene-root[data-scene="match-preview"] .mp-league{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:30px;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 2px 8px rgba(0,0,0,.6);}
+.scene-root[data-scene="match-preview"] .mp-event{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:17px;letter-spacing:.22em;text-transform:uppercase;color:var(--rv-jet-black);background:var(--rv-gold);padding:6px 18px;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,12px 100%,0 calc(100% - 12px));}
+.scene-root[data-scene="match-preview"] .mp-round-wrap{position:absolute;top:128px;left:0;right:0;display:flex;justify-content:center;z-index:5;}
+.scene-root[data-scene="match-preview"] .mp-round{font-family:var(--rv-font-stat);font-weight:700;font-size:18px;letter-spacing:.22em;text-transform:uppercase;color:var(--rv-white-smoke);padding:12px 34px;background:rgba(0,0,0,.5);box-shadow:inset 0 0 0 1px rgba(241,196,15,.35),0 8px 24px rgba(0,0,0,.5);}
+.scene-root[data-scene="match-preview"] .mp-stage{position:absolute;left:0;right:0;top:200px;bottom:104px;display:flex;align-items:center;justify-content:space-between;gap:20px;z-index:4;padding:0 12px;}
+.scene-root[data-scene="match-preview"] .mp-team{display:flex;flex-direction:column;align-items:center;flex:1 1 0;padding:0 30px;}
+.scene-root[data-scene="match-preview"] .mp-team-a{animation:mpTeamL .8s .15s var(--rv-ease-bounce) both;}
+.scene-root[data-scene="match-preview"] .mp-team-b{animation:mpTeamR .8s .15s var(--rv-ease-bounce) both;}
+@keyframes mpTeamL{from{opacity:0;transform:translateX(-50px) skewX(-6deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
+@keyframes mpTeamR{from{opacity:0;transform:translateX(50px) skewX(6deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
+.scene-root[data-scene="match-preview"] .mp-seed-badge{display:flex;align-items:center;justify-content:center;width:104px;height:104px;border-radius:50%;background:rgba(0,0,0,.45);box-shadow:0 8px 22px rgba(0,0,0,.55);margin-bottom:18px;}
+.scene-root[data-scene="match-preview"] .mp-team-a .mp-seed-badge{box-shadow:inset 0 0 0 3px var(--rv-blue),0 8px 22px rgba(0,0,0,.55);}
+.scene-root[data-scene="match-preview"] .mp-team-b .mp-seed-badge{box-shadow:inset 0 0 0 3px var(--rv-orange),0 8px 22px rgba(0,0,0,.55);}
+.scene-root[data-scene="match-preview"] .mp-seed-badge span{font-family:var(--rv-font-stat);font-weight:700;font-size:40px;color:var(--rv-gold);}
+.scene-root[data-scene="match-preview"] .mp-logo{position:relative;width:288px;height:288px;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:#0a1c26;clip-path:polygon(0 0,calc(100% - 22px) 0,100% 22px,100% 100%,22px 100%,0 calc(100% - 22px));}
+.scene-root[data-scene="match-preview"] .mp-team-a .mp-logo{box-shadow:inset 0 0 0 4px rgba(47,125,255,.9),0 0 50px rgba(47,125,255,.4),0 16px 40px rgba(0,0,0,.6);}
+.scene-root[data-scene="match-preview"] .mp-team-b .mp-logo{box-shadow:inset 0 0 0 4px rgba(255,118,1,.9),0 0 50px rgba(255,118,1,.4),0 16px 40px rgba(0,0,0,.6);}
+.scene-root[data-scene="match-preview"] .mp-mono{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:170px;color:var(--rv-white-smoke);text-shadow:0 8px 26px rgba(0,0,0,.6);}
+.scene-root[data-scene="match-preview"] .mp-team-a .mp-mono{background:linear-gradient(150deg,var(--rv-surface-2),var(--rv-jet-black));-webkit-background-clip:text;background-clip:text;}
+.scene-root[data-scene="match-preview"] .mp-name{margin-top:22px;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:74px;line-height:.92;text-transform:uppercase;text-align:center;color:var(--rv-white-smoke);text-shadow:0 6px 22px rgba(0,0,0,.75);max-width:600px;}
+.scene-root[data-scene="match-preview"] .mp-meta{margin-top:18px;display:flex;align-items:center;gap:22px;}
+.scene-root[data-scene="match-preview"] .mp-tag{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:18px;letter-spacing:.16em;padding:7px 16px;background:rgba(0,0,0,.5);color:var(--rv-ink);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));}
+.scene-root[data-scene="match-preview"] .mp-team-a .mp-tag{box-shadow:inset 0 0 0 2px rgba(47,125,255,.6);}
+.scene-root[data-scene="match-preview"] .mp-team-b .mp-tag{box-shadow:inset 0 0 0 2px rgba(255,118,1,.6);}
+.scene-root[data-scene="match-preview"] .mp-rec{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.scene-root[data-scene="match-preview"] .mp-rec b{font-family:var(--rv-font-stat);font-weight:700;font-size:38px;color:var(--rv-white-smoke);line-height:1;}
+.scene-root[data-scene="match-preview"] .mp-rec i{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:13px;letter-spacing:.22em;color:var(--rv-muted);}
+.scene-root[data-scene="match-preview"] .mp-center{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:18px;z-index:6;padding:0 6px;}
+.scene-root[data-scene="match-preview"] .mp-vs{position:relative;width:168px;height:168px;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--rv-surface-2),var(--rv-jet-black));clip-path:polygon(0 0,calc(100% - 20px) 0,100% 20px,100% 100%,20px 100%,0 calc(100% - 20px));box-shadow:0 0 50px rgba(241,196,15,.35),0 16px 40px rgba(0,0,0,.7),inset 0 0 0 2px rgba(241,196,15,.5);animation:mpVs .7s .35s var(--rv-ease-bounce) both;}
+@keyframes mpVs{from{opacity:0;transform:scale(.4) rotate(-8deg);}to{opacity:1;transform:scale(1) rotate(0);}}
+.scene-root[data-scene="match-preview"] .mp-vs span{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:84px;color:var(--rv-white-smoke);text-shadow:0 0 28px rgba(241,196,15,.6),0 6px 16px rgba(0,0,0,.7);}
+.scene-root[data-scene="match-preview"] .mp-bo{font-family:var(--rv-font-stat);font-weight:700;font-size:18px;letter-spacing:.18em;color:var(--rv-jet-black);background:var(--rv-gold);padding:8px 20px;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));box-shadow:0 0 22px rgba(241,196,15,.4);white-space:nowrap;}
+.scene-root[data-scene="match-preview"] .mp-bo b{font-family:var(--rv-font-stat);font-size:22px;}
+.scene-root[data-scene="match-preview"] .mp-foot{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;z-index:5;}
+.scene-root[data-scene="match-preview"] .mp-foot-label{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:20px;letter-spacing:.40em;text-transform:uppercase;color:var(--rv-muted);text-indent:.40em;}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="match-preview">
+<div class="mp-bg"></div>
+<div class="mp-grid"></div>
+<div class="mp-lines"></div>
+<div class="mp-side mp-side-a"></div>
+<div class="mp-side mp-side-b"></div>
+<div class="mp-split"></div>
+
+<div class="mp-frame">
+  <header class="mp-top">
+    <div class="mp-brand">
+      <div class="mp-mark"></div>
+      <span class="mp-league" data-field="brand.leagueName">RIVALRY</span>
+    </div>
+    <span class="mp-event" data-field="eventTitle">RIVALRY SEASON 1</span>
+  </header>
+
+  <div class="mp-round-wrap">
+    <span class="mp-round" data-field="round">UPPER BRACKET • ROUND 1</span>
+  </div>
+
+  <div class="mp-stage">
+    <section class="mp-team mp-team-a">
+      <div class="mp-seed-badge"><span data-field="teamA.seed">#1</span></div>
+      <div class="mp-logo" data-bg="teamA.logo"><span class="mp-mono" data-mono="teamA.name">G</span></div>
+      <div class="mp-name" data-field="teamA.name">GUARDIANS</div>
+      <div class="mp-meta">
+        <span class="mp-tag" data-field="teamA.tag">NA</span>
+        <span class="mp-rec"><b data-field="teamA.record">12-3</b><i>RECORD</i></span>
+      </div>
+    </section>
+
+    <div class="mp-center">
+      <div class="mp-vs"><span>VS</span></div>
+      <div class="mp-bo">BEST OF <b data-field="bestOf">5</b></div>
+    </div>
+
+    <section class="mp-team mp-team-b">
+      <div class="mp-seed-badge"><span data-field="teamB.seed">#4</span></div>
+      <div class="mp-logo" data-bg="teamB.logo"><span class="mp-mono" data-mono="teamB.name">S</span></div>
+      <div class="mp-name" data-field="teamB.name">SENTINELS</div>
+      <div class="mp-meta">
+        <span class="mp-tag" data-field="teamB.tag">NA</span>
+        <span class="mp-rec"><b data-field="teamB.record">9-6</b><i>RECORD</i></span>
+      </div>
+    </section>
+  </div>
+
+  <footer class="mp-foot">
+    <span class="mp-foot-label">MATCH PREVIEW</span>
+  </footer>
+</div>
+    </div>
+  </div>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+    // Control-only scene: subscribe to the control bus (auto-mocks on file://).
+    var rl = RivalryOverlay.connect({ game: false });
+    RivalryBind(document.querySelector('.scene-root'), rl);
+    // Resolution-independent: scale the 1920x1080 design to fill any source size.
+    // Append ?fit=cover to the source URL to fill+crop instead of letterbox on non-16:9.
+    RivalryFit('.rv-stage');
+  </script>
+</body>
+</html>

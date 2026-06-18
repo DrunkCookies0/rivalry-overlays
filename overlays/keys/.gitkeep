@@ -1,0 +1,4 @@
+# Signing keys live here.
+# rivalry-overlay-public.pem  -> committed (the app verifies overlays with it)
+# rivalry-overlay-private.pem -> NEVER committed (gitignored), back it up safely
+# Generate both with:  npm run overlay:keygen

@@ -33,6 +33,18 @@
   .status{font-size:12px;margin-top:10px;color:var(--muted);text-align:center;}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#c0392b;margin-right:5px;}
   .dot.ok{background:#2ecc71;}
+  .muted-note{font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;}
+  .seg{display:inline-flex;border:1px solid rgba(255,255,255,.12);border-radius:6px;overflow:hidden;}
+  .seg-btn{background:#1b2531;color:var(--ink);border-radius:0;padding:7px 12px;font-size:13px;font-weight:600;}
+  .seg-btn.on{background:var(--rivalry);color:#fff;}
+  .seg-btn:disabled{opacity:.45;cursor:not-allowed;}
+  .scene-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.05);flex-wrap:wrap;}
+  .scene-row .nm{font-weight:700;min-width:130px;}
+  .scene-row .pill{font-size:10px;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:10px;}
+  .pill.ok{background:rgba(46,204,113,.18);color:#2ecc71;}
+  .pill.preview{background:rgba(241,196,15,.18);color:#f1c40f;}
+  .scene-row input.u{flex:1;min-width:160px;font-family:monospace;font-size:12px;}
+  .scene-row .mini{background:#243040;color:var(--ink);padding:6px 10px;font-size:12px;}
   .row{flex-wrap:wrap;}
   /* Narrow layout for OBS custom browser docks (and small windows) */
   @media (max-width:560px){
@@ -54,18 +66,20 @@
   </div>
   <div class="sub">Push team branding and series score to the overlay in real time.</div>
 
-  <div class="card full" style="margin-bottom:18px;border-left:3px solid var(--rivalry);">
-    <h2>Add to OBS</h2>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:8px;">
-      In OBS add a <b style="color:var(--ink)">Browser Source</b>, set width 1920 / height 1080, and paste this URL:
+  <div class="card full" id="scenesCard" style="margin-bottom:18px;border-left:3px solid var(--rivalry);">
+    <h2>Overlays / Scenes <span class="muted-note">(add each as an OBS Browser Source, 1920 × 1080)</span></h2>
+    <div class="row" style="gap:8px;margin-bottom:6px;align-items:center;">
+      <div class="seg" id="modeToggle">
+        <button class="seg-btn on" data-mode="manual">Manual</button>
+        <button class="seg-btn" data-mode="match" disabled title="Coming soon — needs the league API">Match (league)</button>
+      </div>
+      <div style="flex:1"></div>
+      <button id="refreshScenes" style="background:#243040;color:var(--ink);">Refresh</button>
     </div>
-    <div class="row" style="gap:8px;">
-      <input type="text" id="obsUrl" readonly value="http://localhost:49080/overlay/overlay.html"
-        style="flex:1;font-family:monospace;font-size:13px;" />
-      <button id="copyUrl" style="background:#243040;color:var(--ink);white-space:nowrap;">Copy URL</button>
-    </div>
-    <div style="font-size:12px;color:var(--muted);margin-top:8px;">
-      First time only: launch Rocket League once after installing so the stats feed turns on, then start spectating a match.
+    <div id="sceneList"><span class="muted-note">loading scenes…</span></div>
+    <div class="muted-note" style="margin-top:8px;">
+      <b style="color:var(--ink)">Copy</b> a URL into an OBS Browser Source, or <b style="color:var(--ink)">Preview</b> to open it in your browser.
+      First time only: launch Rocket League once after installing so the stats feed turns on.
     </div>
   </div>
 
@@ -78,6 +92,10 @@
       <input type="text" id="logoA" placeholder="https://.../logo.png" />
       <label>Tag (region / seed)</label>
       <input type="text" id="tagA" placeholder="EU1" />
+      <div class="row" style="gap:10px;">
+        <div style="flex:1"><label>Seed</label><input type="text" id="seedA" placeholder="#1" /></div>
+        <div style="flex:1"><label>Record</label><input type="text" id="recordA" placeholder="12-3" /></div>
+      </div>
       <label>Series games won</label>
       <div class="series stepper">
         <button data-team="a" data-d="-1">-</button>
@@ -94,6 +112,10 @@
       <input type="text" id="logoB" placeholder="https://.../logo.png" />
       <label>Tag (region / seed)</label>
       <input type="text" id="tagB" placeholder="EU2" />
+      <div class="row" style="gap:10px;">
+        <div style="flex:1"><label>Seed</label><input type="text" id="seedB" placeholder="#4" /></div>
+        <div style="flex:1"><label>Record</label><input type="text" id="recordB" placeholder="9-6" /></div>
+      </div>
       <label>Series games won</label>
       <div class="series stepper">
         <button data-team="b" data-d="-1">-</button>
@@ -114,6 +136,112 @@
           <input type="text" id="eventTitle" placeholder="RIVALRY SEASON 1 | PLAYOFFS | UPPER ROUND 1" />
         </div>
       </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2">
+          <label>Round / subtitle (preview, starting-soon)</label>
+          <input type="text" id="round" placeholder="UPPER BRACKET • ROUND 1" />
+        </div>
+        <div style="flex:1">
+          <label>Start time</label>
+          <input type="text" id="startTime" placeholder="8:00 PM ET" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>Casters <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(cams via VDO.Ninja — 1-3 casters, blank rows hide)</span></h2>
+      <div class="row" style="gap:8px;align-items:flex-end;margin-bottom:8px;">
+        <div style="flex:2"><label>VDO.Ninja room (one per event)</label><input type="text" id="vdoRoom" placeholder="rivalry-s1-gf" /></div>
+        <button id="vdoGen" style="background:#243040;color:var(--ink);">Generate caster links</button>
+      </div>
+      <div id="vdoLinks" style="margin-bottom:6px;"><span class="muted-note">Set a room + caster names, then Generate: it auto-fills each caster's feed below and gives you a push link to send each caster. (Or paste view links manually.)</span></div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Caster 1 name</label><input type="text" id="casterName0" placeholder="Alex 'Cookies' Toll" /></div>
+        <div style="flex:1"><label>Role</label><input type="text" id="casterRole0" placeholder="PLAY-BY-PLAY" /></div>
+        <div style="flex:1"><label>Handle</label><input type="text" id="casterHandle0" placeholder="@cookies" /></div>
+        <div style="flex:2"><label>VDO.Ninja (link or stream ID)</label><input type="text" id="casterStream0" placeholder="vdo.ninja/?view=ID  or  ID" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Caster 2 name</label><input type="text" id="casterName1" placeholder="" /></div>
+        <div style="flex:1"><label>Role</label><input type="text" id="casterRole1" placeholder="COLOR" /></div>
+        <div style="flex:1"><label>Handle</label><input type="text" id="casterHandle1" placeholder="@handle" /></div>
+        <div style="flex:2"><label>VDO.Ninja (link or stream ID)</label><input type="text" id="casterStream1" placeholder="vdo.ninja/?view=ID  or  ID" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Caster 3 name</label><input type="text" id="casterName2" placeholder="" /></div>
+        <div style="flex:1"><label>Role</label><input type="text" id="casterRole2" placeholder="DESK" /></div>
+        <div style="flex:1"><label>Handle</label><input type="text" id="casterHandle2" placeholder="@handle" /></div>
+        <div style="flex:2"><label>VDO.Ninja (link or stream ID)</label><input type="text" id="casterStream2" placeholder="vdo.ninja/?view=ID  or  ID" /></div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>Up Next <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(schedule — blank rows hide on air)</span></h2>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Match 1 — Team A</label><input type="text" id="nextA0" placeholder="NOVA" /></div>
+        <div style="flex:2"><label>Team B</label><input type="text" id="nextB0" placeholder="ECLIPSE" /></div>
+        <div style="flex:1"><label>Time</label><input type="text" id="nextTime0" placeholder="9:30 ET" /></div>
+        <div style="flex:1"><label>Round</label><input type="text" id="nextRound0" placeholder="UB R1" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Match 2 — Team A</label><input type="text" id="nextA1" placeholder="" /></div>
+        <div style="flex:2"><label>Team B</label><input type="text" id="nextB1" placeholder="" /></div>
+        <div style="flex:1"><label>Time</label><input type="text" id="nextTime1" placeholder="" /></div>
+        <div style="flex:1"><label>Round</label><input type="text" id="nextRound1" placeholder="" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Match 3 — Team A</label><input type="text" id="nextA2" placeholder="" /></div>
+        <div style="flex:2"><label>Team B</label><input type="text" id="nextB2" placeholder="" /></div>
+        <div style="flex:1"><label>Time</label><input type="text" id="nextTime2" placeholder="" /></div>
+        <div style="flex:1"><label>Round</label><input type="text" id="nextRound2" placeholder="" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Match 4 — Team A</label><input type="text" id="nextA3" placeholder="" /></div>
+        <div style="flex:2"><label>Team B</label><input type="text" id="nextB3" placeholder="" /></div>
+        <div style="flex:1"><label>Time</label><input type="text" id="nextTime3" placeholder="" /></div>
+        <div style="flex:1"><label>Round</label><input type="text" id="nextRound3" placeholder="" /></div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>Player Titles <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(name must match the in-game name exactly; shows on that player's goal banner)</span></h2>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Player 1 — in-game name</label><input type="text" id="pName0" placeholder="HEATER" /></div>
+        <div style="flex:3"><label>Title</label><input type="text" id="pTitle0" placeholder="TEAM FROST • CAPTAIN" /></div>
+        <div style="flex:3"><label>Badges (comma-separated, max 3)</label><input type="text" id="pBadges0" placeholder="MVP, TOP SCORER" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Player 2 — in-game name</label><input type="text" id="pName1" placeholder="" /></div>
+        <div style="flex:3"><label>Title</label><input type="text" id="pTitle1" placeholder="" /></div>
+        <div style="flex:3"><label>Badges</label><input type="text" id="pBadges1" placeholder="" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Player 3 — in-game name</label><input type="text" id="pName2" placeholder="" /></div>
+        <div style="flex:3"><label>Title</label><input type="text" id="pTitle2" placeholder="" /></div>
+        <div style="flex:3"><label>Badges</label><input type="text" id="pBadges2" placeholder="" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Player 4 — in-game name</label><input type="text" id="pName3" placeholder="" /></div>
+        <div style="flex:3"><label>Title</label><input type="text" id="pTitle3" placeholder="" /></div>
+        <div style="flex:3"><label>Badges</label><input type="text" id="pBadges3" placeholder="" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Player 5 — in-game name</label><input type="text" id="pName4" placeholder="" /></div>
+        <div style="flex:3"><label>Title</label><input type="text" id="pTitle4" placeholder="" /></div>
+        <div style="flex:3"><label>Badges</label><input type="text" id="pBadges4" placeholder="" /></div>
+      </div>
+      <div class="row" style="gap:10px;">
+        <div style="flex:2"><label>Player 6 — in-game name</label><input type="text" id="pName5" placeholder="" /></div>
+        <div style="flex:3"><label>Title</label><input type="text" id="pTitle5" placeholder="" /></div>
+        <div style="flex:3"><label>Badges</label><input type="text" id="pBadges5" placeholder="" /></div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>Bracket <span class="muted-note">(playoffs — fill matchups; blank ones hide on air; winner = higher score)</span></h2>
+      <div id="bracketInputs"></div>
+      <label>Champion</label>
+      <input type="text" id="brkChamp" placeholder="GUARDIANS" />
     </div>
 
     <div class="card full">
@@ -134,10 +262,12 @@
       </div>
       <div class="row" style="gap:8px;margin-top:10px;">
         <button id="obsTest" style="background:#243040;color:var(--ink);">Test connection</button>
-        <button id="obsSetupScenes" style="background:#243040;color:var(--ink);">Create OBS scene</button>
+        <button id="obsSetupScenes" style="background:#243040;color:var(--ink);">Create all OBS scenes</button>
         <div style="flex:1;"></div>
         <div id="obsStatus" style="font-size:12px;color:var(--muted);align-self:center;">disabled</div>
       </div>
+      <div class="muted-note" style="margin-top:12px;">Scene deck — click to switch OBS live (needs "Create OBS scene" run + OBS connected):</div>
+      <div class="row" id="sceneDeck" style="gap:6px;margin-top:6px;"></div>
       <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:14px 0 10px;">
         <input type="checkbox" id="obsAutoSwitch" style="width:auto;" />
         <span style="color:var(--ink);font-size:13px;">Auto-switch OBS scenes on game events (replay, post-match)</span>
@@ -194,15 +324,63 @@ function setStatus(){
   $("statusText").textContent = connected ? "connected to bridge" : "bridge offline (start: npm start)";
 }
 
+// Casters / Up Next are lists: gather only the filled rows so blank slots stay
+// hidden on air (the presentation scenes hide empty slots, see overlays/CONTRACT.md).
+function gatherCasters(){
+  const out = [];
+  for (let i = 0; i < 3; i++){
+    const name = $("casterName"+i).value.trim();
+    if (!name) continue;
+    out.push({ name, role:$("casterRole"+i).value.trim(), handle:$("casterHandle"+i).value.trim(), stream:$("casterStream"+i).value.trim(), avatar:"" });
+  }
+  return out;
+}
+function gatherUpNext(){
+  const out = [];
+  for (let i = 0; i < 4; i++){
+    const a = $("nextA"+i).value.trim(), b = $("nextB"+i).value.trim();
+    if (!a && !b) continue;
+    out.push({ teamA:a, teamB:b, time:$("nextTime"+i).value.trim(), round:$("nextRound"+i).value.trim() });
+  }
+  return out;
+}
+// Per-player goal-banner titles/badges, keyed by in-game name. Only rows with a
+// name are sent; the overlay matches the scorer to this list (case-insensitive)
+// and falls back to the league line when a scorer isn't listed.
+function gatherPlayers(){
+  const out = [];
+  for (let i = 0; i < 6; i++){
+    const name = $("pName"+i).value.trim();
+    if (!name) continue;
+    const badges = $("pBadges"+i).value.split(",").map(s => s.trim()).filter(Boolean).slice(0, 3);
+    out.push({ name, title:$("pTitle"+i).value.trim(), badges });
+  }
+  return out;
+}
+// Bracket: 8-team single-elim (QF x4, SF x2, F x1). Empty matchups hide on air.
+function gatherBracket(){
+  const defs = [["QUARTERFINALS",4],["SEMIFINALS",2],["FINAL",1]];
+  const rounds = defs.map(([name,n],r) => ({ name, matchups: Array.from({length:n}, (_,m) => ({
+    teamA: $("brkA_"+r+"_"+m).value.trim(), teamB: $("brkB_"+r+"_"+m).value.trim(),
+    scoreA: parseInt($("brkSA_"+r+"_"+m).value,10) || 0, scoreB: parseInt($("brkSB_"+r+"_"+m).value,10) || 0,
+  })) }));
+  return { rounds, champion: $("brkChamp").value.trim() };
+}
 function payload(){
   return {
     type: "control",
     payload: {
-      teamA: { name:$("nameA").value, logo:$("logoA").value.trim(), tag:$("tagA").value },
-      teamB: { name:$("nameB").value, logo:$("logoB").value.trim(), tag:$("tagB").value },
+      teamA: { name:$("nameA").value, logo:$("logoA").value.trim(), tag:$("tagA").value, seed:$("seedA").value.trim(), record:$("recordA").value.trim() },
+      teamB: { name:$("nameB").value, logo:$("logoB").value.trim(), tag:$("tagB").value, seed:$("seedB").value.trim(), record:$("recordB").value.trim() },
       bestOf: parseInt($("bestOf").value, 10) || 5,
       series: { a: state.series.a, b: state.series.b },
-      eventTitle: $("eventTitle").value
+      eventTitle: $("eventTitle").value,
+      round: $("round").value,
+      startTime: $("startTime").value,
+      casters: gatherCasters(),
+      upNext: gatherUpNext(),
+      players: gatherPlayers(),
+      bracket: gatherBracket()
     }
   };
 }
@@ -244,8 +422,12 @@ $("bestOf").addEventListener("input", () => {
   });
 });
 // push on any field change
-["nameA","logoA","tagA","nameB","logoB","tagB","bestOf","eventTitle"]
+["nameA","logoA","tagA","nameB","logoB","tagB","bestOf","eventTitle",
+ "seedA","recordA","seedB","recordB","round","startTime"]
   .forEach(id => $(id).addEventListener("input", push));
+for (let i = 0; i < 3; i++) ["casterName","casterRole","casterHandle","casterStream"].forEach(p => $(p+i).addEventListener("input", push));
+for (let i = 0; i < 4; i++) ["nextA","nextB","nextTime","nextRound"].forEach(p => $(p+i).addEventListener("input", push));
+for (let i = 0; i < 6; i++) ["pName","pTitle","pBadges"].forEach(p => $(p+i).addEventListener("input", push));
 $("apply").addEventListener("click", push);
 
 // ---- OBS integration card -------------------------------------------------
@@ -324,14 +506,128 @@ connect = function(){
   };
 };
 
-// copy the OBS overlay URL to clipboard
-$("copyUrl").addEventListener("click", async () => {
-  const url = $("obsUrl").value;
-  try { await navigator.clipboard.writeText(url); }
-  catch { $("obsUrl").select(); document.execCommand("copy"); }
-  const b = $("copyUrl"); const t = b.textContent;
-  b.textContent = "Copied!"; setTimeout(() => b.textContent = t, 1500);
-});
+// ---- Overlays / Scenes card ----------------------------------------------
+// Lists every overlay the app serves, read from /overlays/registry.json (which
+// main.js generates from a signature scan). Each row: copy the OBS URL or open a
+// browser preview (served from the app, so it gets live data). Approved vs
+// preview reflects the signed-overlay gate.
+const SCENE_LABELS = {
+  "gameplay": "Gameplay", "starting-soon": "Starting Soon", "match-preview": "Match Preview",
+  "up-next": "Up Next", "caster": "Casters", "postgame": "Post-Game Results", "bracket": "Bracket",
+  "brb": "Be Right Back",
+};
+const SCENE_ORDER = ["gameplay", "starting-soon", "match-preview", "up-next", "caster", "postgame", "bracket", "brb"];
+
+async function renderScenes(){
+  const host = $("sceneList");
+  let data = null;
+  try { data = await (await fetch("/overlays/registry.json", { cache: "no-store" })).json(); } catch (e) { /* offline */ }
+  let overlays = (data && Array.isArray(data.overlays)) ? data.overlays.slice() : [];
+  // Pre-migration the gameplay overlay isn't in the registry (it lives at the
+  // legacy /overlay/overlay.html path with no manifest) — synthesize a row.
+  if (!overlays.some(o => o.scene === "gameplay")) {
+    overlays.unshift({ name: "Gameplay", scene: "gameplay", url: "/overlay/overlay.html", approved: true, legacy: true });
+  }
+  if (!overlays.length) { host.innerHTML = '<span class="muted-note">No overlays found (is the app running?).</span>'; return; }
+  overlays.sort((a, b) => ((SCENE_ORDER.indexOf(a.scene) + 1) || 99) - ((SCENE_ORDER.indexOf(b.scene) + 1) || 99));
+  host.innerHTML = "";
+  for (const o of overlays) {
+    const url = location.origin + o.url;
+    const row = document.createElement("div");
+    row.className = "scene-row";
+    // Build with textContent / element props — registry fields (name, scene,
+    // entry-derived url) originate in author-controlled manifest.json, so they
+    // must NEVER be interpolated into innerHTML (XSS into the control panel).
+    const nm = document.createElement("span");
+    nm.className = "nm";
+    nm.textContent = SCENE_LABELS[o.scene] || o.name || o.scene || "";
+    row.appendChild(nm);
+    if (!o.legacy) {
+      const pill = document.createElement("span");
+      pill.className = "pill " + (o.approved ? "ok" : "preview");
+      pill.textContent = o.approved ? "approved" : "preview";
+      row.appendChild(pill);
+    }
+    const inp = document.createElement("input");
+    inp.className = "u"; inp.readOnly = true; inp.value = url;
+    row.appendChild(inp);
+    const copyBtn = document.createElement("button");
+    copyBtn.className = "mini act-copy"; copyBtn.textContent = "Copy";
+    row.appendChild(copyBtn);
+    const openBtn = document.createElement("button");
+    openBtn.className = "mini act-open"; openBtn.textContent = "Preview";
+    row.appendChild(openBtn);
+    row.querySelector(".act-copy").addEventListener("click", async (e) => {
+      try { await navigator.clipboard.writeText(url); }
+      catch { const i = row.querySelector("input"); i.select(); document.execCommand("copy"); }
+      const b = e.target, t = b.textContent; b.textContent = "Copied!"; setTimeout(() => b.textContent = t, 1200);
+    });
+    row.querySelector(".act-open").addEventListener("click", () => window.open(url, "_blank"));
+    host.appendChild(row);
+  }
+}
+$("refreshScenes").addEventListener("click", renderScenes);
+document.querySelectorAll("#modeToggle .seg-btn").forEach(b => b.addEventListener("click", () => {
+  if (b.disabled) return;
+  document.querySelectorAll("#modeToggle .seg-btn").forEach(x => x.classList.remove("on"));
+  b.classList.add("on");
+}));
+// ---- Bracket card: build the matchup inputs + wire live push --------------
+(function buildBracket(){
+  const rounds = [["QUARTERFINALS",4],["SEMIFINALS",2],["FINAL",1]];
+  let h = "";
+  rounds.forEach((rd, r) => {
+    h += '<div class="muted-note" style="margin:10px 0 2px;letter-spacing:1px;">' + rd[0] + "</div>";
+    for (let m = 0; m < rd[1]; m++) h +=
+      '<div class="row" style="gap:6px;margin-bottom:4px;">' +
+      '<input type="text" id="brkA_' + r + "_" + m + '" placeholder="Team A" style="flex:3;min-width:90px;">' +
+      '<input type="number" id="brkSA_' + r + "_" + m + '" placeholder="0" style="flex:1;min-width:46px;">' +
+      '<span class="muted-note">vs</span>' +
+      '<input type="number" id="brkSB_' + r + "_" + m + '" placeholder="0" style="flex:1;min-width:46px;">' +
+      '<input type="text" id="brkB_' + r + "_" + m + '" placeholder="Team B" style="flex:3;min-width:90px;"></div>';
+  });
+  $("bracketInputs").innerHTML = h;
+  document.querySelectorAll("#bracketInputs input").forEach(el => el.addEventListener("input", push));
+  $("brkChamp").addEventListener("input", push);
+})();
+// ---- VDO.Ninja caster links: room -> push links (send to casters) + auto-fill the view feeds
+function sanitizeRoom(r){ return String(r || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40); }
+function generateVdo(){
+  const room = sanitizeRoom($("vdoRoom").value);
+  const host = $("vdoLinks"); host.innerHTML = "";
+  if (!room){ host.innerHTML = '<span class="muted-note">Enter a room name (letters/numbers), then Generate.</span>'; return; }
+  let any = false;
+  for (let i = 0; i < 3; i++){
+    const name = $("casterName"+i).value.trim();
+    if (!name) continue;
+    any = true;
+    const sid = room + "c" + (i + 1);
+    const pushUrl = "https://vdo.ninja/?room=" + room + "&push=" + sid + "&webcam";
+    // The scene embeds this view link (its vdoSrc accepts a full vdo.ninja URL).
+    $("casterStream"+i).value = "https://vdo.ninja/?room=" + room + "&view=" + sid + "&cleanoutput&autostart";
+    const row = document.createElement("div"); row.className = "row"; row.style.gap = "8px"; row.style.marginBottom = "4px";
+    const lbl = document.createElement("span"); lbl.className = "muted-note"; lbl.style.minWidth = "130px"; lbl.textContent = name + " — send:";
+    const inp = document.createElement("input"); inp.readOnly = true; inp.value = pushUrl; inp.style.flex = "1"; inp.style.fontFamily = "monospace"; inp.style.fontSize = "12px";
+    const btn = document.createElement("button"); btn.className = "mini"; btn.style.background = "#243040"; btn.style.color = "var(--ink)"; btn.textContent = "Copy";
+    btn.addEventListener("click", async () => { try { await navigator.clipboard.writeText(pushUrl); } catch { inp.select(); document.execCommand("copy"); } const t = btn.textContent; btn.textContent = "Copied!"; setTimeout(() => btn.textContent = t, 1200); });
+    row.appendChild(lbl); row.appendChild(inp); row.appendChild(btn); host.appendChild(row);
+  }
+  if (!any){ host.innerHTML = '<span class="muted-note">Add at least one caster name above, then Generate.</span>'; return; }
+  push(); // send the auto-filled view feeds to the caster scene
+}
+$("vdoGen").addEventListener("click", generateVdo);
+
+// ---- OBS scene deck: one-click scene switching (producer switchboard) ------
+(function buildDeck(){
+  const decks = [["RIVALRY - Live","Live"],["RIVALRY - Starting Soon","Starting Soon"],["RIVALRY - BRB","BRB"],
+    ["RIVALRY - Casters","Casters"],["RIVALRY - Match Preview","Match Preview"],["RIVALRY - Up Next","Up Next"],
+    ["RIVALRY - Post-Game","Post-Game"],["RIVALRY - Bracket","Bracket"]];
+  $("sceneDeck").innerHTML = decks.map(d => '<button class="mini deck-btn" data-scene="' + d[0] + '" style="background:#243040;color:var(--ink);">' + d[1] + "</button>").join("");
+  document.querySelectorAll("#sceneDeck .deck-btn").forEach(b => b.addEventListener("click", () => {
+    if (connected && ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: "obs-action", payload: { action: "switch", scene: b.dataset.scene } }));
+  }));
+})();
+renderScenes();
 
 connect();
 </script>

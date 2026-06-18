@@ -38,9 +38,13 @@ const { createOBSController } = require("./bridge/obs-controller");
 const obsSettingsStore = require("./bridge/obs-settings");
 const devSettingsStore = require("./bridge/dev-settings");
 const { getMeta } = require("./bridge/app-meta");
+const overlayRegistry = require("./bridge/overlay-registry");
 
 const HTTP_PORT = 49080;
-const OVERLAY_URL = `http://localhost:${HTTP_PORT}/overlay/overlay.html`;
+// Gameplay overlay now lives in the multi-scene tree (overlays/rivalry-gameplay,
+// resolution-independent). The legacy /overlay/overlay.html is still served as a
+// fallback during the transition, so existing OBS sources keep working.
+const OVERLAY_URL = `http://localhost:${HTTP_PORT}/overlays/rivalry-gameplay/index.html`;
 const CONTROL_URL = `http://localhost:${HTTP_PORT}/control/control.html`;
 const TRAY_ICON = path.join(__dirname, "assets", "tray.png");
 
@@ -71,6 +75,25 @@ let httpRootDir = __dirname;
 function setHttpRoot(dir) { httpRootDir = dir; }
 function getHttpRoot()   { return httpRootDir; }
 
+// --- Overlay registry + signed-overlay gate (see bridge/overlay-registry.js) ---
+// Scanned once at boot and again whenever the HTTP root changes (dev toggle), so
+// requests never re-hash folders. The gate is enforced only when the PACKAGED
+// app serves its own bundled files; dev-mode serving (unpacked, or a packaged
+// app pointed at a repo) is treated as preview so unsigned WIP still loads.
+let overlayPublicKey = null;
+let overlayReg = { list: [], byFolder: {}, scannedAt: null, hasKey: false };
+function gateActive() { return app.isPackaged && !devSettings.enabled; }
+function rescanOverlays() {
+  const base = path.join(getHttpRoot(), "overlays");
+  const keyPath = path.join(base, "keys", "rivalry-overlay-public.pem");
+  try { overlayPublicKey = fs.existsSync(keyPath) ? fs.readFileSync(keyPath, "utf8") : null; }
+  catch (e) { overlayPublicKey = null; }
+  overlayReg = overlayRegistry.scanOverlays(base, overlayPublicKey);
+  const approved = overlayReg.list.filter((o) => o.approved).length;
+  console.log(`[rivalry] overlays: ${overlayReg.list.length} found, ${approved} approved` +
+    (overlayReg.hasKey ? "" : " (no public key)") + (gateActive() ? " [gate ON]" : " [preview]"));
+}
+
 function startHttpServer(rootDir) {
   setHttpRoot(rootDir);
   const server = http.createServer((req, res) => {
@@ -80,19 +103,44 @@ function startHttpServer(rootDir) {
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(JSON.stringify(META));
     }
+    // Overlay registry so the control panel can list available scenes + their
+    // approval state. Served from the last scan (cheap; no per-request hashing).
+    if (urlPath === "/overlays/registry.json") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({
+        version: 1, scannedAt: overlayReg.scannedAt, hasKey: overlayReg.hasKey,
+        gate: gateActive(), overlays: overlayReg.list,
+      }));
+    }
     if (urlPath === "/" || urlPath === "") urlPath = "/control/control.html";
+
+    // Signed-overlay gate: in the packaged app, deny unapproved scene folders and
+    // inject the signed flag into an approved scene's entry HTML so the SDK drops
+    // its PREVIEW badge. sdk/shared always serve; keys never do. Non-/overlays/
+    // paths pass through unchanged.
+    const cls = overlayRegistry.classifyOverlayRequest(urlPath, overlayReg, gateActive());
+    if (cls.kind === "deny") {
+      res.writeHead(404);
+      return res.end("not found");
+    }
     const root = httpRootDir;
     const filePath = path.normalize(path.join(root, urlPath));
     if (!filePath.startsWith(root)) {
       res.writeHead(403);
       return res.end("forbidden");
     }
+    const injectFlag = cls.kind === "scene" && cls.isEntry && gateActive() && cls.approved;
     fs.readFile(filePath, (err, data) => {
       if (err) {
         res.writeHead(404);
         return res.end("not found");
       }
-      res.writeHead(200, { "Content-Type": MIME[path.extname(filePath)] || "application/octet-stream" });
+      const type = MIME[path.extname(filePath)] || "application/octet-stream";
+      if (injectFlag && type.indexOf("text/html") === 0) {
+        res.writeHead(200, { "Content-Type": type });
+        return res.end(overlayRegistry.injectSignedFlag(data.toString("utf8")));
+      }
+      res.writeHead(200, { "Content-Type": type });
       res.end(data);
     });
   });
@@ -278,11 +326,25 @@ function refreshTrayMenu() {
 // Idempotent: creates a "RIVALRY - Live" scene with the overlay URL pre-wired
 // as a browser source. Producers run this once after enabling obs-websocket;
 // re-running is safe and just no-ops if scenes / sources already exist.
+const OBS_SCENE_NAMES = {
+  "gameplay": "RIVALRY - Live", "starting-soon": "RIVALRY - Starting Soon", "brb": "RIVALRY - BRB",
+  "caster": "RIVALRY - Casters", "match-preview": "RIVALRY - Match Preview", "up-next": "RIVALRY - Up Next",
+  "postgame": "RIVALRY - Post-Game", "bracket": "RIVALRY - Bracket",
+};
 async function setupObsScenes() {
   if (!obsController || !obsController.status.connected) return;
-  const scenes = [
-    { sceneName: "RIVALRY - Live", sourceName: "RIVALRY Overlay", url: OVERLAY_URL },
-  ];
+  const base = `http://localhost:${HTTP_PORT}`;
+  // One OBS scene per available overlay, each with its Browser Source pre-wired.
+  // In the packaged app only approved overlays are offered; dev offers all.
+  const list = (overlayReg.list || []).filter((o) => (gateActive() ? o.approved : true));
+  const scenes = list.map((o) => ({
+    sceneName: OBS_SCENE_NAMES[o.scene] || ("RIVALRY - " + o.name),
+    sourceName: o.name + " Overlay",
+    url: base + o.url,
+  }));
+  if (!scenes.some((s) => s.sceneName === "RIVALRY - Live")) {
+    scenes.unshift({ sceneName: "RIVALRY - Live", sourceName: "RIVALRY Overlay", url: OVERLAY_URL });
+  }
   for (const s of scenes) {
     try { await obsController.createSceneWithBrowserSource(s); }
     catch (e) { console.error("[rivalry] scene setup failed:", e.message); }
@@ -317,6 +379,7 @@ async function toggleDevMode() {
     setHttpRoot(picked);
   }
   devSettingsStore.save(app.getPath("userData"), devSettings);
+  rescanOverlays();
   refreshTrayMenu();
 }
 
@@ -445,9 +508,15 @@ function setupObsIntegration() {
   }
 }
 
-async function handleObsAction({ action }) {
+async function handleObsAction(payload) {
   if (!obsController || !obsController.status.connected) return;
+  const action = payload && payload.action;
   if (action === "setup-scenes") return setupObsScenes();
+  // Producer "scene deck": switch OBS to a named scene on demand (safer than
+  // full auto-switching — the producer drives the cut).
+  if (action === "switch" && payload.scene) {
+    try { await obsController.switchScene(payload.scene); } catch (e) { /* unknown scene -> no-op */ }
+  }
 }
 
 async function handleObsQuery({ query }, sourceWs) {
@@ -481,16 +550,17 @@ function onGameEventForObs(env) {
     obsController.switchScene(map.goal);
   } else if (ev === "GoalReplayStart" && map.replay) {
     obsController.switchScene(map.replay);
-  } else if ((ev === "GoalReplayEnd" || ev === "CountdownBegin" || ev === "RoundStarted") && map.live) {
-    obsController.switchScene(map.live);
-  } else if (ev === "UpdateState" && map.postMatch) {
-    // Match-end heuristic: Game.Winner becomes a non-empty team name.
-    // Fire once per match by stashing the last GUID we switched on.
-    const data = env.data || {};
-    const winner = data.Game && data.Game.Winner;
-    const guid = data.MatchGuid;
-    if (winner && guid && onGameEventForObs._lastEnded !== guid) {
-      onGameEventForObs._lastEnded = guid;
+  } else if (ev === "GoalReplayEnd" || ev === "CountdownBegin" || ev === "RoundStarted") {
+    onGameEventForObs._ended = false; // back in play -> re-arm the post-match trigger
+    if (map.live) obsController.switchScene(map.live);
+  } else if (ev === "MatchCreated" || ev === "MatchInitialized") {
+    onGameEventForObs._ended = false;
+  } else if ((ev === "MatchEnded" || ev === "PodiumStart") && map.postMatch) {
+    // Real match-end events (CONTRACT.md). The old code keyed off Game.Winner,
+    // which the mock never sets and is unverified in real RL. Debounce the
+    // MatchEnded + PodiumStart pair (they fire together) with a one-shot flag.
+    if (!onGameEventForObs._ended) {
+      onGameEventForObs._ended = true;
       obsController.switchScene(map.postMatch);
     }
   }
@@ -560,6 +630,7 @@ if (!app.requestSingleInstanceLock()) {
     collector = startReplayCollector({});
     const initialRoot = devSettings.enabled ? devSettings.path : __dirname;
     startHttpServer(initialRoot);
+    rescanOverlays();
     createWindow();
     createTray();
     setupAutoUpdate();

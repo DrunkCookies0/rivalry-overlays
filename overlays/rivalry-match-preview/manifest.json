@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-match-preview",
+  "name": "Match Preview",
+  "author": "RIVALRY",
+  "version": "1.0.0",
+  "scene": "match-preview",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Match Preview scene (Kinetic Bold).",
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "cce355577d326c62abb4e606d69303f8c28586dab0bdb8b7ebc3ada87bdbfc28",
+    "signature": "j+hpqgj0bunm9IoiIRpSWpO0shAvlim7Myj62KIGGOwWGOwvgz3BSy9Ge5+b0z57RKtpf1Zi3V+d8l/2nmCmCA==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-06-18T01:45:51.749Z"
+  }
+}

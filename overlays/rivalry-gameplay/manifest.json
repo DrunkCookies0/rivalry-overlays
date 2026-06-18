@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-gameplay",
+  "name": "Gameplay",
+  "author": "RIVALRY",
+  "version": "1.0.0",
+  "scene": "gameplay",
+  "entry": "index.html",
+  "needs": [
+    "game",
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Live in-match gameplay overlay (scorebug, boost, stat pops, goal sequence).",
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "e0f23c17a0b5b2b7977bd0df44d9d7a694a0613262686aa404af629aa6aaa833",
+    "signature": "z23Gg8LCrgvFVDjpZd/iuwV2O/qqm8sOBxIUuyOFOgEFszpL7Vw61k1nmrzZmug9OpufV2dyRTBPZm4MEsAZCQ==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-06-18T03:00:16.636Z"
+  }
+}

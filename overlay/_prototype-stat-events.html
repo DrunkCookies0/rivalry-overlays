@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>RIVALRY - Stat Event Color Treatment (Option B)</title>
+<!-- PROTOTYPE / not shipped. Option B chosen; this iteration compares COLOR
+     TREATMENTS (the muted tint made gold look brown). Open directly in a
+     browser (file://). Pick a treatment + values, I port to overlay.html. -->
+<style>
+  :root{
+    --blue:#2f7dff; --red:#ff7601;
+    --panel:rgba(19,46,59,.94); --panel-solid:#132E3B; --bar:#1a3d4d; --ink:#F1EEEE; --gold:#F1C40F;
+    --shadow:0 10px 34px rgba(0,0,0,.55);
+    --font-display:'Exo 2','Segoe UI',system-ui,sans-serif; --font-stat:'Space Mono','SF Mono',Consolas,monospace;
+    --demo:#e74c3c; --shot:#ff7601; --save:#1abc9c; --assist:#8e5fd9; --goal:#F1C40F;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@1,700&family=Space+Mono:wght@700&display=swap');
+  *{box-sizing:border-box;}
+  body{margin:0;min-height:100vh;background:#101820 radial-gradient(circle at 50% 30%,#16242e,#0b1016);
+    font-family:var(--font-display);color:var(--ink);padding:24px 32px;}
+  h1{font-size:15px;letter-spacing:2px;text-transform:uppercase;opacity:.7;font-style:italic;margin:0 0 12px;}
+  .row{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-bottom:12px;}
+  button{font-family:var(--font-display);font-style:italic;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+    font-size:12px;color:var(--ink);cursor:pointer;background:var(--bar);border:1px solid rgba(255,255,255,.12);
+    padding:8px 13px;border-radius:6px;transition:background .15s,transform .08s;}
+  button:hover{background:#244b5e;} button:active{transform:translateY(1px);}
+  .treat{background:#20496F;} .treat.sel{background:var(--gold);color:#1a1206;}
+  .badge{display:inline-block;padding:1px 7px;border-radius:4px;background:var(--bar);font-size:11px;letter-spacing:1px;}
+  .tune{display:flex;flex-wrap:wrap;gap:20px;align-items:center;margin:6px 0 26px;font-size:11px;letter-spacing:1px;text-transform:uppercase;opacity:.85;}
+  .tune label{display:flex;flex-direction:column;gap:3px;} .tune input[type=range]{width:150px;} .tune output{font-family:var(--font-stat);}
+  .stage{display:flex;justify-content:space-between;}
+  .col{display:flex;flex-direction:column;gap:7px;width:250px;}
+
+  .ptag{position:relative;background:var(--panel);box-shadow:var(--shadow);padding:8px 12px 10px;overflow:hidden;
+    transition:background .28s ease-out,box-shadow .28s ease-out;}
+  .ptag .prow{display:flex;align-items:center;gap:10px;position:relative;z-index:1;}
+  .col.right .ptag .prow{flex-direction:row-reverse;text-align:right;}
+  .ptag .pname{flex:1;font-family:var(--font-display);font-style:italic;font-weight:700;font-size:16px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.5px;}
+  .ptag .pboost{font-family:var(--font-stat);font-size:18px;font-weight:700;min-width:40px;text-align:center;
+    font-variant-numeric:tabular-nums;position:relative;}
+  .ptag .fill{position:absolute;left:0;bottom:0;height:4px;width:60%;z-index:1;}
+  .col.left .ptag .fill{background:var(--blue);} .col.right .ptag .fill{background:var(--red);right:0;left:auto;}
+  .ev-demo{--evc:var(--demo);} .ev-shot{--evc:var(--shot);} .ev-save{--evc:var(--save);}
+  .ev-assist{--evc:var(--assist);} .ev-goal{--evc:var(--goal);}
+
+  /* in-slot icon swap (shared by all treatments) */
+  .pboost .num{display:inline-block;transition:opacity .2s ease-out,transform .26s cubic-bezier(.2,.8,.2,1);}
+  .pboost.run .num{opacity:0;transform:scale(.7);}
+  .pboost .slot{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;
+    opacity:0;transform:scale(.55);transition:opacity .22s ease-out,transform .28s cubic-bezier(.2,.8,.2,1);z-index:1;}
+  .pboost.run .slot{opacity:1;transform:scale(1);}
+  .pboost .slot svg{width:17px;height:17px;display:block;}
+
+  /* ---- TREATMENT 1: CHIP (dark plate, solid colored chip behind the icon) ---- */
+  .treat-chip .pboost .slot::before{content:"";position:absolute;inset:-4px -8px;border-radius:8px;background:var(--evc);z-index:-1;
+    opacity:0;transform:scale(.6);transition:opacity .2s ease-out,transform .26s cubic-bezier(.2,.8,.2,1);}
+  .treat-chip .pboost.run .slot::before{opacity:1;transform:scale(1);}
+  .treat-chip .ev-goal .slot{color:#1a1206;}  /* dark icon on gold chip for contrast */
+
+  /* ---- TREATMENT 2: GRADIENT (true color at the icon side, fading to dark) ---- */
+  .treat-grad .col.left  .ptag.run{background:linear-gradient(90deg,var(--panel-solid) 28%,var(--evc));}
+  .treat-grad .col.right .ptag.run{background:linear-gradient(90deg,var(--evc),var(--panel-solid) 72%);}
+  .treat-grad .ev-goal.run .pname{color:#1a1206;} /* keep name legible where gold is strong (right side) */
+
+  /* ---- TREATMENT 3: TINT on near-black (flat, hue stays truer than on teal panel) ---- */
+  .treat-tint .ptag.run{background:color-mix(in srgb,var(--evc) var(--evtint,55%),#0a0f14);}
+
+  /* ---- TREATMENT 4: SOLID (full event color plate) ---- */
+  .treat-solid .ptag.run{background:var(--evc);}
+  .treat-solid .ev-goal.run .pname,.treat-solid .ev-goal.run .num{color:#1a1206;}
+
+  /* subtle one-pass shimmer (toggle) */
+  .ptag .shimmer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+  .ptag .shimmer::after{content:"";position:absolute;inset:0;transform:translateX(-130%);
+    background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.18) 50%,transparent 58%);}
+  .shimmer-on .ptag.run .shimmer::after{animation:shine .8s ease-out .1s 1;}
+  @keyframes shine{to{transform:translateX(130%);}}
+  .hint{margin-top:24px;font-size:12px;opacity:.55;line-height:1.6;max-width:720px;}
+</style>
+</head>
+<body>
+  <h1>Option B - Color Treatment (fixing the muddy gold)</h1>
+  <div class="row">
+    <span class="badge">TREATMENT</span>
+    <button class="treat sel" data-treat="treat-chip">1. Chip (dark plate)</button>
+    <button class="treat" data-treat="treat-grad">2. Gradient fade</button>
+    <button class="treat" data-treat="treat-tint">3. Tint on black</button>
+    <button class="treat" data-treat="treat-solid">4. Solid color</button>
+  </div>
+  <div class="row">
+    <span class="badge">FIRE</span>
+    <button data-ev="demo">Demo</button><button data-ev="shot">Shot</button><button data-ev="save">Save</button>
+    <button data-ev="assist">Assist</button><button data-ev="goal">Goal (gold test)</button>
+    <button id="auto">Auto-cycle</button>
+  </div>
+  <div class="tune">
+    <label>Tint % (treatment 3 only) <input id="tint" type="range" min="25" max="100" value="55"><output id="tintv">55%</output></label>
+    <label>Hold (s) <input id="hold" type="range" min="1" max="3" step="0.1" value="2"><output id="holdv">2.0s</output></label>
+    <label>Shimmer <input id="shimmer" type="checkbox" checked></label>
+  </div>
+
+  <div class="stage treat-chip shimmer-on" id="stage">
+    <div class="col left" id="colL"></div><div class="col right" id="colR"></div>
+  </div>
+
+  <div class="hint">
+    Same Option B (in-slot icon) for all four; only the COLOR differs.
+    <b>1 Chip</b>: plate stays dark, only a solid true-color chip behind the icon (most muted, no muddy plate).
+    <b>2 Gradient</b>: true color at the icon side fading to dark (RLCS-like).
+    <b>3 Tint on black</b>: flat muted fill but mixed with near-black so gold stays gold (slider).
+    <b>4 Solid</b>: full event color (boldest). Hit "Goal" to stress-test gold. Tell me the winner + values.
+  </div>
+
+<script>
+const ICONS = {
+  demo:'<svg viewBox="0 0 512 512"><path fill="currentColor" d="M459.1 52.4 442.6 6.5C440.7 2.6 436.5 0 432.1 0s-8.5 2.6-10.4 6.5L405.2 52.4l-46 16.8c-4.3 1.6-7.3 5.9-7.2 10.4 0 4.5 3 8.7 7.2 10.2l45.7 16.8 16.8 45.8c1.5 4.4 5.8 7.5 10.4 7.5s8.9-3.1 10.4-7.5l16.5-45.8 45.7-16.8c4.2-1.5 7.2-5.7 7.2-10.2 0-4.6-3-8.9-7.2-10.4zm-132.4 53c-12.5-12.5-32.8-12.5-45.3 0l-2.9 2.9C256.5 100.3 232.7 96 208 96 93.1 96 0 189.1 0 304s93.1 208 208 208 208-93.1 208-208c0-24.7-4.3-48.5-12.2-70.5l2.9-2.9c12.5-12.5 12.5-32.8 0-45.3zM200 192c-57.4 0-104 46.6-104 104v8c0 8.8-7.2 16-16 16s-16-7.2-16-16v-8c0-75.1 60.9-136 136-136h8c8.8 0 16 7.2 16 16s-7.2 16-16 16z"/></svg>',
+  shot:'<svg viewBox="0 0 512 512"><path fill="currentColor" d="M448 256A192 192 0 1 0 64 256a192 192 0 1 0 384 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm256 80a80 80 0 1 0 0-160 80 80 0 1 0 0 160zm0-224a144 144 0 1 1 0 288 144 144 0 1 1 0-288zM224 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/></svg>',
+  save:'<svg viewBox="0 0 448 512"><path fill="currentColor" d="M192 0c17.7 0 32 14.3 32 32V144H160V32c0-17.7 14.3-32 32-32zM64 64c0-17.7 14.3-32 32-32s32 14.3 32 32v80H64zm192 0c0-17.7 14.3-32 32-32s32 14.3 32 32v96c0 17.7-14.3 32-32 32s-32-14.3-32-32zm96 64c0-17.7 14.3-32 32-32s32 14.3 32 32v64c0 17.7-14.3 32-32 32s-32-14.3-32-32zm-96 88 0-.6c9.4 5.4 20.3 8.6 32 8.6 13.2 0 25.4-4 35.6-10.8 8.7 24.9 32.5 42.8 60.4 42.8 11.7 0 22.6-3.1 32-8.6V256c0 52.3-25.1 98.8-64 128v96c0 17.7-14.3 32-32 32H160c-17.7 0-32-14.3-32-32V401.6c-17.3-7.9-33.2-18.8-46.9-32.5L69.5 357.5C45.5 333.5 32 300.9 32 267V240c0-35.3 28.7-64 64-64h88c22.1 0 40 17.9 40 40s-17.9 40-40 40H128c-8.8 0-16 7.2-16 16s7.2 16 16 16h56c39.8 0 72-32.2 72-72z"/></svg>',
+  assist:'<svg viewBox="0 0 640 512"><path fill="currentColor" d="M323.4 85.2 226.6 163.6c-16.1 13-19.2 36.4-7 53.1 12.9 17.8 38 21.3 55.3 7.8l99.3-77.2c7-5.4 17-4.2 22.5 2.8s4.2 17-2.8 22.5L512 316.8V128h-.7l-3.9-2.5L434.8 79c-15.3-9.8-33.2-15-51.4-15-21.8 0-43 7.5-60 21.2zm22.8 124.4-51.7 40.2C263 274.4 217.3 268 193.7 235.6c-22.2-30.5-16.6-73.1 12.7-96.8l83.2-67.3C278.3 66.6 265.8 64.1 253.1 64.1 234 64 215.7 69.6 200 80l-72 48V352h28.2l91.4 83.4c19.6 17.9 49.9 16.5 67.8-3.1 5.5-6.1 9.2-13.2 11.1-20.6l17 15.6c19.5 17.9 49.9 16.6 67.8-2.9 4.5-4.9 7.8-10.6 9.9-16.5 19.4 13 45.8 10.3 62.1-7.5 17.9-19.5 16.6-49.9-2.9-67.8zM16 128c-8.8 0-16 7.2-16 16V352c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V128zm528 0V352c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V144c0-8.8-7.2-16-16-16z"/></svg>',
+  goal:'<svg viewBox="0 0 512 512"><path fill="currentColor" d="M256 0a256 256 0 1 0 0 512A256 256 0 1 0 256 0zm0 96a160 160 0 1 1 0 320 160 160 0 1 1 0-320zm0 64a96 96 0 1 0 0 192 96 96 0 1 0 0-192z"/></svg>',
+};
+const PLAYERS = { left:[['HEATER',78],['ICEMAN',13],['YURI',83]], right:[['DUDE',44],['OUTLAW',66],['SLIDER',0]] };
+let HOLD=2000;
+function buildTag(name,boost){
+  const t=document.createElement('div'); t.className='ptag'; t.dataset.name=name;
+  t.innerHTML='<span class="shimmer"></span><div class="prow"><span class="pname">'+name+'</span>'+
+    '<span class="pboost"><span class="num">'+boost+'</span><span class="slot"></span></span></div><div class="fill"></div>';
+  t.querySelector('.fill').style.width=boost+'%'; return t;
+}
+function render(){const L=document.getElementById('colL'),R=document.getElementById('colR');L.innerHTML='';R.innerHTML='';
+  PLAYERS.left.forEach(([n,b])=>L.appendChild(buildTag(n,b)));PLAYERS.right.forEach(([n,b])=>R.appendChild(buildTag(n,b)));}
+render();
+function fire(tag,ev){
+  tag.classList.remove('ev-demo','ev-shot','ev-save','ev-assist','ev-goal');tag.classList.add('ev-'+ev);
+  const pb=tag.querySelector('.pboost');pb.querySelector('.slot').innerHTML=ICONS[ev];
+  tag.classList.remove('run');pb.classList.remove('run');void tag.offsetWidth;tag.classList.add('run');pb.classList.add('run');
+  clearTimeout(tag._t);tag._t=setTimeout(()=>{tag.classList.remove('run');pb.classList.remove('run');},HOLD);
+}
+const randTag=()=>{const a=[...document.querySelectorAll('.ptag')];return a[Math.floor(Math.random()*a.length)];};
+document.querySelectorAll('.treat').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.treat').forEach(x=>x.classList.toggle('sel',x===b));
+  const shim=document.getElementById('shimmer').checked;
+  document.getElementById('stage').className='stage '+b.dataset.treat+(shim?' shimmer-on':'');}));
+document.querySelectorAll('[data-ev]').forEach(b=>b.addEventListener('click',()=>{
+  fire(document.querySelector('#colL .ptag'),b.dataset.ev);fire(document.querySelector('#colR .ptag'),b.dataset.ev);}));
+let autoT=null;document.getElementById('auto').addEventListener('click',function(){
+  if(autoT){clearInterval(autoT);autoT=null;this.textContent='Auto-cycle';return;}
+  this.textContent='Stop auto';const e=['demo','shot','save','assist','goal'];
+  autoT=setInterval(()=>fire(randTag(),e[Math.floor(Math.random()*e.length)]),1100);});
+const tint=document.getElementById('tint'),hold=document.getElementById('hold'),shim=document.getElementById('shimmer');
+tint.addEventListener('input',()=>{document.getElementById('stage').style.setProperty('--evtint',tint.value+'%');document.getElementById('tintv').textContent=tint.value+'%';});
+hold.addEventListener('input',()=>{HOLD=parseFloat(hold.value)*1000;document.getElementById('holdv').textContent=parseFloat(hold.value).toFixed(1)+'s';});
+shim.addEventListener('change',()=>document.getElementById('stage').classList.toggle('shimmer-on',shim.checked));
+</script>
+</body>
+</html>

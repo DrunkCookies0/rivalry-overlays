@@ -14,7 +14,10 @@
     "pack": "electron-builder --win --dir --config electron-builder.prod.js",
     "dist": "electron-builder --win --config electron-builder.prod.js",
     "dist:beta": "electron-builder --win --config electron-builder.beta.js",
-    "release": "electron-builder --win --publish always --config electron-builder.prod.js"
+    "release": "electron-builder --win --publish always --config electron-builder.prod.js",
+    "overlay:keygen": "node tools/overlay-keys.js",
+    "overlay:sign": "node tools/sign-overlay.js",
+    "overlay:verify": "node tools/verify-overlay.js"
   },
   "dependencies": {
     "ws": "^8.18.0",

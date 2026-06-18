@@ -414,6 +414,14 @@ function startMockFeed(broadcastGame) {
   // Full sequence now runs ~17.8s to RoundStarted; widen the interval so
   // back-to-back sequences don't overlap.
   setInterval(runGoalSequence, 20000);
+
+  // Cycle a match end so the post-game results scene previews under `npm run mock`,
+  // then reset to a fresh match.
+  setInterval(() => {
+    broadcastGame({ event: "MatchEnded", data: {} });
+    broadcastGame({ event: "PodiumStart", data: {} });
+    setTimeout(() => { score[0] = 0; score[1] = 0; clock = 300; broadcastGame({ event: "MatchCreated", data: {} }); }, 6000);
+  }, 45000);
 }
 
 module.exports = { runSetup, startBridge, GAME_WS_PORT, CONTROL_WS_PORT, RL_TCP_PORT };
