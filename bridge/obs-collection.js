@@ -9,12 +9,16 @@
  * the app actually serves.
  *
  * The output shape is modeled field-for-field on a real scene-collection JSON
- * exported by OBS 31.0.1 on this project's reference machine. We only emit
- * fields we can populate honestly: uuids are freshly generated (scene items
- * reference their browser source by BOTH name and source_uuid, exactly how OBS
- * links them), while canvas_uuid / canvases are omitted because OBS
- * regenerates those on import and older OBS versions tolerate a missing key
- * far better than a wrong one.
+ * exported by OBS 31.0.1 on this project's reference machine. uuids are freshly
+ * generated (scene items reference their browser source by BOTH name and
+ * source_uuid, exactly how OBS links them).
+ *
+ * Every scene MUST carry canvas_uuid pointing at OBS's built-in main canvas
+ * (MAIN_CANVAS_UUID below). OBS 31 ties each scene to a canvas at import; a
+ * scene with no canvas_uuid is silently dropped, so the whole collection
+ * imports as an empty set (name only). The main canvas is implicit (it is not
+ * listed in the top-level `canvases` array, which stays empty) but its UUID is
+ * a fixed libobs constant every OBS install resolves.
  *
  * Pure + dependency-light on purpose: an HTTP route (owned elsewhere) calls
  * buildSceneCollection() and serves the JSON; tests exercise it without
@@ -44,6 +48,11 @@ const OBS_SCENE_NAMES = {
 // verbatim (from the reference export) so imports read as same-generation and
 // no migration heuristics kick in.
 const OBS_PREV_VER = 520093697;
+
+// OBS's built-in main-canvas UUID (ASCII "libobs...main"). Deterministic across
+// installs, and resolved even though the canvas is not declared in `canvases`.
+// Every scene references it; without it OBS drops the scene on import.
+const MAIN_CANVAS_UUID = "6c69626f-6273-4c00-9d88-c5136d61696e";
 
 // Envelope fields OBS writes on every source entry, scene and input alike.
 // Values copied from the reference export; they are OBS's own defaults.
@@ -122,8 +131,14 @@ function makeScene(sceneName, browserSource) {
           id: 1,
           group_item_backup: false,
           pos: { x: 0, y: 0 },
+          // *_rel are OBS 31's canvas-relative coordinates. For a full-frame
+          // 1920x1080 source at 0,0 with top-left align, top-left in the 16:9
+          // relative space is (-16/9, -1); scale 1:1, no bounds.
+          pos_rel: { x: -1.7777777910232544, y: -1 },
           scale: { x: 1, y: 1 },
+          scale_rel: { x: 1, y: 1 },
           bounds: { x: 0, y: 0 },
+          bounds_rel: { x: 0, y: 0 },
           scale_filter: "disable",
           blend_method: "default",
           blend_type: "normal",
@@ -134,6 +149,7 @@ function makeScene(sceneName, browserSource) {
       ],
     },
     ...sourceEnvelope(),
+    canvas_uuid: MAIN_CANVAS_UUID,
   };
 }
 
@@ -187,6 +203,9 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = "RIVALRY Ove
     scene_order: sceneSources.map((s) => ({ name: s.name })),
     current_scene: firstScene,
     current_program_scene: firstScene,
+    // Empty like the reference export: the main canvas is implicit, scenes
+    // reference it by MAIN_CANVAS_UUID rather than declaring it here.
+    canvases: [],
     current_transition: "Fade",
     transition_duration: 300,
     transitions: [],

@@ -106,6 +106,38 @@ function createOBSController() {
     return r.scenes.map((s) => s.sceneName).reverse(); // OBS returns bottom-up
   }
 
+  // Raw scene names in OBS's own order (no reverse) — used when cleaning up a
+  // freshly-created collection's default scene.
+  async function sceneNames() {
+    if (!connected) throw new Error("OBS not connected");
+    return (await obs.call("GetSceneList")).scenes.map((s) => s.sceneName);
+  }
+
+  // Create (or switch to) a dedicated scene collection so we build our scenes
+  // in their own space and never touch the producer's existing collections.
+  // CreateSceneCollection both creates AND switches, blocking until the switch
+  // finishes, so calls made right after are safe. Returns { created } so the
+  // caller knows whether to clean up the default empty scene.
+  async function ensureSceneCollection(name) {
+    if (!connected) throw new Error("OBS not connected");
+    const { sceneCollections, currentSceneCollectionName } =
+      await obs.call("GetSceneCollectionList");
+    if (sceneCollections.includes(name)) {
+      if (currentSceneCollectionName !== name) {
+        await obs.call("SetCurrentSceneCollection", { sceneCollectionName: name });
+      }
+      return { created: false };
+    }
+    await obs.call("CreateSceneCollection", { sceneCollectionName: name });
+    return { created: true };
+  }
+
+  async function removeScene(sceneName) {
+    if (!connected || !sceneName) return false;
+    try { await obs.call("RemoveScene", { sceneName }); return true; }
+    catch (e) { return false; } // e.g. can't remove the last/only scene
+  }
+
   async function switchScene(sceneName) {
     if (!connected || !sceneName) return false;
     try {
@@ -148,6 +180,9 @@ function createOBSController() {
     connect,
     disconnect,
     listScenes,
+    sceneNames,
+    ensureSceneCollection,
+    removeScene,
     switchScene,
     createSceneWithBrowserSource,
     get status() {

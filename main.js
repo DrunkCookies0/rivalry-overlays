@@ -408,12 +408,21 @@ function refreshTrayMenu() {
 // Scene names live in obs-collection.js so the websocket path and the
 // importable scene-collection file can never disagree.
 const { OBS_SCENE_NAMES } = require("./bridge/obs-collection");
+const OBS_COLLECTION_NAME = "RIVALRY Overlays";
 async function setupObsScenes() {
-  if (!obsController || !obsController.status.connected) return;
+  if (!obsController || !obsController.status.connected) return { ok: false, error: "OBS not connected" };
   const base = `http://localhost:${HTTP_PORT}`;
   // One OBS scene per available overlay, each with its Browser Source pre-wired.
   // In the packaged app only approved overlays are offered; dev offers all.
-  const list = (overlayReg.list || []).filter((o) => (gateActive() ? o.approved : true));
+  // Order by OBS_SCENE_NAMES key order (gameplay first) so scenes land in the
+  // same broadcast order as the importable collection, not registry-scan order.
+  const sceneRank = Object.keys(OBS_SCENE_NAMES);
+  const list = (overlayReg.list || [])
+    .filter((o) => (gateActive() ? o.approved : true))
+    .sort((a, b) => {
+      const ra = sceneRank.indexOf(a.scene), rb = sceneRank.indexOf(b.scene);
+      return (ra === -1 ? sceneRank.length : ra) - (rb === -1 ? sceneRank.length : rb);
+    });
   const scenes = list.map((o) => ({
     sceneName: OBS_SCENE_NAMES[o.scene] || ("RIVALRY - " + o.name),
     sourceName: o.name + " Overlay",
@@ -422,9 +431,28 @@ async function setupObsScenes() {
   if (!scenes.some((s) => s.sceneName === "RIVALRY - Live")) {
     scenes.unshift({ sceneName: "RIVALRY - Live", sourceName: "RIVALRY Overlay", url: OVERLAY_URL });
   }
-  for (const s of scenes) {
-    try { await obsController.createSceneWithBrowserSource(s); }
-    catch (e) { console.error("[rivalry] scene setup failed:", e.message); }
+  try {
+    // Build everything inside a dedicated collection (created if absent, else
+    // reused) so we never disturb the producer's existing scenes. A freshly
+    // created collection ships one default empty scene we remove afterward.
+    const { created } = await obsController.ensureSceneCollection(OBS_COLLECTION_NAME);
+    const defaults = created ? await obsController.sceneNames() : [];
+    let sceneCount = 0;
+    for (const s of scenes) {
+      try { await obsController.createSceneWithBrowserSource(s); sceneCount++; }
+      catch (e) { console.error("[rivalry] scene setup failed:", e.message); }
+    }
+    // Land OBS on our first scene, then clear the default(s) now that they are
+    // no longer the active program scene (RemoveScene refuses the active one).
+    await obsController.switchScene("RIVALRY - Live");
+    if (created) {
+      const ours = new Set(scenes.map((s) => s.sceneName));
+      for (const name of defaults) if (!ours.has(name)) await obsController.removeScene(name);
+    }
+    return { ok: true, created, collection: OBS_COLLECTION_NAME, sceneCount };
+  } catch (e) {
+    console.error("[rivalry] OBS scene collection setup failed:", e.message);
+    return { ok: false, error: e.message };
   }
 }
 
@@ -588,7 +616,16 @@ function setupObsIntegration() {
 async function handleObsAction(payload) {
   if (!obsController || !obsController.status.connected) return;
   const action = payload && payload.action;
-  if (action === "setup-scenes") return setupObsScenes();
+  if (action === "setup-scenes") {
+    const result = await setupObsScenes();
+    // Report back so the control panel / setup wizard can confirm the one-click
+    // build ("Created 8 scenes in a new RIVALRY Overlays collection") or show
+    // the error, instead of the button firing into a void.
+    if (bridgeHandle && bridgeHandle.broadcastControl) {
+      bridgeHandle.broadcastControl({ type: "obs-action-result", payload: { action, ...result } });
+    }
+    return;
+  }
   // Producer "scene deck": switch OBS to a named scene on demand (safer than
   // full auto-switching — the producer drives the cut).
   if (action === "switch" && payload.scene) {

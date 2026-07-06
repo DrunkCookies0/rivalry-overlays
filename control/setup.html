@@ -170,35 +170,37 @@
     <div class="card">
       <h2>Get the scenes into OBS</h2>
       <p class="lede">
-        The overlay graphics load into OBS as regular browser sources. Pick one of the two ways below.
-        Option A is ready in under a minute.
+        The overlay graphics load into OBS as browser sources. Easiest way: let the app build
+        all 8 scenes for you in one click. Prefer to do it by hand? The file import is on the right.
       </p>
       <div class="opt-grid">
         <div class="opt rec">
-          <span class="flag rec">Recommended</span>
-          <h3>Import the ready-made scene collection</h3>
-          <p class="copy">Zero setup. Download the collection, import it, done.</p>
-          <a class="btn apply" href="/obs/scene-collection.json" download="rivalry-overlays.json">DOWNLOAD SCENE COLLECTION</a>
+          <span class="flag rec">Recommended, one click</span>
+          <h3>Build my scenes automatically</h3>
+          <p class="copy">Creates a new <b>RIVALRY Overlays</b> collection in OBS with all 8 scenes and sources wired. Your other collections stay untouched.</p>
           <ol class="howto">
-            <li>In OBS, click the <b>Scene Collection</b> menu at the top of the window.</li>
-            <li>Click <b>Import</b>.</li>
-            <li>Pick the downloaded <b>rivalry-overlays.json</b>.</li>
-            <li>Open the same menu again and switch to the <b>RIVALRY Overlays</b> collection.</li>
+            <li>In OBS, open the <b>Tools</b> menu, click <b>WebSocket Server Settings</b>.</li>
+            <li>Turn on <b>Enable WebSocket server</b>. If it shows a password, copy it.</li>
+            <li>Paste the password below (leave blank if there wasn't one), click <b>Connect</b>.</li>
           </ol>
-          <div class="note">All 8 broadcast scenes arrive pre-wired. Keep this app running whenever OBS is open, the scenes load their graphics from it.</div>
+          <div class="urlrow">
+            <input type="password" id="obsPass" placeholder="OBS WebSocket password (blank if none)" />
+            <button type="button" class="second" id="obsConnect">Connect</button>
+          </div>
+          <button type="button" class="apply" id="obsBuild" disabled style="width:100%;margin-top:8px;">BUILD MY SCENES</button>
+          <div class="note" id="obsBuildResult" aria-live="polite">Connect to OBS first, then this lights up.</div>
         </div>
         <div class="opt">
-          <span class="flag adv">Advanced</span>
-          <h3>Let the app build the scenes for you</h3>
-          <p class="copy">
-            The app can create every scene directly inside OBS over OBS's remote-control link.
-          </p>
+          <span class="flag adv">Manual</span>
+          <h3>Import a file instead</h3>
+          <p class="copy">No WebSocket needed. Download the collection and import it in OBS.</p>
+          <a class="btn second" href="/obs/scene-collection.json" download="rivalry-overlays.json">DOWNLOAD SCENE COLLECTION</a>
           <ol class="howto">
-            <li>In OBS, open the <b>Tools</b> menu and click <b>WebSocket Server Settings</b>.</li>
-            <li>Turn on <b>Enable WebSocket server</b> and note the password.</li>
-            <li>In this app's control panel (next step), find the <b>OBS integration</b> card, enter that password, and click <b>Create all OBS scenes</b>.</li>
+            <li>In OBS, click the <b>Scene Collection</b> menu.</li>
+            <li>Click <b>Import</b>, pick <b>rivalry-overlays.json</b>.</li>
+            <li>Open the menu again and switch to <b>RIVALRY Overlays</b>.</li>
           </ol>
-          <div class="note">Use this if you want the app to switch OBS scenes automatically on goals and replays. You can set it up later at any time.</div>
+          <div class="note">All 8 scenes arrive pre-wired. Keep this app running whenever OBS is open.</div>
         </div>
       </div>
       <div class="livebar"><span class="dot" id="obsDot"></span><span id="obsLive">Checking OBS status...</span></div>
@@ -439,24 +441,74 @@ async function retryIni(btn) {
   }
 }
 
-/* ---- step 2: OBS live status line --------------------------------------- */
+/* ---- step 2: OBS live status line + one-click build --------------------- */
 function renderObs() {
   const dot = $("obsDot");
   const line = $("obsLive");
+  const build = $("obsBuild");
+  const obs = (lastStatus && lastStatus.obs) || {};
+  const connected = !!(reachable && obs.connected);
+  // The Build button only makes sense once OBS is actually connected.
+  if (build && document.activeElement !== build && build.textContent !== "BUILDING...") {
+    build.disabled = !connected;
+  }
   if (reachable === null) { dot.className = "dot"; line.textContent = "Checking OBS status..."; return; }
   if (!reachable) { dot.className = "dot"; line.textContent = "App not reachable, OBS status unavailable."; return; }
-  const obs = (lastStatus && lastStatus.obs) || {};
   if (obs.connected) {
     dot.className = "dot ok";
-    line.textContent = "OBS is connected to the app.";
+    line.textContent = "OBS is connected. Click Build my scenes.";
+    if (build && build.disabled && build.textContent !== "BUILDING..." && $("obsBuildResult").dataset.done !== "1") {
+      $("obsBuildResult").textContent = "OBS connected. Click Build my scenes.";
+    }
   } else if (obs.enabled) {
     dot.className = "dot warn";
-    line.textContent = "OBS link is on but not connected yet." + (obs.error ? " (" + obs.error + ")" : "");
+    line.textContent = "Trying to reach OBS..." + (obs.error ? " (" + obs.error + ")" : " Is the WebSocket server enabled in OBS?");
   } else {
     dot.className = "dot";
-    line.textContent = "OBS link: off. Option A doesn't need it.";
+    line.textContent = "OBS link off. Enable it in OBS (Tools, WebSocket Server Settings), then Connect.";
   }
 }
+
+/* Control-bus link (49777): the wizard sends OBS connect settings + the
+ * one-click "build scenes" action and receives the result, same protocol the
+ * control panel uses. Served from the app origin so the bridge allows it. */
+let cbus = null, cbusReady = false;
+function connectBus() {
+  try { cbus = new WebSocket("ws://localhost:49777"); } catch (e) { return; }
+  cbus.onopen = () => { cbusReady = true; };
+  cbus.onclose = () => { cbusReady = false; setTimeout(connectBus, 1500); };
+  cbus.onerror = () => { try { cbus.close(); } catch (e) {} };
+  cbus.onmessage = (e) => {
+    let m; try { m = JSON.parse(e.data); } catch (err) { return; }
+    if (m.type === "obs-action-result" && m.payload && m.payload.action === "setup-scenes") {
+      const r = m.payload, el = $("obsBuildResult"), b = $("obsBuild");
+      if (r.ok) {
+        el.style.color = "var(--ok)"; el.dataset.done = "1";
+        el.textContent = "Done. Built " + r.sceneCount + " scenes in the \"" + r.collection + "\" collection" +
+          (r.created ? " (new)." : " (updated).") + " In OBS, switch to it via the Scene Collection menu.";
+      } else {
+        el.style.color = "var(--warn)";
+        el.textContent = "Couldn't build scenes: " + (r.error || "unknown error") + ". Make sure OBS is connected above.";
+      }
+      if (b) { b.textContent = "BUILD MY SCENES"; b.disabled = false; }
+    }
+  };
+}
+$("obsConnect").addEventListener("click", () => {
+  if (!cbusReady) { $("obsBuildResult").textContent = "App link not ready yet, give it a second."; return; }
+  // Shallow-merged in main.js, so we only touch the connection fields and leave
+  // any existing scene-map/auto-switch settings alone.
+  cbus.send(JSON.stringify({ type: "obs-settings", payload: { enabled: true, url: "ws://localhost:4455", password: $("obsPass").value } }));
+  const el = $("obsBuildResult"); el.style.color = "var(--muted)"; delete el.dataset.done;
+  el.textContent = "Connecting to OBS...";
+});
+$("obsBuild").addEventListener("click", () => {
+  if (!cbusReady) return;
+  const b = $("obsBuild"); b.disabled = true; b.textContent = "BUILDING...";
+  const el = $("obsBuildResult"); el.style.color = "var(--muted)"; delete el.dataset.done;
+  el.textContent = "Building the RIVALRY Overlays collection...";
+  cbus.send(JSON.stringify({ type: "obs-action", payload: { action: "setup-scenes" } }));
+});
 
 /* ---- step 3: copy + finish ---------------------------------------------- */
 $("copyDock").addEventListener("click", async () => {
@@ -489,6 +541,7 @@ $("finishBtn").addEventListener("click", async () => {
 $("skipFinish").addEventListener("click", () => { location.href = "/control/control.html"; });
 
 renderStepper();
+connectBus();
 poll();
 setInterval(poll, 1000);
 </script>

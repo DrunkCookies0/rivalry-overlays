@@ -76,6 +76,30 @@ test("scene names are unique", () => {
   assert.equal(new Set(names).size, names.length);
 });
 
+// Regression: without canvas_uuid on each scene, OBS 31 imports an empty
+// collection (name only). This is the exact bug that shipped in beta.36.
+test("every scene carries the main-canvas uuid so OBS does not drop it", () => {
+  const col = build();
+  const MAIN = "6c69626f-6273-4c00-9d88-c5136d61696e";
+  assert.deepEqual(col.canvases, []);
+  for (const scene of scenesOf(col)) {
+    assert.equal(scene.canvas_uuid, MAIN, `scene "${scene.name}" is missing canvas_uuid`);
+  }
+  // Browser sources are placed via their scene item, not the canvas directly.
+  for (const b of browsersOf(col)) {
+    assert.ok(!("canvas_uuid" in b), "browser sources must not carry canvas_uuid");
+  }
+});
+
+test("scene items carry OBS 31 canvas-relative coordinates", () => {
+  for (const scene of scenesOf(build())) {
+    const item = scene.settings.items[0];
+    assert.deepEqual(item.pos_rel, { x: -1.7777777910232544, y: -1 });
+    assert.deepEqual(item.scale_rel, { x: 1, y: 1 });
+    assert.deepEqual(item.bounds_rel, { x: 0, y: 0 });
+  }
+});
+
 test("RIVALRY - Live is first and is the current program scene", () => {
   const col = build();
   assert.equal(col.scene_order[0].name, "RIVALRY - Live");
