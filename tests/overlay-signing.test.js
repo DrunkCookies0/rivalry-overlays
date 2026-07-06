@@ -51,7 +51,7 @@ test("keyId is identical for LF and CRLF encodings of the same key", () => {
 test("all shipped overlays verify against the public key AND its CRLF form", () => {
   const crlfKey = PUBLIC_KEY.replace(/\r\n?/g, "\n").replace(/\n/g, "\r\n");
   const dirs = signedOverlayDirs();
-  assert.ok(dirs.length >= 8, "expected the 8 broadcast overlays");
+  assert.ok(dirs.length >= 7, "expected the active broadcast overlays");
   for (const dir of dirs) {
     // LF key (dev machine) and CRLF key (Windows CI) must BOTH approve.
     for (const [label, key] of [["LF", PUBLIC_KEY], ["CRLF", crlfKey]]) {

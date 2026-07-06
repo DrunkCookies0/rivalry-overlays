@@ -340,9 +340,9 @@
       teamB: { name: "SENTINELS", logo: "", tag: "NA2", seed: "#4", record: "9-6" },
       series: { a: 1, b: 2 },
       casters: [
-        { name: "ALEX 'COOKIES' TOLL", role: "PLAY-BY-PLAY", handle: "@cookies", avatar: "" },
-        { name: "JORDAN REED", role: "COLOR", handle: "@jreed", avatar: "" },
-        { name: "SAM VOSS", role: "DESK", handle: "@svoss", avatar: "" },
+        { name: "MASTER CHIEF", role: "PLAY-BY-PLAY", handle: "@masterchief", avatar: "" },
+        { name: "LARA CROFT", role: "COLOR", handle: "@laracroft", avatar: "" },
+        { name: "GORDON FREEMAN", role: "DESK", handle: "@gordonfreeman", avatar: "" },
       ],
       upNext: [
         { teamA: "NOVA", teamB: "ECLIPSE", time: "9:30 ET", round: "UB R1" },

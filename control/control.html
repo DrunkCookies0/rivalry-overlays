@@ -188,16 +188,24 @@
     </div>
 
     <div class="card full">
-      <h2>Casters <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(cams via VDO.Ninja — 1-3 casters, blank rows hide)</span></h2>
+      <h2>Casters <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(1-3 casters, blank rows hide)</span></h2>
+      <div class="muted-note" style="line-height:1.65;margin-bottom:12px;">
+        <b style="color:var(--ink)">Getting caster cameras on screen, two ways:</b><br>
+        <b style="color:var(--ink)">Remote casters / dedicated producer:</b> use VDO.Ninja below. Set one room, click Generate,
+        and send each caster their personal link. Their camera shows up framed on the Casters overlay automatically,
+        no accounts or software for them to install.<br>
+        <b style="color:var(--ink)">Solo (you cast and produce):</b> open your own generated link in a browser tab to feed your camera,
+        or add your webcam in OBS as a Video Capture Device source placed over the Casters overlay.
+      </div>
       <div class="row" style="gap:8px;align-items:flex-end;margin-bottom:8px;">
         <div style="flex:2"><label>VDO.Ninja room (one per event)</label><input type="text" id="vdoRoom" placeholder="rivalry-s1-gf" /></div>
         <button id="vdoGen" style="background:#243040;color:var(--ink);">Generate caster links</button>
       </div>
       <div id="vdoLinks" style="margin-bottom:6px;"><span class="muted-note">Set a room + caster names, then Generate: it auto-fills each caster's feed below and gives you a push link to send each caster. (Or paste view links manually.)</span></div>
       <div class="row" style="gap:10px;">
-        <div style="flex:2"><label>Caster 1 name</label><input type="text" id="casterName0" placeholder="Alex 'Cookies' Toll" /></div>
+        <div style="flex:2"><label>Caster 1 name</label><input type="text" id="casterName0" placeholder="Master Chief" /></div>
         <div style="flex:1"><label>Role</label><input type="text" id="casterRole0" placeholder="PLAY-BY-PLAY" /></div>
-        <div style="flex:1"><label>Handle</label><input type="text" id="casterHandle0" placeholder="@cookies" /></div>
+        <div style="flex:1"><label>Handle</label><input type="text" id="casterHandle0" placeholder="@masterchief" /></div>
         <div style="flex:2"><label>VDO.Ninja (link or stream ID)</label><input type="text" id="casterStream0" placeholder="vdo.ninja/?view=ID  or  ID" /></div>
       </div>
       <div class="row" style="gap:10px;">
@@ -274,13 +282,6 @@
         <div style="flex:3"><label>Title</label><input type="text" id="pTitle5" placeholder="" /></div>
         <div style="flex:3"><label>Badges</label><input type="text" id="pBadges5" placeholder="" /></div>
       </div>
-    </div>
-
-    <div class="card full">
-      <h2>Bracket <span class="muted-note">(playoffs — fill matchups; blank ones hide on air; winner = higher score)</span></h2>
-      <div id="bracketInputs"></div>
-      <label>Champion</label>
-      <input type="text" id="brkChamp" placeholder="GUARDIANS" />
     </div>
 
     <div class="card full">
@@ -404,15 +405,6 @@ function gatherPlayers(){
   }
   return out;
 }
-// Bracket: 8-team single-elim (QF x4, SF x2, F x1). Empty matchups hide on air.
-function gatherBracket(){
-  const defs = [["QUARTERFINALS",4],["SEMIFINALS",2],["FINAL",1]];
-  const rounds = defs.map(([name,n],r) => ({ name, matchups: Array.from({length:n}, (_,m) => ({
-    teamA: $("brkA_"+r+"_"+m).value.trim(), teamB: $("brkB_"+r+"_"+m).value.trim(),
-    scoreA: parseInt($("brkSA_"+r+"_"+m).value,10) || 0, scoreB: parseInt($("brkSB_"+r+"_"+m).value,10) || 0,
-  })) }));
-  return { rounds, champion: $("brkChamp").value.trim() };
-}
 function payload(){
   return {
     type: "control",
@@ -426,8 +418,7 @@ function payload(){
       startTime: $("startTime").value,
       casters: gatherCasters(),
       upNext: gatherUpNext(),
-      players: gatherPlayers(),
-      bracket: gatherBracket()
+      players: gatherPlayers()
     }
   };
 }
@@ -571,15 +562,6 @@ function hydrateControlForm(p){
   const pl = Array.isArray(p.players) ? p.players : [];
   for (let i = 0; i < 6; i++){ const q = pl[i] || {};
     setVal("pName"+i, q.name); setVal("pTitle"+i, q.title); setVal("pBadges"+i, (q.badges || []).join(", ")); }
-  if (p.bracket && Array.isArray(p.bracket.rounds)){
-    p.bracket.rounds.forEach((rd, r) => (Array.isArray(rd.matchups) ? rd.matchups : []).forEach((m, i) => {
-      if (!$("brkA_"+r+"_"+i)) return;
-      setVal("brkA_"+r+"_"+i, m.teamA); setVal("brkB_"+r+"_"+i, m.teamB);
-      const empty = !(m.teamA || m.teamB); // keep untouched matchups visually blank, not 0-0
-      setVal("brkSA_"+r+"_"+i, empty ? "" : (m.scoreA|0)); setVal("brkSB_"+r+"_"+i, empty ? "" : (m.scoreB|0));
-    }));
-    setVal("brkChamp", p.bracket.champion);
-  }
   updateLogoPreview("A"); updateLogoPreview("B");
 }
 
@@ -628,11 +610,11 @@ connect = function(){
 // browser preview (served from the app, so it gets live data). Approved vs
 // preview reflects the signed-overlay gate.
 const SCENE_LABELS = {
-  "gameplay": "Gameplay", "starting-soon": "Starting Soon", "match-preview": "Match Preview",
-  "up-next": "Up Next", "caster": "Casters", "postgame": "Post-Game Results", "bracket": "Bracket",
+  "starting-soon": "Starting Soon", "caster": "Casters", "match-preview": "Match Preview",
+  "gameplay": "Gameplay", "postgame": "Post-Game Results", "up-next": "Up Next",
   "brb": "Be Right Back",
 };
-const SCENE_ORDER = ["gameplay", "starting-soon", "match-preview", "up-next", "caster", "postgame", "bracket", "brb"];
+const SCENE_ORDER = ["starting-soon", "caster", "match-preview", "gameplay", "postgame", "up-next", "brb"];
 
 async function renderScenes(){
   const host = $("sceneList");
@@ -768,24 +750,6 @@ async function useLeagueMatch(matchId, fresh){
   } catch { el.textContent = "App not reachable."; }
 }
 $("leagueRefresh").addEventListener("click", () => { if (leagueMatchId) useLeagueMatch(leagueMatchId, true); });
-// ---- Bracket card: build the matchup inputs + wire live push --------------
-(function buildBracket(){
-  const rounds = [["QUARTERFINALS",4],["SEMIFINALS",2],["FINAL",1]];
-  let h = "";
-  rounds.forEach((rd, r) => {
-    h += '<div class="muted-note" style="margin:10px 0 2px;letter-spacing:1px;">' + rd[0] + "</div>";
-    for (let m = 0; m < rd[1]; m++) h +=
-      '<div class="row" style="gap:6px;margin-bottom:4px;">' +
-      '<input type="text" id="brkA_' + r + "_" + m + '" placeholder="Team A" style="flex:3;min-width:90px;">' +
-      '<input type="number" id="brkSA_' + r + "_" + m + '" placeholder="0" style="flex:1;min-width:46px;">' +
-      '<span class="muted-note">vs</span>' +
-      '<input type="number" id="brkSB_' + r + "_" + m + '" placeholder="0" style="flex:1;min-width:46px;">' +
-      '<input type="text" id="brkB_' + r + "_" + m + '" placeholder="Team B" style="flex:3;min-width:90px;"></div>';
-  });
-  $("bracketInputs").innerHTML = h;
-  document.querySelectorAll("#bracketInputs input").forEach(el => el.addEventListener("input", push));
-  $("brkChamp").addEventListener("input", push);
-})();
 // ---- VDO.Ninja caster links: room -> push links (send to casters) + auto-fill the view feeds
 function sanitizeRoom(r){ return String(r || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40); }
 function generateVdo(){
@@ -815,9 +779,9 @@ $("vdoGen").addEventListener("click", generateVdo);
 
 // ---- OBS scene deck: one-click scene switching (producer switchboard) ------
 (function buildDeck(){
-  const decks = [["RIVALRY - Live","Live"],["RIVALRY - Starting Soon","Starting Soon"],["RIVALRY - BRB","BRB"],
-    ["RIVALRY - Casters","Casters"],["RIVALRY - Match Preview","Match Preview"],["RIVALRY - Up Next","Up Next"],
-    ["RIVALRY - Post-Game","Post-Game"],["RIVALRY - Bracket","Bracket"]];
+  const decks = [["RIVALRY - Starting Soon","Starting Soon"],["RIVALRY - Casters","Casters"],
+    ["RIVALRY - Match Preview","Match Preview"],["RIVALRY - Live","Live"],
+    ["RIVALRY - Post-Game","Post-Game"],["RIVALRY - Up Next","Up Next"],["RIVALRY - BRB","BRB"]];
   $("sceneDeck").innerHTML = decks.map(d => '<button class="mini deck-btn" data-scene="' + d[0] + '" style="background:#243040;color:var(--ink);">' + d[1] + "</button>").join("");
   document.querySelectorAll("#sceneDeck .deck-btn").forEach(b => b.addEventListener("click", () => {
     if (connected && ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: "obs-action", payload: { action: "switch", scene: b.dataset.scene } }));

@@ -67,7 +67,6 @@ const SCENE_CHECKS = {
   "rivalry-up-next": { selector: ".un-list", description: "up-next match list" },
   "rivalry-casters": { selector: "#csCams", description: "caster cams container" },
   "rivalry-postgame": { selector: ".pg-boards", description: "team stat boards" },
-  "rivalry-bracket": { selector: ".br-board", description: "bracket board container" },
   "rivalry-brb": { selector: ".brb-title", description: "BE RIGHT BACK title" },
 };
 

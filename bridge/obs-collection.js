@@ -32,16 +32,16 @@ const crypto = require("crypto");
 // Canonical manifest `scene` -> OBS scene name map. This is THE source of
 // truth (moved here from main.js) so the obs-websocket live setup and this
 // importable file can never disagree about scene names. Key order doubles as
-// broadcast scene order, with gameplay first.
+// broadcast scene order (the sequence a show runs in). Bracket is intentionally
+// absent for now (only needed at playoffs); the scene folder is in git history.
 const OBS_SCENE_NAMES = {
-  "gameplay": "RIVALRY - Live",
   "starting-soon": "RIVALRY - Starting Soon",
-  "brb": "RIVALRY - BRB",
   "caster": "RIVALRY - Casters",
   "match-preview": "RIVALRY - Match Preview",
-  "up-next": "RIVALRY - Up Next",
+  "gameplay": "RIVALRY - Live",
   "postgame": "RIVALRY - Post-Game",
-  "bracket": "RIVALRY - Bracket",
+  "up-next": "RIVALRY - Up Next",
+  "brb": "RIVALRY - BRB",
 };
 
 // OBS 31.0.1 stamps this version encoding on every saved source; included

@@ -41,6 +41,7 @@ function fixture() {
     entry({ folder: "rivalry-brb", name: "RIVALRY BRB", scene: "brb" }),
     entry({ folder: "community-freestyle", name: "Freestyle Cam", scene: "freestyle" }),
     entry({ folder: "rivalry-gameplay", name: "RIVALRY Gameplay", scene: "gameplay" }),
+    entry({ folder: "rivalry-starting-soon", name: "RIVALRY Starting Soon", scene: "starting-soon" }),
   ];
 }
 
@@ -100,18 +101,19 @@ test("scene items carry OBS 31 canvas-relative coordinates", () => {
   }
 });
 
-test("RIVALRY - Live is first and is the current program scene", () => {
+test("the first scene in broadcast order is the current program scene", () => {
   const col = build();
-  assert.equal(col.scene_order[0].name, "RIVALRY - Live");
-  assert.equal(col.current_scene, "RIVALRY - Live");
-  assert.equal(col.current_program_scene, "RIVALRY - Live");
+  // Starting Soon is first in the scene map, so a broadcast opens on it.
+  assert.equal(col.scene_order[0].name, "RIVALRY - Starting Soon");
+  assert.equal(col.current_scene, "RIVALRY - Starting Soon");
+  assert.equal(col.current_program_scene, "RIVALRY - Starting Soon");
 });
 
 test("scene order follows OBS_SCENE_NAMES key order, unmapped scenes last", () => {
   const col = build();
   assert.deepEqual(
     col.scene_order.map((s) => s.name),
-    ["RIVALRY - Live", "RIVALRY - BRB", "RIVALRY - Casters", "RIVALRY - Freestyle Cam"]
+    ["RIVALRY - Starting Soon", "RIVALRY - Casters", "RIVALRY - Live", "RIVALRY - BRB", "RIVALRY - Freestyle Cam"]
   );
 });
 
@@ -202,8 +204,10 @@ test("duplicate overlay names get suffixed source names that scene items still r
   }
 });
 
-test("OBS_SCENE_NAMES covers all 8 broadcast scenes with gameplay -> Live", () => {
-  assert.equal(Object.keys(OBS_SCENE_NAMES).length, 8);
-  assert.equal(Object.keys(OBS_SCENE_NAMES)[0], "gameplay");
+test("OBS_SCENE_NAMES covers the 7 active broadcast scenes, Starting Soon first, no bracket", () => {
+  const keys = Object.keys(OBS_SCENE_NAMES);
+  assert.equal(keys.length, 7);
+  assert.equal(keys[0], "starting-soon");
   assert.equal(OBS_SCENE_NAMES["gameplay"], "RIVALRY - Live");
+  assert.ok(!("bracket" in OBS_SCENE_NAMES), "bracket is removed until playoffs");
 });
