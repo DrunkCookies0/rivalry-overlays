@@ -88,7 +88,12 @@ function hashOverlay(dir) {
 }
 
 function keyId(publicKeyPem) {
-  return crypto.createHash("sha256").update(publicKeyPem.toString().trim()).digest("hex").slice(0, 16);
+  // Line-ending-invariant. A Windows CI checkout (core.autocrlf) can rewrite the
+  // bundled public-key PEM to CRLF; that must NOT change the key's identity, or
+  // the packaged app computes a different fingerprint than the one every overlay
+  // was signed against and denies them all. Normalize CR/CRLF to LF first.
+  const normalized = publicKeyPem.toString().replace(/\r\n?/g, "\n").trim();
+  return crypto.createHash("sha256").update(normalized).digest("hex").slice(0, 16);
 }
 
 function generateKeys() {

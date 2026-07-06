@@ -1,0 +1,25 @@
+# Overlay signing hashes file bytes exactly (Ed25519 over a sha256 of the
+# folder). A Windows CI checkout with core.autocrlf would rewrite LF to CRLF in
+# the working tree that electron-builder packs, changing those bytes and voiding
+# every signature (the exact bug that shipped black overlays through beta.36).
+#
+# Pin all signed overlay text to LF on every platform so the packed bytes always
+# equal the signed bytes. If you ever add a BINARY asset inside an overlay
+# folder (png, jpg, font, ...), mark it `binary` here so it is never converted.
+overlays/**/*.html  text eol=lf
+overlays/**/*.css   text eol=lf
+overlays/**/*.js    text eol=lf
+overlays/**/*.json  text eol=lf
+overlays/**/*.svg   text eol=lf
+overlays/keys/*.pem text eol=lf
+
+# Common binaries a designer might drop into an overlay folder: never convert.
+overlays/**/*.png   binary
+overlays/**/*.jpg   binary
+overlays/**/*.jpeg  binary
+overlays/**/*.gif   binary
+overlays/**/*.webp  binary
+overlays/**/*.ico   binary
+overlays/**/*.woff  binary
+overlays/**/*.woff2 binary
+overlays/**/*.ttf   binary
