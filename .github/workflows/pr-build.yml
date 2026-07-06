@@ -26,6 +26,11 @@ permissions:
 
 jobs:
   build-beta:
+    # A push to feat/** on a branch with an open PR fires BOTH triggers; the
+    # two runs then race on publish/prune and one reliably fails (red X on the
+    # PR). Same-repo branches already build via the push event, so only run
+    # the pull_request build for forks (which have no push run here).
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
