@@ -9,6 +9,8 @@
   "scripts": {
     "start": "electron .",
     "mock": "electron . --mock",
+    "test": "node --test",
+    "verify:render": "node scripts/render-verify.js",
     "dev:bridge": "node bridge/rl-bridge.js --mock",
     "setup": "node bridge/rl-bridge.js --setup",
     "pack": "electron-builder --win --dir --config electron-builder.prod.js",
@@ -20,12 +22,13 @@
     "overlay:verify": "node tools/verify-overlay.js"
   },
   "dependencies": {
-    "ws": "^8.18.0",
     "electron-updater": "^6.3.9",
-    "obs-websocket-js": "^5.0.8"
+    "obs-websocket-js": "^5.0.8",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "electron": "^31.7.6",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "playwright": "^1.61.1"
   }
 }

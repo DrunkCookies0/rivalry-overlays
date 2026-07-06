@@ -39,6 +39,9 @@ const obsSettingsStore = require("./bridge/obs-settings");
 const devSettingsStore = require("./bridge/dev-settings");
 const { getMeta } = require("./bridge/app-meta");
 const overlayRegistry = require("./bridge/overlay-registry");
+const { createApiRouter } = require("./bridge/http-api");
+const leagueSettingsStore = require("./bridge/league-settings");
+const { createLeagueClient } = require("./bridge/league-client");
 
 const HTTP_PORT = 49080;
 // Gameplay overlay now lives in the multi-scene tree (overlays/rivalry-gameplay,
@@ -46,6 +49,7 @@ const HTTP_PORT = 49080;
 // fallback during the transition, so existing OBS sources keep working.
 const OVERLAY_URL = `http://localhost:${HTTP_PORT}/overlays/rivalry-gameplay/index.html`;
 const CONTROL_URL = `http://localhost:${HTTP_PORT}/control/control.html`;
+const SETUP_URL = `http://localhost:${HTTP_PORT}/control/setup.html`;
 const TRAY_ICON = path.join(__dirname, "assets", "tray.png");
 
 // Beta builds (built via electron-builder.beta.yml for CI PR artifacts) set
@@ -98,6 +102,9 @@ function startHttpServer(rootDir) {
   setHttpRoot(rootDir);
   const server = http.createServer((req, res) => {
     let urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
+    // App API endpoints (status, setup, uploads, league proxy...) live in the
+    // router; static serving + the overlay gate below stay untouched.
+    if (apiRouter && apiRouter.handle(req, res, urlPath)) return;
     // Tiny meta endpoint so the control panel can render the build label.
     if (urlPath === "/version" || urlPath === "/version.json") {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -144,7 +151,10 @@ function startHttpServer(rootDir) {
       res.end(data);
     });
   });
-  server.on("error", (e) => console.error("[rivalry] http server error:", e.message));
+  server.on("error", (e) => {
+    console.error("[rivalry] http server error:", e.message);
+    if (e.code === "EADDRINUSE") reportPortConflict(HTTP_PORT, "web server");
+  });
   server.listen(HTTP_PORT, "127.0.0.1", () => console.log(`[rivalry] web server -> ${OVERLAY_URL}`));
   return server;
 }
@@ -155,6 +165,56 @@ let collector = null;
 let obsController = null;
 let obsSettings = null;
 let bridgeHandle = null;
+let apiRouter = null;
+let leagueSettings = null;
+let leagueClient = null;
+// Broadcast a masked league status on the control bus (never the key itself).
+function broadcastLeagueStatus() {
+  if (!bridgeHandle || !bridgeHandle.broadcastControl) return;
+  bridgeHandle.broadcastControl({
+    type: "league-status",
+    payload: {
+      configured: !!(leagueSettings && (leagueSettings.apiKey || leagueSettings.mock)),
+      mock: !!(leagueSettings && leagueSettings.mock),
+      keyMask: leagueSettingsStore.mask(leagueSettings ? leagueSettings.apiKey : ""),
+    },
+  });
+}
+// Last runSetup() result, surfaced through /status.json so the setup wizard
+// can show ini state instead of the old console-only logging.
+let setupInfo = { ok: false, dirFound: false, written: [], checked: [] };
+function runIniSetup() {
+  try {
+    setupInfo = runSetup();
+  } catch (e) {
+    console.error("[rivalry] setup error:", e.message);
+    setupInfo = { ok: false, dirFound: false, written: [], checked: [], error: e.message };
+  }
+  return setupInfo;
+}
+
+// First-run marker: the wizard's Finish button writes it; until then the app
+// window opens on the setup page (and visibly — the normal boot is tray-only).
+function setupMarkerPath() { return path.join(app.getPath("userData"), ".setup-complete"); }
+function isSetupComplete() { return fs.existsSync(setupMarkerPath()); }
+function markSetupComplete() {
+  try { fs.writeFileSync(setupMarkerPath(), new Date().toISOString()); }
+  catch (e) { console.error("[rivalry] setup marker error:", e.message); }
+}
+
+// One-time dialog when a port we need is already taken (usually a second
+// overlay app or a zombie process). Console-only was invisible to producers.
+let portConflictShown = false;
+function reportPortConflict(port, what) {
+  if (portConflictShown) return;
+  portConflictShown = true;
+  dialog.showErrorBox(
+    `${APP_TITLE} - port ${port} in use`,
+    `The ${what} could not start because port ${port} is already taken.\n\n` +
+    `Is another overlay app (or a second copy of this one) running?\n` +
+    `Close it, then restart ${APP_TITLE}.`
+  );
+}
 // Live updater status shown as a row in the tray menu. Without this the
 // "Check for updates" click had zero visible feedback. Values used:
 //   "idle"        first launch, nothing checked yet
@@ -179,6 +239,10 @@ function createWindow() {
   // Start hidden so the app boots quietly to the tray on every launch
   // (including auto-start with Windows). Users open the control panel
   // explicitly via the tray click handler or "Show control panel".
+  // EXCEPTION: until the setup wizard has been finished once, boot onto the
+  // wizard and show the window — a first-run app that hides in the tray is
+  // indistinguishable from a broken install to a new producer.
+  const firstRun = !isSetupComplete();
   mainWindow = new BrowserWindow({
     width: 900,
     height: 1040,
@@ -195,7 +259,8 @@ function createWindow() {
     shell.openExternal(url);
     return { action: "deny" };
   });
-  mainWindow.loadURL(CONTROL_URL);
+  mainWindow.loadURL(firstRun ? SETUP_URL : CONTROL_URL);
+  if (firstRun) mainWindow.once("ready-to-show", () => mainWindow.show());
 
   // Closing hides to tray so the bridge keeps running for OBS. Quit from tray.
   mainWindow.on("close", (e) => {
@@ -209,6 +274,12 @@ function createWindow() {
 function showWindow() {
   if (!mainWindow) createWindow();
   else {
+    // If the wizard was left open but setup is done, land on the panel.
+    try {
+      if (isSetupComplete() && mainWindow.webContents.getURL().includes("/control/setup.html")) {
+        mainWindow.loadURL(CONTROL_URL);
+      }
+    } catch {}
     mainWindow.show();
     mainWindow.focus();
   }
@@ -241,6 +312,14 @@ function buildTrayMenu() {
     { label: META.label, enabled: false },
     { type: "separator" },
     { label: "Show control panel", click: showWindow },
+    {
+      label: "Setup guide",
+      click: () => {
+        if (!mainWindow) createWindow();
+        mainWindow.loadURL(SETUP_URL);
+        showWindow();
+      },
+    },
     {
       label: "Copy overlay URL  (OBS Browser Source)",
       click: () => clipboard.writeText(OVERLAY_URL),
@@ -326,11 +405,9 @@ function refreshTrayMenu() {
 // Idempotent: creates a "RIVALRY - Live" scene with the overlay URL pre-wired
 // as a browser source. Producers run this once after enabling obs-websocket;
 // re-running is safe and just no-ops if scenes / sources already exist.
-const OBS_SCENE_NAMES = {
-  "gameplay": "RIVALRY - Live", "starting-soon": "RIVALRY - Starting Soon", "brb": "RIVALRY - BRB",
-  "caster": "RIVALRY - Casters", "match-preview": "RIVALRY - Match Preview", "up-next": "RIVALRY - Up Next",
-  "postgame": "RIVALRY - Post-Game", "bracket": "RIVALRY - Bracket",
-};
+// Scene names live in obs-collection.js so the websocket path and the
+// importable scene-collection file can never disagree.
+const { OBS_SCENE_NAMES } = require("./bridge/obs-collection");
 async function setupObsScenes() {
   if (!obsController || !obsController.status.connected) return;
   const base = `http://localhost:${HTTP_PORT}`;
@@ -367,11 +444,11 @@ async function toggleDevMode() {
     });
     if (result.canceled || !result.filePaths.length) return;
     const picked = result.filePaths[0];
-    if (!fs.existsSync(path.join(picked, "overlay", "overlay.html"))) {
+    if (!fs.existsSync(path.join(picked, "overlays", "rivalry-gameplay", "manifest.json"))) {
       dialog.showMessageBox({
         type: "warning",
         message: "That folder does not look like a rivalry-overlays repo",
-        detail: "Expected to find overlay/overlay.html inside it.",
+        detail: "Expected to find overlays/rivalry-gameplay/manifest.json inside it.",
       });
       return;
     }
@@ -608,12 +685,8 @@ if (!app.requestSingleInstanceLock()) {
     // but the notification subsystem can behave strangely.
     try { app.setAppUserModelId("com.rivalry.overlay"); } catch {}
 
-    try {
-      const r = runSetup();
-      console.log("[rivalry] stats API config:", r.ok ? "written" : "RL folder not found yet");
-    } catch (e) {
-      console.error("[rivalry] setup error:", e.message);
-    }
+    const r = runIniSetup();
+    console.log("[rivalry] stats API config:", r.ok ? "written" : "RL folder not found yet");
 
     applyFirstRunAutostart();
     // Resolve dev settings before starting the HTTP server so the right root
@@ -621,13 +694,55 @@ if (!app.requestSingleInstanceLock()) {
     // folder no longer exists (e.g. repo was moved).
     if (DEV_MODE_AVAILABLE) {
       devSettings = devSettingsStore.load(app.getPath("userData"));
-      if (devSettings.enabled && !fs.existsSync(path.join(devSettings.path, "overlay", "overlay.html"))) {
+      if (devSettings.enabled && !fs.existsSync(path.join(devSettings.path, "overlays", "rivalry-gameplay", "manifest.json"))) {
         console.warn("[rivalry] dev path missing, falling back to packaged:", devSettings.path);
         devSettings = { ...devSettings, enabled: false };
       }
     }
-    bridgeHandle = startBridge({ mock: process.argv.includes("--mock") });
+    bridgeHandle = startBridge({
+      mock: process.argv.includes("--mock"),
+      stateFile: path.join(app.getPath("userData"), "control-state.json"),
+      setupInfo,
+    });
+    bridgeHandle.events.on("server-error", (info) => {
+      if (info && info.code === "EADDRINUSE") {
+        reportPortConflict(info.port, `${info.server} WebSocket server`);
+      }
+    });
     collector = startReplayCollector({});
+    leagueSettings = leagueSettingsStore.load(app.getPath("userData"));
+    if (process.argv.includes("--league-mock")) leagueSettings = { ...leagueSettings, mock: true };
+    leagueClient = createLeagueClient({ getSettings: () => leagueSettings });
+    // Producer saves the league API key from the panel; persist + confirm with
+    // a masked status broadcast (the key itself is never echoed anywhere).
+    bridgeHandle.events.on("control", (msg) => {
+      if (msg && msg.type === "league-settings" && msg.payload) {
+        const p = msg.payload;
+        leagueSettings = {
+          ...leagueSettings,
+          ...(typeof p.apiKey === "string" ? { apiKey: p.apiKey.trim() } : {}),
+          ...(typeof p.mock === "boolean" ? { mock: p.mock } : {}),
+        };
+        leagueSettingsStore.save(app.getPath("userData"), leagueSettings);
+        broadcastLeagueStatus();
+      }
+    });
+    apiRouter = createApiRouter({
+      userDataDir: app.getPath("userData"),
+      meta: META,
+      httpPort: HTTP_PORT,
+      getBridge: () => bridgeHandle,
+      getObs: () => ({ settings: obsSettings, status: obsController ? obsController.status : null }),
+      getSetupInfo: () => setupInfo,
+      rewriteIni: runIniSetup,
+      isSetupComplete,
+      markSetupComplete,
+      getOverlayReg: () => overlayReg,
+      gateActive,
+      getLeagueClient: () => leagueClient,
+      getLeagueSettings: () => leagueSettings,
+      maskLeagueKey: leagueSettingsStore.mask,
+    });
     const initialRoot = devSettings.enabled ? devSettings.path : __dirname;
     startHttpServer(initialRoot);
     rescanOverlays();

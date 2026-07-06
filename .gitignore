@@ -1,6 +1,7 @@
 node_modules/
 dist/
 dist-beta/
+.verify/
 *.log
 .DS_Store
 .recon/

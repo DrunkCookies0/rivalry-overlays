@@ -134,7 +134,9 @@ function createOBSController() {
       sceneName,
       inputName: sourceName,
       inputKind: "browser_source",
-      inputSettings: { url, width, height, reroute_audio: false },
+      // Keep in lockstep with bridge/obs-collection.js makeBrowserSource so
+      // websocket-created sources match ones from an imported collection.
+      inputSettings: { url, width, height, fps: 60, fps_custom: true, shutdown: false, reroute_audio: false },
     });
     return { sceneCreated: !existingScenes.includes(sceneName), sourceCreated: true };
   }

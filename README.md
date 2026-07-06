@@ -1,207 +1,181 @@
 # RIVALRY Overlay
 
-An in-house Rocket League broadcast overlay for the RIVALRY league, shipped as a
-Windows installer. A control panel, a background bridge, and an OBS overlay you
-can restyle however you like.
+A Rocket League broadcast suite for league play, shipped as a single Windows installer. It reads Rocket League's official Stats API (Psyonix's sanctioned broadcast interface), so it is EAC-safe: no mods, no injection, nothing touches the game. One install gives you 8 broadcast scenes, a control panel that docks inside OBS, and OBS integration that can build and switch your scenes for you.
 
-## How it actually works (the part worth understanding)
+---
 
-Rocket League ships an **official Stats API** (internally `MatchStatsExporter_TA`).
-This is Psyonix's sanctioned, documented interface for broadcast tooling. No
-game injection, no third party mod.
+## Install and set up
+
+This section is for broadcast producers. Total time: about five minutes.
+
+1. Download `RIVALRY-Overlay-Setup-<version>.exe` from [Releases](../../releases).
+2. Run it. Windows SmartScreen will warn you. Click **More info**, then **Run anyway**. This is expected: the installer is not code-signed yet, and buying a signing certificate is what would remove the warning.
+3. Launch **RIVALRY Overlay**. A guided setup wizard opens on first launch:
+
+| Step | What the app does | What you do |
+|---|---|---|
+| 1. Rocket League | Writes RL's stats config file automatically, then waits for the game. | Restart Rocket League once. The wizard shows "waiting for Rocket League", then goes green. |
+| 2. OBS | Offers a ready-made OBS scene collection (also available from the control panel). | Download it, then in OBS: **Scene Collection** menu, **Import**. All 8 scenes arrive pre-wired. Alternative: connect obs-websocket and click **Create all OBS scenes**. |
+| 3. Control panel | Shows you the panel URL. | In OBS: **Docks**, **Custom Browser Docks**, add `http://localhost:49080/`. Or open that URL in any browser. |
+
+That is the whole setup. To re-run the wizard at any time: tray icon, **Setup guide**.
+
+The app lives in the system tray and starts with Windows by default, so it is ready before OBS opens. Closing the window does not quit it; the tray menu has **Quit** when you really want it gone.
+
+---
+
+## Running a broadcast
+
+### The 8 scenes
+
+Each scene is a 1920x1080 OBS Browser Source. The pre-made scene collection wires all of them; URLs are also one click away in the panel's Scenes card.
+
+| Scene | What it shows |
+|---|---|
+| Starting Soon | Pre-stream holding screen with event title, teams, and start time. |
+| Match Preview | Pre-match VS graphic with team names, logos, seeds, and records. |
+| Casters | Caster frames with names, roles, handles, and live cams. |
+| Gameplay | The live in-match overlay: scorebug, series pips, clock, boost, player tags, stat pops, kickoff countdown, and the full goal sequence (flash, banner, replay card). |
+| Post-Game Results | Box score and MVP, frozen automatically the moment the match ends. |
+| Up Next | Schedule of up to 4 upcoming matches. |
+| Be Right Back | Break screen. |
+| Bracket | Single-elimination playoff bracket with champion slot. |
+
+### The control panel
+
+Open it as an OBS dock (or in a browser) at `http://localhost:49080/`. Fill in the cards, click **PUSH TO OVERLAY**, and every scene updates live. The panel remembers everything you type across app restarts.
+
+| Card | What it controls |
+|---|---|
+| Overlays / Scenes | Every scene with Copy URL and Preview buttons, plus the Manual / Match mode toggle. |
+| Team A / Team B | Name, logo, tag, seed, record, series games won. Logos: paste a URL or upload a file (drag-drop or file picker). |
+| Series | Best of, event title strip, round subtitle, start time. |
+| Casters | Up to 3 casters with names, roles, handles, and cam feeds. |
+| Up Next | The schedule shown on the Up Next scene. |
+| Player Titles | Per-player title and badges shown on that player's goal banner (name must match the in-game name exactly). |
+| Bracket | Playoff matchups and champion. |
+| OBS integration | obs-websocket connection, **Create all OBS scenes**, a scene deck for one-click live switching, and optional auto-switch on game events. |
+
+### Manual mode vs Match mode
+
+- **Manual (default):** you type team names, logos, and series info yourself. Everything in this app works fully in Manual mode, for any league. The tool is not locked to the RIVALRY website.
+- **Match (league):** enter your league API key, pick a scheduled match, and team names, logos, and series info auto-fill from the RIVALRY website. Honest status: the league endpoints are still rolling out server-side, so Match mode may not be live for your league yet. Until it is, Manual mode is the path, and nothing else in the app depends on it.
+
+### Caster cams
+
+Caster cams run through VDO.Ninja, free and browser-based, no accounts or extra software. Set a room name in the Casters card, click **Generate caster links**, send each caster their personal push link, and their cams appear on the Casters scene.
+
+### Replay archive
+
+The app watches Rocket League's Demos folder and copies each new replay into `Documents\RIVALRY Replays`, organized by event and matchup, with a JSON sidecar carrying the match context (event, teams, game number, timestamp). **Open replays folder** is in the tray menu. This uses only the files RL writes natively, so it is EAC-safe; if your RL only saves a replay when you click "Save Replay", click it each game.
+
+---
+
+## If something's not working
+
+| Symptom | What to check |
+|---|---|
+| Overlay is blank in OBS | Is the app running? Look for the tray icon. Was Rocket League restarted once after install? Then right-click the Browser Source and refresh. |
+| Gameplay scene shows no live numbers | It only renders live data during a match (playing or spectating). Saved replays emit nothing. |
+| SmartScreen blocks the installer | Click **More info**, then **Run anyway**. Expected for an unsigned installer. |
+| "Port already in use" dialog at launch | Another app is holding port 49080, 49124, or 49777. The dialog names the port. Close the other app and relaunch. |
+| Logos not loading | A pasted URL must point directly at an image file. If in doubt, upload the file in the panel instead, then push again. |
+| Boost meters show `--` | Boost data only exists on the PC that is spectating the match. That is a Rocket League limit, not a bug. |
+| Need the setup wizard again | Tray icon, **Setup guide**. |
+| Can't find the OBS import | OBS top menu bar: **Scene Collection**, then **Import**, then pick the downloaded file. |
+
+---
+
+## Screenshots
+
+<!--
+screenshots to capture and drop into docs/img/ (1920x1080 window grabs unless noted):
+- setup-wizard-rl-connected.png : wizard step 1 in the green "connected" state
+- obs-scene-collection-import.png : OBS Scene Collection menu open on Import
+- control-panel-dock.png : control panel docked inside OBS, Scenes card visible
+- scenes-card-copy-url.png : close crop of the Scenes card with Copy URL / Preview buttons
+- gameplay-live.png : gameplay scene over a live match
+- postgame-results.png : post-game box score scene
+-->
+
+![Setup wizard, Rocket League connected](docs/img/setup-wizard-rl-connected.png)
+
+![Control panel docked in OBS](docs/img/control-panel-dock.png)
+
+![Gameplay overlay over a live match](docs/img/gameplay-live.png)
+
+![Post-game results scene](docs/img/postgame-results.png)
+
+---
+
+## For developers
+
+### How the data flows
 
 ```
-Rocket League                RIVALRY Overlay app           OBS
-[Stats API]   raw TCP   ->   bridge + web server  -->  Browser Source
-:49123        JSON           :49124 game feed (ws)      http://localhost:49080
-                             :49777 control bus (ws)    /overlay/overlay.html
-                             :49080 web server (http)
+Rocket League               RIVALRY Overlay app             OBS
+[Stats API]   raw TCP  ->   bridge + web server    ->   Browser Sources
+:49123        JSON          :49124 game feed (ws)       http://localhost:49080
+                            :49777 control bus (ws)     /overlays/<id>/index.html
+                            :49080 web server (http)
 ```
 
-1. **Enable the exporter.** On launch the app writes `DefaultStatsAPI.ini` into the
-   Rocket League config folder, setting `Port=49123` and a non-zero `PacketSendRate`.
-   The user restarts Rocket League once.
-2. **Rocket League streams raw TCP.** It is *not* a WebSocket. It writes JSON objects
-   back to back on `127.0.0.1:49123`. Each is an envelope `{ "event": "...", "data": ... }`
-   and `data` is sometimes a JSON-encoded string that needs a second parse.
-3. **The app bridges TCP to WebSocket.** Browsers cannot open raw TCP sockets, so the
-   Electron main process connects to 49123, frames the stream into whole JSON objects,
-   and re-broadcasts each over WebSocket on 49124. This is the one piece you cannot
-   skip.
-4. **The overlay is a web page.** The app also serves `overlay/overlay.html` and
-   `control/control.html` over `http://localhost:49080`, so OBS points at a stable URL
-   regardless of where the app is installed. The control panel pushes team names,
-   logos, series score, etc. to the overlay over a second relay WebSocket (49777).
+1. On launch the app writes `DefaultStatsAPI.ini` into the Rocket League config folder (`Port=49123`, non-zero `PacketSendRate`). One RL restart turns the feed on.
+2. RL streams raw TCP (not WebSocket): back-to-back JSON envelopes `{ "event": "...", "data": ... }` on `127.0.0.1:49123`. `data` is sometimes a JSON-encoded string needing a second parse.
+3. Browsers can't open raw TCP, so the Electron main process frames the stream into whole JSON objects and re-broadcasts each over WebSocket on 49124. The control panel pushes branding and series data to overlays over a second relay WebSocket on 49777.
+4. The HTTP server on 49080 serves the scenes and control panel, so OBS points at stable URLs regardless of install location. The root URL redirects to the control panel.
 
-### Events and data
-`UpdateState` (live feed: players, boost, team scores, clock, spectated `Target`),
-`GoalScored`, `StatfeedEvent` (demos etc.), `MatchCreated`, `MatchEnded`, and more.
-`UpdateState.data` has `Players[]` (`Name`, `TeamNum` 0=blue/1=orange, `Score`,
-`Goals`, `Shots`, `Assists`, `Saves`, `Touches`, `Boost`) and `Game`
-(`Teams[]`, `TimeSeconds`, `Ball`, `Winner`).
+Feed limits to design around: boost is spectator-scoped (render `--` when absent), there is no position data (no live minimap from this source), and only live matches emit events (saved replays are silent).
 
-### Limits to design around
-- **Boost is spectator-scoped** (present only on the observing PC). Render `--` when absent.
-- **No position data** in the feed, so no live minimap from this source alone.
-- **Live matches only** (saved-replay viewing emits nothing).
+### Ports
 
----
+Change in `bridge/rl-bridge.js` and `main.js` if they collide.
 
-## What's on the overlay
+| Port | Carries |
+|---|---|
+| 49123 | Rocket League Stats API (raw TCP, must match the ini) |
+| 49124 | Game feed WebSocket (overlays subscribe) |
+| 49777 | Control bus WebSocket (control panel to overlays) |
+| 49080 | HTTP server (scenes, control panel, `/overlays/registry.json`) |
 
-**Scorebar (top center)**
-- Event title strip, team blocks (name, logo, region/record tag), scores, clock, RLCS-style unified pip row (blue from left, red from right, hollow neutral marker on the active game, gold + team-color underline on the series winner's pips), state strip for `OVERTIME` (red pulse) and `KICKOFF` (gold).
-
-**Goal experience**
-- **GOAL flash** over the scoring team's name in the scorebar — gold gradient slab, sheen sweep, punch-in bounce, glow pulse, team-color underline.
-- **Goal banner** mid-screen — layered slab that wipes in from the scorer's side, contains the scorer's avatar plus a stack of scorer name, optional subtitle, and up to 3 badge slots (subtitle / badges populated from league API per-player data when wired).
-- **Replay card** in the scorer's corner during the goal replay — avatar, name, optional assister line (correlated via assist statfeed within 5s of the goal), goal speed in MPH, and per-player stats (Goals / Assists / Saves / Shots / Demos).
-- **Stat-event pops** — small color-coded badges (GOAL / AST / SAV / SHT / DMO) pop in next to the actor's player tag whenever RL fires the matching statfeed event; stack vertically, auto-dismiss.
-
-**Match-state cues**
-- **Kickoff 3-2-1-GO!** — center-screen countdown synced with RL's `CountdownBegin`, with separate delay regimes for the very first kickoff of a match, fresh kickoffs (pause/resume), and post-goal kickoffs (each tuned independently in [overlay/overlay.html](overlay/overlay.html)). GO! is anchored to `RoundStarted` so it lands on the actual ball drop. Useful when the broadcaster has RL's in-game HUD hidden via Settings → Interface.
-- **Final-10s big number** — upper-center gold pulsing seconds counter when ≤10s remain in regulation. Suppressed during OT (the state strip's `OVERTIME` carries the urgency there).
-- **OVERTIME** state strip — only fires on RL's explicit `IsOT` flag (no false-positive on tied-zero).
-
-**Focused player widgets (side tags + bottom statbar + boost gauge)**
-- Per-team player tags on the side flanks with live boost, full team-color background highlight when the spectator camera focuses them. Bottom statbar + radial boost gauge for the focused player. All fade out during the goal banner so they don't compete.
-
-The control panel sets team branding (name, logo, region/record tag), best-of, series score, event title, and OBS scene wiring. Accent colors lock to RL's blue and orange so they always match the in-game teams.
-
----
-
-## For end users (the people you ship to)
-
-1. Run `RIVALRY-Overlay-Setup-<version>.exe` and install.
-2. Launch **RIVALRY Overlay**. It enables the Rocket League stats feed automatically.
-3. **Restart Rocket League once** (first time only) so the feed turns on.
-4. In OBS add a **Browser Source**, width `1920`, height `1080`, URL:
-   `http://localhost:49080/overlay/overlay.html` (the app's "Add to OBS" card has a copy button).
-5. Set team names, logos, region tags, and series score in the app window. Start
-   spectating a match and the scoreboard, boost meters, statfeed and goal banner go live.
-
-### Run the control panel as an OBS dock (recommended)
-
-Instead of the separate app window, you can dock the control panel inside OBS itself:
-
-1. Make sure the RIVALRY Overlay app is running (it serves the panel and runs the bridge).
-2. In OBS: **Docks → Custom Browser Docks…**
-3. Add a dock named `RIVALRY` with URL `http://localhost:49080/control/control.html`, click Apply.
-4. The panel appears as a dockable pane you can drag and snap anywhere in the OBS layout. OBS remembers it across restarts.
-
-The panel layout is responsive, so it stays usable even in a narrow docked column. Note the
-app still needs to be running for the dock to load and for live data to flow, so launch it
-before (or alongside) OBS. The overlay itself stays a Browser Source in your scene as above.
-
-### Runs in the background
-
-The app lives in the system tray. Closing the window doesn't quit it; it keeps the bridge and
-web server running so OBS keeps getting data. The tray icon menu has:
-
-- **Show control panel** — reopen the window.
-- **Copy overlay URL (OBS Browser Source)** and **Copy control panel URL (OBS Dock)** — the two URLs OBS needs.
-- **Start with Windows** — on by default after first install, so it's ready before OBS opens. Toggle off here.
-- **Quit RIVALRY Overlay** — fully exit.
-
-### Handing it to a producer (the short version)
-
-1. Send them `RIVALRY-Overlay-Setup-<version>.exe`. They install and launch it once.
-2. They restart Rocket League once so the stats feed turns on.
-3. In OBS: add a Browser Source with the overlay URL (in the scene), and add a Custom Browser
-   Dock with the control panel URL. Both URLs are one click away in the tray menu and the app's
-   "Add to OBS" card.
-
-That's the whole setup. After that the app auto-starts with Windows and sits in the tray.
-
----
-
-## For you (building and shipping the installer)
-
-You build the `.exe` on a **Windows** machine. electron-builder produces the NSIS
-installer natively there (no extra tooling).
-
-```bash
-cd rivalry-overlay
-npm install            # pulls electron + electron-builder + ws
-npm run dist           # builds dist\RIVALRY-Overlay-Setup-1.0.0.exe
-```
-
-The finished installer lands in `rivalry-overlay\dist\`. That single file is what you
-hand to casters and team managers.
-
-- Bump `version` in `package.json` for each release (it shows in the installer name).
-- `npm run pack` makes an unpacked build in `dist\win-unpacked\` for quick local testing
-  without producing the full installer.
-
-### Code signing / SmartScreen
-The installer is **unsigned**, so Windows SmartScreen will warn on first run
-("More info" -> "Run anyway"). This is normal for indie tools. To remove the
-warning, buy a code-signing certificate and add `win.certificateFile` /
-`certificatePassword` (or an EV/cloud signer) to the `build` config. Optional.
-
-### App icon
-The RIVALRY icon is already wired up at `build/icon.ico` (used for the app, installer, and
-uninstaller) and `assets/tray.png` (the system tray). To rebrand, replace those two files.
-
----
-
-## Developing / testing without the game
+### npm scripts
 
 ```bash
 npm install
-npm run mock     # launches the app with fake match data (no Rocket League needed)
 ```
 
-Or run just the data bridge and open the HTML files in a browser:
+| Command | Does |
+|---|---|
+| `npm start` | Run the app |
+| `npm run mock` | Run the app with fake match data (no Rocket League needed) |
+| `npm test` | Unit + HTTP gate tests (`node --test tests/`) |
+| `npm run verify:render` | Headless render verification |
+| `npm run dev:bridge` | Bridge only, with mock data on the WebSocket ports |
+| `npm run pack` | Unpacked build in `dist\win-unpacked\` for quick local testing |
+| `npm run dist` | Build the NSIS installer (Windows machine required) |
+| `npm run overlay:keygen` / `overlay:sign` / `overlay:verify` | Overlay signing toolchain (see below) |
 
-```bash
-npm run dev:bridge      # bridge + fake data on the WebSocket ports
-# then open overlay/overlay.html and control/control.html in a browser
-```
+### Dev mode (live-edit against a packaged app)
 
-## Replay collector
+The tray gains a **Dev: serve overlay from local folder** toggle when the app runs unpacked or with `RIVALRY_DEV=1` set. When on, the HTTP server serves overlay and control HTML from your local repo folder instead of the packaged files, so edits go live in OBS after a browser-source refresh. No reinstall loop.
 
-Rocket League writes `.replay` files to its Demos folder at
-`Documents\my games\Rocket League\TAGame\Demos`. The app watches that folder and, when
-a new replay appears, copies it into an organized archive at `Documents\RIVALRY Replays`:
+### Overlay authoring and the signing gate
 
-```
-RIVALRY Replays\<Event>\<TeamA-vs-TeamB>\<TeamA-vs-TeamB__Game3__2026-05-23_19-41-08.replay>
-```
+Overlays live in `overlays/`, one folder per scene, each with a `manifest.json`. Start with [overlays/README.md](overlays/README.md) (the authoring kit) and [overlays/CONTRACT.md](overlays/CONTRACT.md) (the versioned data contract). The SDK has a built-in mock, so designers need neither the app nor Rocket League.
 
-Alongside each replay it writes a `.json` sidecar with the match context (event, team names,
-game number, timestamp) so the files can be auto-uploaded to match pages later. Team/event
-names come from the control panel. Replays that already existed before launch are left alone,
-so it only collects matches played during the session. "Open replays folder" is in the tray menu.
+Signing model in one line: every overlay folder is Ed25519-signed after review; the packaged app's loader verifies signatures at boot and serves only approved overlays, while unsigned or edited ones load in dev mode only, with a preview badge.
 
-This works purely off whatever Rocket League writes natively to its Demos folder — no
-modding, no game injection, EAC-safe. The Stats API itself can't export replays. If RL
-on your setup only writes a replay when you click "Save Replay" after a match, click it
-each game so the collector has something to pick up.
+Legacy note: the shipped gameplay overlay is `overlays/rivalry-gameplay/index.html`. The old `/overlay/overlay.html` path is still served as a silent fallback so pre-migration OBS sources keep working; do not use it for anything new.
 
-Different from third-party tools like rockpload, which authenticate against Epic Games
-and pull replays directly from Psyonix's backend (RLAPI). That captures every game without
-needing a local save, but doesn't carry the league event / team metadata that this app
-attaches to each archived replay.
+### Build, release, CI
 
-## Files
-- `main.js` — Electron entry: writes the ini, starts the bridge + web server, opens the panel
-- `bridge/rl-bridge.js` — TCP to WebSocket bridge + `runSetup()`; also a CLI (`--setup`, `--mock`)
-- `bridge/replay-collector.js` — watches the RL Demos folder and archives replays + metadata
-- `overlay/overlay.html` — the OBS browser source. See **What's on the overlay** below for the full feature list.
-- `control/control.html` — operator control panel (team branding, series, OBS URL)
-- `config/DefaultStatsAPI.ini` — reference copy of the snippet the app writes
-- `assets/` — tray icon + RIVALRY logo and wordmark (used by the control panel)
-- `build/icon.ico` — app / installer icon
-- `package.json` — dependencies + electron-builder Windows config
+- `npm run dist` builds `dist\RIVALRY-Overlay-Setup-<version>.exe` via electron-builder (NSIS). Bump `version` in `package.json` per release.
+- **Beta channel:** `pr-build.yml` builds and publishes a beta installer as a GitHub prerelease on every PR to `main` and every push to `feat/**` branches. Beta uses a separate appId and product name ("RIVALRY Overlay Beta") so it installs alongside production. The 5 newest prereleases are kept.
+- **Production:** `release.yml` builds and publishes on `v*` tags. Auto-update ships via electron-updater.
+- The installer is unsigned, so SmartScreen warns on first run. A code-signing certificate (`win.certificateFile` in the build config, or an EV/cloud signer) would remove that.
 
-## Ports (change in `bridge/rl-bridge.js` and `main.js` if they collide)
-- `49123` Rocket League Stats API (raw TCP) — must match the ini
-- `49124` game feed WebSocket (overlay subscribes)
-- `49777` control bus WebSocket (control panel -> overlay)
-- `49080` local web server (serves overlay + control to OBS / the app window)
+---
 
-## A note on legality
-This uses Rocket League's own official, documented Stats API and does not modify or
-inject into the game, so it is the supported path. All overlay code in this repo is
-original RIVALRY work.
+## License
+
+PolyForm Noncommercial 1.0.0. See [LICENSE](LICENSE).

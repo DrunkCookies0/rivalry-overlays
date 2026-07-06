@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RIVALRY Broadcast Setup</title>
+<style>
+  :root{ --rivalry:#e7274a; --accent:#30c0f6; --bg:#0e1218; --panel:#171f29;
+    --ink:#eef3f8; --muted:#8aa0b6; --ok:#2ecc71; --warn:#f1c40f; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Segoe UI',Roboto,Arial,sans-serif;padding:22px;}
+  .wrap{max-width:860px;margin:0 auto;}
+  b{color:var(--ink);font-weight:600;}
+
+  /* header */
+  .brand{display:flex;align-items:center;gap:11px;margin:0 0 4px;flex-wrap:wrap;}
+  .brand svg.wordmark{height:22px;width:auto;display:block;}
+  .brand span.tagline{font-size:14px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+  #buildLabel{font-size:11px;letter-spacing:1px;color:#5b6d80;margin-left:auto;
+    font-family:Consolas,monospace;text-transform:none;}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 16px;line-height:1.5;}
+
+  /* stepper */
+  .steps{display:flex;align-items:center;margin:0 0 18px;}
+  .step{display:inline-flex;align-items:center;gap:9px;background:transparent;
+    border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 14px;
+    color:var(--muted);font-weight:700;font-size:13px;font-family:inherit;cursor:default;}
+  .step .idx{width:22px;height:22px;border-radius:50%;background:#243040;color:var(--ink);
+    display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex:none;}
+  .step.current{border-color:var(--rivalry);color:var(--ink);}
+  .step.current .idx{background:var(--rivalry);color:#fff;}
+  .step.done .idx{background:rgba(46,204,113,.18);color:var(--ok);}
+  .step.clickable{cursor:pointer;}
+  .step.clickable:hover{border-color:rgba(255,255,255,.28);color:var(--ink);}
+  .step:disabled{opacity:.55;}
+  .step.current:disabled{opacity:1;}
+  .conn{flex:1;height:1px;background:rgba(255,255,255,.12);margin:0 8px;min-width:12px;}
+
+  /* cards */
+  .card{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:10px;
+    padding:18px;margin-bottom:16px;}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;color:var(--muted);}
+  .lede{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 6px;}
+  .opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;}
+  .opt{background:#121822;border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:14px;}
+  .opt.rec{border-color:rgba(231,39,74,.4);}
+  .opt h3{font-size:15px;margin:0 0 8px;color:var(--ink);}
+  .flag{display:inline-block;font-size:10px;letter-spacing:1px;text-transform:uppercase;
+    padding:3px 9px;border-radius:10px;margin-bottom:10px;font-weight:700;}
+  .flag.rec{background:rgba(231,39,74,.18);color:#ff6d87;}
+  .flag.adv{background:rgba(255,255,255,.08);color:var(--muted);}
+  .copy{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 10px;}
+  ol.howto{margin:10px 0 12px;padding-left:20px;font-size:13px;color:#c8d6e4;line-height:1.75;}
+  ol.howto li::marker{color:var(--rivalry);font-weight:700;}
+  .note{font-size:12px;color:var(--muted);line-height:1.55;margin-top:10px;}
+
+  /* buttons */
+  button,a.btn{cursor:pointer;border:none;border-radius:6px;padding:9px 14px;font-weight:700;
+    font-size:14px;font-family:inherit;display:inline-block;text-decoration:none;text-align:center;}
+  .apply{background:var(--rivalry);color:#fff;letter-spacing:1px;padding:10px 20px;}
+  .apply.big{width:100%;padding:14px;font-size:15px;}
+  .second{background:#243040;color:var(--ink);}
+  .ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,.14);}
+  .ghost:hover{color:var(--ink);border-color:rgba(255,255,255,.3);}
+  button:disabled{opacity:.55;cursor:default;}
+  button:focus-visible,a.btn:focus-visible,.step:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+  /* step panels */
+  .panel{display:none;}
+  .panel.on{display:block;animation:fadein .18s ease-out;}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+  .foot{display:flex;align-items:center;gap:10px;margin-top:4px;}
+  .foot .spacer{flex:1;}
+
+  /* live status area (step 1) */
+  .state{display:flex;gap:12px;align-items:flex-start;border:1px solid rgba(255,255,255,.08);
+    background:#0b0f14;border-radius:8px;padding:14px;margin-top:14px;}
+  .state .sdot{flex:none;width:12px;height:12px;border-radius:50%;margin-top:4px;background:#5b6d80;}
+  .state.amber{border-color:rgba(241,196,15,.4);}
+  .state.amber .sdot{background:var(--warn);}
+  .state.wait{border-color:rgba(48,192,246,.45);}
+  .state.wait .sdot{background:var(--accent);animation:pulse 1.6s ease-out infinite;}
+  .state.ok{border-color:rgba(46,204,113,.45);}
+  .state.ok .sdot{background:var(--ok);}
+  .scheck{flex:none;width:20px;height:20px;border-radius:50%;background:rgba(46,204,113,.18);
+    color:var(--ok);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(48,192,246,.45);}
+    70%{box-shadow:0 0 0 9px rgba(48,192,246,0);}
+    100%{box-shadow:0 0 0 0 rgba(48,192,246,0);}
+  }
+  .st-title{font-weight:700;font-size:14px;margin-bottom:3px;}
+  .state.ok .st-title{color:var(--ok);}
+  .state.amber .st-title{color:var(--warn);}
+  .st-body{font-size:13px;color:var(--muted);line-height:1.6;}
+  .restart{display:inline-block;margin:7px 0 9px;padding:7px 13px;border-radius:6px;
+    background:rgba(48,192,246,.12);border:1px solid rgba(48,192,246,.45);color:var(--accent);
+    font-weight:800;letter-spacing:1px;font-size:14px;}
+  .state .second{margin-top:10px;}
+  .mono{font-family:Consolas,monospace;font-size:11px;color:#5b6d80;white-space:pre-wrap;
+    word-break:break-all;margin-top:10px;line-height:1.6;}
+
+  /* live status line (step 2) + copy row (step 3) */
+  .livebar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:14px;}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5b6d80;flex:none;}
+  .dot.ok{background:var(--ok);}
+  .dot.warn{background:var(--warn);}
+  .urlrow{display:flex;gap:8px;margin:8px 0 2px;}
+  .urlrow input{flex:1;min-width:0;padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.1);
+    background:#0b0f14;color:var(--ink);font-family:Consolas,monospace;font-size:12px;}
+  #finishMsg{font-size:12px;color:var(--warn);margin-top:8px;text-align:center;}
+
+  @media (max-width:760px){
+    body{padding:14px;}
+    .opt-grid{grid-template-columns:1fr;}
+    .step .lbl{display:none;}
+    .step.current .lbl{display:inline;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand">
+    <svg class="wordmark" viewBox="0 0 638 94" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RIVALRY">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M126 0H151L130 94H105L126 0Z" fill="#F1EEEE" stroke="#F1EEEE"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M158 1.02698H183L194.999 71.8664L236 0H264C245.576 30.4222 227.149 60.8437 208.719 91.2645L207.063 94H181.03C177.725 91.9989 174.968 89.1693 173.019 85.7761L158 1.02698Z" fill="#F1EEEE" stroke="#F1EEEE"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M315.238 0.022911C317.229 0.641361 319.04 1.74946 320.512 3.24938C321.891 4.65547 322.932 6.36599 323.557 8.24598L323.677 8.62451L323.685 8.6524L323.69 8.68129C328.76 36.9184 333.828 65.1565 338.892 93.3944L339 93.997H312.659L312.576 93.5916L308.604 74.3682H267.733L255.567 94H227L287.456 0H315.167L315.238 0.022911ZM278.306 55.0194H305.802L300.514 18.3697L278.306 55.0194Z" fill="#F1EEEE"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M391 0L375 74.3736H426L421 94H347L368 0H391Z" fill="#F1EEEE" stroke="#F1EEEE"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M82.3879 0.000987063C85.5414 0.17277 88.6263 0.99445 91.451 2.41633C94.2756 3.83822 96.7795 5.82989 98.8081 8.26665L98.812 8.2706C101.91 12.0765 103.71 16.7855 103.945 21.7006C104.367 28.7902 102.371 35.8127 98.2885 41.6047C94.3826 47.1457 88.7896 51.241 82.3703 53.2836C84.3457 55.0681 86.0706 57.1157 87.496 59.3709L87.8087 59.8772L87.8136 59.8841L87.8175 59.891C89.946 63.6908 91.3291 67.8675 91.8922 72.1928C92.685 77.4704 94.4418 86.11 95.9041 93.3949L96.0256 94H68.9287L68.8257 93.6308C67.1319 87.5596 65.4637 81.5167 63.805 75.4353L60.7931 64.316C60.6121 63.6476 60.3016 63.0214 59.8794 62.4742C59.1913 61.5982 58.2503 60.9602 57.1871 60.6452H35.5815C34.4384 66.0707 33.2951 71.4963 32.152 76.9218L28.5538 94H1.41864L17.5643 20.8468L1 0H82.3742L82.3879 0.000987063ZM30.1666 16.6774L41.0013 26.4563L37.9032 39.9247H68.9071L69.0228 39.8576C71.6126 38.3656 73.7641 36.2089 75.2563 33.6075C76.3525 31.682 77.059 29.5554 77.3348 27.3535L77.3388 27.3259V26.9133C77.3069 24.9957 76.8468 23.1076 75.9907 21.3906C75.0775 19.5594 73.7397 17.9755 72.0915 16.7732L71.9602 16.6774H30.1666Z" fill="#F1EEEE"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M511.388 0.00197411C514.541 0.175126 517.626 0.9975 520.45 2.41927C523.098 3.75219 525.464 5.58568 527.422 7.81647L527.808 8.26755L527.812 8.27249C530.908 12.0793 532.708 16.7871 532.945 21.7013C533.366 28.7907 531.371 35.8135 527.288 41.6053C523.382 47.1463 517.789 51.2416 511.369 53.2841C513.489 55.203 515.323 57.4233 516.809 59.8766L516.814 59.8845L516.818 59.8924C518.944 63.6962 520.329 67.8751 520.894 72.2029C521.686 77.4811 523.438 86.1141 524.904 93.3939L525.026 94H497.929L497.826 93.6318C496.129 87.5605 494.462 81.5169 492.805 75.4355L491.291 69.8764C490.789 68.0246 490.29 66.1716 489.793 64.3154C489.612 63.6476 489.301 63.0228 488.88 62.4755L488.745 62.3107C488.071 61.5192 487.182 60.941 486.187 60.6455H464.582C462.264 71.63 459.949 82.6148 457.638 93.5993L457.554 94H430.419L446.564 20.8475C441.257 14.1726 435.953 7.49717 430.652 0.822215L430 0H511.374L511.388 0.00197411ZM458.124 18.1312L468.959 27.9099L465.863 41.3782H496.866L496.982 41.3121C499.236 40.0208 501.161 38.2183 502.603 36.0482C504.046 33.8777 504.967 31.398 505.293 28.8071L505.297 28.7785V28.7499C505.32 26.7019 504.856 24.6777 503.944 22.8473C503.031 21.0169 501.695 19.4328 500.05 18.2279L499.918 18.1312H458.124Z" fill="#F1EEEE"/>
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M538 0H562L578 40.2857L610 0H636L586 63.011L579 91.9341C578.243 92.9399 577.19 93.6648 576 94H554L561 61.978L538 0Z" fill="#F1EEEE" stroke="#F1EEEE"/>
+    </svg>
+    <span class="tagline">Broadcast Setup</span>
+    <span id="buildLabel"></span>
+  </div>
+  <p class="sub">Three quick steps, takes about two minutes. You can reopen this guide any time from the tray icon (Setup guide).</p>
+
+  <div class="steps" role="navigation" aria-label="Setup steps">
+    <button type="button" class="step current" data-step="1"><span class="idx">1</span><span class="lbl">Rocket League</span></button>
+    <span class="conn"></span>
+    <button type="button" class="step" data-step="2" disabled><span class="idx">2</span><span class="lbl">OBS</span></button>
+    <span class="conn"></span>
+    <button type="button" class="step" data-step="3" disabled><span class="idx">3</span><span class="lbl">Control panel</span></button>
+  </div>
+
+  <!-- ======================= STEP 1: ROCKET LEAGUE ======================= -->
+  <section class="panel on" id="panel1">
+    <div class="card">
+      <h2>Rocket League match feed</h2>
+      <p class="lede">
+        The overlay reads live match data (score, clock, boost, goals) straight from Rocket League's
+        built-in stats output. This app already wrote the small config file that turns that output on.
+        No mods, no plugins, tournament safe.
+      </p>
+      <div id="rlState" aria-live="polite"></div>
+      <div class="mono" id="iniPaths" style="display:none;"></div>
+      <div class="note" id="mockNote" style="display:none;">Mock feed is on (test data from the app's mock mode, not a real match).</div>
+    </div>
+    <div class="foot">
+      <button type="button" class="ghost" id="skip1">Skip for now</button>
+      <span class="spacer"></span>
+      <button type="button" class="apply" id="next1">NEXT: OBS</button>
+    </div>
+  </section>
+
+  <!-- ============================ STEP 2: OBS ============================ -->
+  <section class="panel" id="panel2">
+    <div class="card">
+      <h2>Get the scenes into OBS</h2>
+      <p class="lede">
+        The overlay graphics load into OBS as regular browser sources. Pick one of the two ways below.
+        Option A is ready in under a minute.
+      </p>
+      <div class="opt-grid">
+        <div class="opt rec">
+          <span class="flag rec">Recommended</span>
+          <h3>Import the ready-made scene collection</h3>
+          <p class="copy">Zero setup. Download the collection, import it, done.</p>
+          <a class="btn apply" href="/obs/scene-collection.json" download="rivalry-overlays.json">DOWNLOAD SCENE COLLECTION</a>
+          <ol class="howto">
+            <li>In OBS, click the <b>Scene Collection</b> menu at the top of the window.</li>
+            <li>Click <b>Import</b>.</li>
+            <li>Pick the downloaded <b>rivalry-overlays.json</b>.</li>
+            <li>Open the same menu again and switch to the <b>RIVALRY Overlays</b> collection.</li>
+          </ol>
+          <div class="note">All 8 broadcast scenes arrive pre-wired. Keep this app running whenever OBS is open, the scenes load their graphics from it.</div>
+        </div>
+        <div class="opt">
+          <span class="flag adv">Advanced</span>
+          <h3>Let the app build the scenes for you</h3>
+          <p class="copy">
+            The app can create every scene directly inside OBS over OBS's remote-control link.
+          </p>
+          <ol class="howto">
+            <li>In OBS, open the <b>Tools</b> menu and click <b>WebSocket Server Settings</b>.</li>
+            <li>Turn on <b>Enable WebSocket server</b> and note the password.</li>
+            <li>In this app's control panel (next step), find the <b>OBS integration</b> card, enter that password, and click <b>Create all OBS scenes</b>.</li>
+          </ol>
+          <div class="note">Use this if you want the app to switch OBS scenes automatically on goals and replays. You can set it up later at any time.</div>
+        </div>
+      </div>
+      <div class="livebar"><span class="dot" id="obsDot"></span><span id="obsLive">Checking OBS status...</span></div>
+    </div>
+    <div class="foot">
+      <button type="button" class="ghost" id="skip2">Skip for now</button>
+      <span class="spacer"></span>
+      <button type="button" class="apply" id="next2">NEXT: CONTROL PANEL</button>
+    </div>
+  </section>
+
+  <!-- ======================= STEP 3: CONTROL PANEL ======================= -->
+  <section class="panel" id="panel3">
+    <div class="card">
+      <h2>The control panel</h2>
+      <p class="lede">
+        The control panel is where you run the show: team names and logos, series score, casters,
+        the schedule, and scene switching. Everything you change pushes to the overlay instantly.
+        Two ways to use it:
+      </p>
+      <div class="opt-grid">
+        <div class="opt rec">
+          <span class="flag rec">Recommended</span>
+          <h3>Run it as an OBS dock</h3>
+          <p class="copy">It lives inside OBS, so the whole broadcast is one window on match night.</p>
+          <ol class="howto">
+            <li>In OBS, open the <b>Docks</b> menu.</li>
+            <li>Click <b>Custom Browser Docks</b>.</li>
+            <li>Paste the address below into a new row, name it <b>RIVALRY</b>, click <b>Apply</b>.</li>
+          </ol>
+          <div class="urlrow">
+            <input type="text" id="dockUrl" readonly value="http://localhost:49080/" />
+            <button type="button" class="second" id="copyDock">Copy</button>
+          </div>
+        </div>
+        <div class="opt">
+          <span class="flag adv">Also works</span>
+          <h3>Open it in a browser tab</h3>
+          <p class="copy">Handy for a second monitor, or for a co-producer on the same machine.</p>
+          <a class="btn second" href="/control/control.html" target="_blank" rel="noopener">Open control panel</a>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="text-align:center;">
+      <button type="button" class="apply big" id="finishBtn">FINISH SETUP</button>
+      <div id="finishMsg" style="display:none;"></div>
+      <div class="note">This closes the guide and opens the control panel. Reopen the guide any time from the tray icon (Setup guide).</div>
+    </div>
+    <div class="foot">
+      <button type="button" class="ghost" id="skipFinish">Skip for now and open the control panel</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+/* ---- wizard navigation ---------------------------------------------------
+ * One panel visible at a time. maxVisited unlocks stepper buttons so the
+ * producer can hop back to any step they have already seen. */
+const STEP_COUNT = 3;
+let current = 1;
+let maxVisited = 1;
+
+function goTo(n) {
+  if (n < 1 || n > STEP_COUNT) return;
+  current = n;
+  if (n > maxVisited) maxVisited = n;
+  for (let i = 1; i <= STEP_COUNT; i++) {
+    $("panel" + i).classList.toggle("on", i === current);
+  }
+  renderStepper();
+  window.scrollTo(0, 0);
+}
+
+function stepDone(n, s) {
+  if (!s) return false;
+  if (n === 1) return !!(s.rl && s.rl.connected);
+  if (n === 2) return !!(s.obs && s.obs.connected);
+  return false;
+}
+
+function renderStepper() {
+  document.querySelectorAll(".step").forEach((el) => {
+    const n = parseInt(el.dataset.step, 10);
+    const done = stepDone(n, lastStatus);
+    const clickable = n <= maxVisited && n !== current;
+    el.classList.toggle("current", n === current);
+    el.classList.toggle("done", done);
+    el.classList.toggle("clickable", clickable);
+    el.disabled = n > maxVisited;
+    el.querySelector(".idx").textContent = done ? "✓" : String(n);
+  });
+}
+
+document.querySelectorAll(".step").forEach((el) => {
+  el.addEventListener("click", () => {
+    const n = parseInt(el.dataset.step, 10);
+    if (n <= maxVisited && n !== current) goTo(n);
+  });
+});
+
+$("skip1").addEventListener("click", () => goTo(2));
+$("next1").addEventListener("click", () => goTo(2));
+$("skip2").addEventListener("click", () => goTo(3));
+$("next2").addEventListener("click", () => goTo(3));
+
+/* ---- status polling --------------------------------------------------------
+ * /status.json every second. reachable === null means "first poll hasn't
+ * resolved yet"; false means the app itself didn't answer (page probably
+ * opened in a browser while the app is closed). All field access is guarded,
+ * a partial or odd payload must never take the wizard down. */
+let lastStatus = null;
+let reachable = null;
+
+async function poll() {
+  try {
+    const r = await fetch("/status.json", { cache: "no-store" });
+    lastStatus = await r.json();
+    reachable = true;
+  } catch (e) {
+    reachable = false;
+  }
+  renderAll();
+}
+
+function renderAll(force) {
+  renderVersion();
+  renderRl(force);
+  renderPaths();
+  renderObs();
+  renderStepper();
+}
+
+function renderVersion() {
+  const v = lastStatus && lastStatus.version;
+  if (v && v.label) $("buildLabel").textContent = v.label;
+}
+
+/* ---- step 1: Rocket League live state ---------------------------------- */
+function rlStateKey() {
+  if (reachable === null) return "loading";
+  if (!reachable) return "down";
+  const rl = (lastStatus && lastStatus.rl) || {};
+  const ini = (lastStatus && lastStatus.ini) || {};
+  if (ini.dirFound === false) return "nodir";
+  if (!ini.written) return "nowrite";
+  if (!rl.connected) return "wait";
+  if (!rl.receivingData) return "connected";
+  return "live";
+}
+
+/* Static markup per state; only the ini paths line carries dynamic text and
+ * that is set via textContent (never innerHTML). Re-render only when the
+ * state actually changes so buttons keep focus and animations don't restart
+ * on every poll. */
+let rlKeyShown = "";
+function renderRl(force) {
+  const key = rlStateKey();
+  if (!force && key === rlKeyShown) return;
+  rlKeyShown = key;
+  let html = "";
+  if (key === "loading") {
+    html = '<div class="state"><span class="sdot"></span><div>' +
+      '<div class="st-body">Checking the Rocket League feed...</div></div></div>';
+  } else if (key === "down") {
+    html = '<div class="state"><span class="sdot"></span><div>' +
+      '<div class="st-body">Can\'t reach the overlay app right now. If the RIVALRY Overlays app is closed, start it. This page will pick it up automatically.</div></div></div>';
+  } else if (key === "nodir") {
+    html = '<div class="state amber"><span class="sdot"></span><div>' +
+      '<div class="st-title">Rocket League folder not found.</div>' +
+      '<div class="st-body">Launch Rocket League once (any mode is fine), quit it, then click Retry.</div>' +
+      '<button type="button" class="second" id="retryBtn">Retry</button></div></div>';
+  } else if (key === "nowrite") {
+    html = '<div class="state amber"><span class="sdot"></span><div>' +
+      '<div class="st-title">The config file could not be written.</div>' +
+      '<div class="st-body">Click Retry. If it keeps failing, quit Rocket League first, then retry.</div>' +
+      '<button type="button" class="second" id="retryBtn">Retry</button></div></div>';
+  } else if (key === "wait") {
+    html = '<div class="state wait"><span class="sdot"></span><div>' +
+      '<div class="st-title">Config written. One manual step left.</div>' +
+      '<div class="restart">RESTART ROCKET LEAGUE</div>' +
+      '<div class="st-body">Fully quit Rocket League (all the way out, not just to the menu), then launch it again so it picks up the change. This page updates on its own. Waiting for Rocket League...</div></div></div>';
+  } else if (key === "connected") {
+    html = '<div class="state ok"><span class="sdot"></span><div>' +
+      '<div class="st-title">Connected to Rocket League.</div>' +
+      '<div class="st-body">Match data will start flowing once you are in a game or replay. If you are already in one, give it a few seconds.</div></div></div>';
+  } else {
+    html = '<div class="state ok"><span class="scheck">✓</span><div>' +
+      '<div class="st-title">Rocket League feed is live.</div>' +
+      '<div class="st-body">Score, clock, boost, and goal events are flowing. You are done here.</div></div></div>';
+  }
+  $("rlState").innerHTML = html;
+  const btn = $("retryBtn");
+  if (btn) btn.addEventListener("click", () => retryIni(btn));
+}
+
+function renderPaths() {
+  const el = $("iniPaths");
+  const rl = (lastStatus && lastStatus.rl) || {};
+  $("mockNote").style.display = (reachable && rl.mock) ? "" : "none";
+  if (!reachable || !lastStatus) { el.style.display = "none"; return; }
+  const ini = lastStatus.ini || {};
+  const paths = Array.isArray(ini.paths) ? ini.paths : [];
+  const checked = Array.isArray(ini.checked) ? ini.checked : [];
+  if (paths.length) {
+    el.style.display = "";
+    el.textContent = "Config file: " + paths.join("\n");
+  } else if (ini.dirFound === false && checked.length) {
+    el.style.display = "";
+    el.textContent = "Looked in:\n" + checked.join("\n");
+  } else {
+    el.style.display = "none";
+  }
+}
+
+async function retryIni(btn) {
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "Retrying...";
+  try {
+    const r = await fetch("/setup/rewrite-ini", { method: "POST" });
+    const j = await r.json();
+    lastStatus = lastStatus || {};
+    lastStatus.ini = {
+      written: !!j.ok,
+      dirFound: !!j.dirFound,
+      paths: Array.isArray(j.paths) ? j.paths : [],
+      checked: Array.isArray(j.checked) ? j.checked : [],
+    };
+    reachable = true;
+    renderAll(true);
+    // Still in an amber state: renderAll rebuilt the button, nothing to restore.
+  } catch (e) {
+    btn.textContent = "Retry failed. Is the app running?";
+    setTimeout(() => { btn.textContent = label; btn.disabled = false; }, 2500);
+  }
+}
+
+/* ---- step 2: OBS live status line --------------------------------------- */
+function renderObs() {
+  const dot = $("obsDot");
+  const line = $("obsLive");
+  if (reachable === null) { dot.className = "dot"; line.textContent = "Checking OBS status..."; return; }
+  if (!reachable) { dot.className = "dot"; line.textContent = "App not reachable, OBS status unavailable."; return; }
+  const obs = (lastStatus && lastStatus.obs) || {};
+  if (obs.connected) {
+    dot.className = "dot ok";
+    line.textContent = "OBS is connected to the app.";
+  } else if (obs.enabled) {
+    dot.className = "dot warn";
+    line.textContent = "OBS link is on but not connected yet." + (obs.error ? " (" + obs.error + ")" : "");
+  } else {
+    dot.className = "dot";
+    line.textContent = "OBS link: off. Option A doesn't need it.";
+  }
+}
+
+/* ---- step 3: copy + finish ---------------------------------------------- */
+$("copyDock").addEventListener("click", async () => {
+  const btn = $("copyDock");
+  const inp = $("dockUrl");
+  try { await navigator.clipboard.writeText(inp.value); }
+  catch (e) { inp.select(); try { document.execCommand("copy"); } catch (e2) { /* leave selected for manual copy */ } }
+  const label = btn.textContent;
+  btn.textContent = "Copied!";
+  setTimeout(() => { btn.textContent = label; }, 1200);
+});
+
+$("finishBtn").addEventListener("click", async () => {
+  const btn = $("finishBtn");
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = "FINISHING...";
+  try {
+    await fetch("/setup/complete", { method: "POST" });
+    location.href = "/control/control.html";
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = label;
+    const m = $("finishMsg");
+    m.style.display = "";
+    m.textContent = "Couldn't save. Check that the RIVALRY Overlays app is running, then try again.";
+  }
+});
+
+$("skipFinish").addEventListener("click", () => { location.href = "/control/control.html"; });
+
+renderStepper();
+poll();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>

@@ -49,8 +49,10 @@ function runSetup() {
     path.join(os.homedir(), "OneDrive", "Documents", rel),
   ];
   const written = [];
+  let dirFound = false;
   for (const dir of targets) {
     if (!fs.existsSync(dir)) continue; // only write where RL config already lives
+    dirFound = true;
     const file = path.join(dir, "DefaultStatsAPI.ini");
     try {
       fs.writeFileSync(file, INI_BODY, "utf8");
@@ -59,7 +61,9 @@ function runSetup() {
       console.error("[rivalry] could not write " + file + ": " + e.message);
     }
   }
-  return { written, ok: written.length > 0 };
+  // dirFound distinguishes "RL never ran on this machine" (setup wizard says
+  // "launch Rocket League once, then retry") from a plain write failure.
+  return { written, ok: written.length > 0, dirFound, checked: targets };
 }
 
 // =============================================================================
@@ -220,6 +224,32 @@ function startBridge(opts = {}) {
   const { WebSocketServer } = require("ws");
   const EventEmitter = require("events");
   const events = new EventEmitter();
+  const controlStateStore = require("./control-state");
+
+  // --- RL connection status ---------------------------------------------------
+  // Consumed by the setup wizard + control panel ("waiting for Rocket League...").
+  // `connected` = TCP socket to RL is up. `lastEventAt` = wall-clock ms of the
+  // last decoded game frame (mock counts too). `receivingData` flips on the
+  // first frame after a connect and off on disconnect; connected-but-silent is
+  // a real state (RL open in menus streams nothing).
+  const rlStatus = {
+    connected: false,
+    receivingData: false,
+    lastEventAt: null,
+    mock,
+    iniWritten: !!(opts.setupInfo && opts.setupInfo.ok),
+    rlConfigDirFound: !!(opts.setupInfo && opts.setupInfo.dirFound),
+  };
+  // Broadcast only on state FLIPS (connect/disconnect/first-frame), never per
+  // frame — UpdateState arrives at up to ~60 Hz. Pollers get fresh lastEventAt
+  // via getRlStatus() -> /status.json instead.
+  function setRlStatus(patch) {
+    let changed = false;
+    for (const k of Object.keys(patch)) {
+      if (rlStatus[k] !== patch[k]) { rlStatus[k] = patch[k]; changed = true; }
+    }
+    if (changed) broadcastControl({ type: "rl-status", payload: { ...rlStatus } });
+  }
 
   // Hard-bind to loopback so the WS servers aren't reachable from the LAN.
   // (Default `ws` behaviour, when host is omitted, is to listen on 0.0.0.0
@@ -248,9 +278,15 @@ function startBridge(opts = {}) {
   gameWss.on("listening", () =>
     console.log(`[rivalry] game feed   -> ws://localhost:${GAME_WS_PORT}`)
   );
-  gameWss.on("error", (e) => console.error("[rivalry] game WS error:", e.message));
+  gameWss.on("error", (e) => {
+    console.error("[rivalry] game WS error:", e.message);
+    events.emit("server-error", { server: "game", port: GAME_WS_PORT, code: e.code, message: e.message });
+  });
 
   function broadcastGame(payloadObj) {
+    // Stamp silently (no broadcast) per frame; flip receivingData once.
+    rlStatus.lastEventAt = Date.now();
+    if (!rlStatus.receivingData) setRlStatus({ receivingData: true });
     const msg = JSON.stringify(payloadObj);
     for (const ws of gameClients) if (ws.readyState === ws.OPEN) ws.send(msg);
     // Also fan out to internal subscribers (e.g. OBS auto-switching).
@@ -263,15 +299,25 @@ function startBridge(opts = {}) {
   // to a reconnecting overlay that doesn't understand it.
   const controlWss = new WebSocketServer({ port: CONTROL_WS_PORT, host: BIND_HOST, verifyClient });
   const controlClients = new Set();
-  let lastControlState = null;
+  // Retained control state seeds from disk (opts.stateFile) so producer-typed
+  // branding survives an app restart; every retention update re-persists it
+  // (debounced — pushes fire per keystroke).
+  let lastControlState = opts.stateFile ? controlStateStore.load(opts.stateFile) : null;
+  const persistControlState = opts.stateFile ? controlStateStore.createSaver(opts.stateFile) : null;
   controlWss.on("connection", (ws) => {
     controlClients.add(ws);
     if (lastControlState) ws.send(lastControlState);
+    // Hydrate the RL status too, so a freshly-opened wizard/panel doesn't sit
+    // on stale defaults until the next flip.
+    ws.send(JSON.stringify({ type: "rl-status", payload: { ...rlStatus } }));
     ws.on("message", (raw) => {
       const text = raw.toString();
       let parsed = null;
       try { parsed = JSON.parse(text); } catch { /* not JSON, just relay */ }
-      if (parsed && parsed.type === "control") lastControlState = text;
+      if (parsed && parsed.type === "control") {
+        lastControlState = text;
+        if (persistControlState) persistControlState(text);
+      }
       for (const c of controlClients)
         if (c !== ws && c.readyState === c.OPEN) c.send(text);
       if (parsed) events.emit("control", parsed, ws);
@@ -281,7 +327,10 @@ function startBridge(opts = {}) {
   controlWss.on("listening", () =>
     console.log(`[rivalry] control bus -> ws://localhost:${CONTROL_WS_PORT}`)
   );
-  controlWss.on("error", (e) => console.error("[rivalry] control WS error:", e.message));
+  controlWss.on("error", (e) => {
+    console.error("[rivalry] control WS error:", e.message);
+    events.emit("server-error", { server: "control", port: CONTROL_WS_PORT, code: e.code, message: e.message });
+  });
 
   function broadcastControl(payloadObj) {
     const msg = JSON.stringify(payloadObj);
@@ -289,22 +338,33 @@ function startBridge(opts = {}) {
   }
 
   // --- data source ---
-  if (mock) startMockFeed(broadcastGame);
-  else connectRocketLeague(broadcastGame);
+  if (mock) {
+    // Mock counts as a live source so the wizard/panel go green under npm run mock.
+    setRlStatus({ connected: true });
+    startMockFeed(broadcastGame);
+  } else {
+    connectRocketLeague(broadcastGame, setRlStatus);
+  }
 
-  return { broadcastGame, broadcastControl, events };
+  return {
+    broadcastGame,
+    broadcastControl,
+    events,
+    getRlStatus: () => ({ ...rlStatus }),
+  };
 }
 
-function connectRocketLeague(broadcastGame) {
+function connectRocketLeague(broadcastGame, setRlStatus) {
   const framer = new JsonFrameBuffer();
   const sock = new net.Socket();
   // One deriver per RL session; resets internal state across reconnects so
   // a mid-match disconnect doesn't replay a phantom goal when scores reset.
   const derive = createSyntheticDeriver();
 
-  sock.connect(RL_TCP_PORT, RL_TCP_HOST, () =>
-    console.log(`[rivalry] connected to Rocket League on ${RL_TCP_HOST}:${RL_TCP_PORT}`)
-  );
+  sock.connect(RL_TCP_PORT, RL_TCP_HOST, () => {
+    console.log(`[rivalry] connected to Rocket League on ${RL_TCP_HOST}:${RL_TCP_PORT}`);
+    setRlStatus({ connected: true });
+  });
   sock.on("data", (chunk) => {
     for (const raw of framer.push(chunk.toString())) {
       const env = decodeEnvelope(raw);
@@ -315,8 +375,9 @@ function connectRocketLeague(broadcastGame) {
   });
   sock.on("error", () => sock.destroy());
   sock.on("close", () => {
+    setRlStatus({ connected: false, receivingData: false });
     console.log("[rivalry] RL socket closed, retrying in 2s (launch RL / start a match)...");
-    setTimeout(() => connectRocketLeague(broadcastGame), 2000);
+    setTimeout(() => connectRocketLeague(broadcastGame, setRlStatus), 2000);
   });
 }
 

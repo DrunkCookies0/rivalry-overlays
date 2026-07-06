@@ -1,0 +1,41 @@
+[
+  {
+    "matchId": "match-001",
+    "round": 1,
+    "status": "scheduled",
+    "scheduledDate": "2026-07-11T23:00:00Z",
+    "season": "Season 1",
+    "circuit": "Pro",
+    "tier": "Tier 1",
+    "teams": [
+      { "rosterId": "roster-frost", "name": "FROST", "logoUrl": "logo-a.png", "seriesWins": 0 },
+      { "rosterId": "roster-ember", "name": "EMBER", "logoUrl": "logo-b.png", "seriesWins": 0 }
+    ]
+  },
+  {
+    "matchId": "match-002",
+    "round": 2,
+    "status": "in_progress",
+    "scheduledDate": "2026-07-05T22:00:00Z",
+    "season": "Season 1",
+    "circuit": "Pro",
+    "tier": "Tier 1",
+    "teams": [
+      { "rosterId": "roster-nova", "name": "NOVA", "logoUrl": "logo-a.png", "seriesWins": 2 },
+      { "rosterId": "roster-eclipse", "name": "ECLIPSE", "logoUrl": "logo-b.png", "seriesWins": 1 }
+    ]
+  },
+  {
+    "matchId": "match-003",
+    "round": 2,
+    "status": "completed",
+    "scheduledDate": "2026-06-27T22:00:00Z",
+    "season": "Season 1",
+    "circuit": "Challenger",
+    "tier": "Tier 2",
+    "teams": [
+      { "rosterId": "roster-onyx", "name": "ONYX", "logoUrl": "logo-a.png", "seriesWins": 3 },
+      { "rosterId": "roster-solstice", "name": "SOLSTICE", "logoUrl": "logo-b.png", "seriesWins": 1 }
+    ]
+  }
+]

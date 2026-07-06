@@ -1,14 +1,14 @@
-# RIVALRY Overlays — authoring kit
+# RIVALRY Overlays: authoring kit
 
 This directory is the home for **multiple overlays** (in-house and community) and
 the shared tooling to build them. The goal: let designers build their own
 overlays for the RIVALRY broadcast system, while keeping a hard gate so nothing
 goes live without Alex's review.
 
-> The currently-shipped gameplay overlay still lives at the repo's `overlay/`
-> (singular) and is unchanged. This `overlays/` (plural) directory is the new
-> multi-scene home; `overlay/overlay.html` will migrate to
-> `overlays/rivalry-gameplay/index.html` in a later step.
+> The shipped gameplay overlay lives here too, at
+> `overlays/rivalry-gameplay/index.html`. The legacy `overlay/overlay.html` is
+> still served as a silent fallback so pre-migration OBS sources keep working,
+> but all new work happens in this directory.
 
 ## What's here
 
@@ -26,7 +26,7 @@ goes live without Alex's review.
 ## Resolution independence
 
 Overlays are designed once at a fixed **1920×1080** reference and `rivalry-fit.js`
-scales them uniformly to fill whatever the OBS Browser Source size is — pixel-perfect
+scales them uniformly to fill whatever the OBS Browser Source size is, pixel-perfect
 at 720p / 1080p / 1440p, 16:9 always preserved. A non-16:9 source is centered with a
 transparent letterbox (never distorted). Add `?fit=cover` to the source URL to
 fill-and-crop instead. Set the Browser Source to 1920×1080 (recommended) or any 16:9 size.
@@ -84,17 +84,20 @@ npm run overlay:verify -- overlays/<id>     # check what the app will decide (an
 (see [MANIFEST-SPEC.md](MANIFEST-SPEC.md)). Most are control-bus-only and far
 simpler than the live `gameplay` overlay.
 
-## Status / not yet wired
+## Status: wired into the app
 
-This kit is the **authoring + signing** side. Still to do on the **app** side
-(separate, reviewed step, because it changes shipping behavior):
+The gate is enforced at serve time, not just via the CLIs:
 
-- [ ] Loader in `main.js` that scans `overlays/`, reads manifests, **verifies
-      signatures** via `bridge/overlay-signing.js`, and serves only approved
-      folders (`__RIVALRY_SIGNED__ = true`); unsigned → dev-mode preview only.
-- [ ] Control-panel list of available overlays with copy-URL buttons (like the
-      LeagueOS resources panel), grouped by scene.
-- [ ] Migrate the shipped `overlay/overlay.html` into `overlays/rivalry-gameplay/`.
-
-Until the loader lands, signatures are produced and checkable via the CLIs, but
-the running app does not yet enforce the gate at serve time.
+- **Loader + gate:** `main.js` loads the public key at boot and scans this
+  directory via `bridge/overlay-registry.js` (manifest read + signature
+  verify, cached at scan). In production the app serves only **approved**
+  folders and injects `__RIVALRY_SIGNED__ = true` into the served bytes of an
+  approved entry HTML (disk untouched, signature stays valid). Unsigned or
+  tampered overlays are refused in production and load in dev mode only, with
+  the preview badge.
+- **Registry + panel:** `GET /overlays/registry.json` exposes the cached
+  registry, and the control panel's Overlays / Scenes card lists every scene
+  from it with copy-URL and preview buttons plus an approved/preview pill.
+- **Gameplay migrated:** the shipped gameplay overlay lives at
+  `overlays/rivalry-gameplay/` (the legacy `overlay/overlay.html` remains as a
+  silent fallback for old OBS sources).
