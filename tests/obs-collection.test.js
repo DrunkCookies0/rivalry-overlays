@@ -57,19 +57,36 @@ function browsersOf(col) {
   return col.sources.filter((s) => s.id === "browser_source");
 }
 
-test("every scene item resolves to a real browser source by uuid AND name", () => {
+test("every scene item resolves to a real source by uuid AND name", () => {
   const col = build();
-  const byUuid = new Map(browsersOf(col).map((s) => [s.uuid, s]));
+  const byUuid = new Map(col.sources.filter((s) => s.id !== "scene").map((s) => [s.uuid, s]));
   const scenes = scenesOf(col);
   assert.equal(scenes.length, fixture().length);
   for (const scene of scenes) {
-    assert.equal(scene.settings.items.length, 1);
     for (const item of scene.settings.items) {
       const src = byUuid.get(item.source_uuid);
       assert.ok(src, `item in "${scene.name}" points at a missing source uuid`);
       assert.equal(item.name, src.name, `item/source name mismatch in "${scene.name}"`);
     }
   }
+});
+
+test("the gameplay scene ships a game capture under the overlay, scaled to fill", () => {
+  const col = build();
+  const byUuid = new Map(col.sources.filter((s) => s.id !== "scene").map((s) => [s.uuid, s]));
+  const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");
+  assert.ok(live, "expected a RIVALRY - Live scene");
+  assert.equal(live.settings.items.length, 2, "overlay + game capture");
+  // Array order is front-to-back: overlay on top (index 0), capture behind (1).
+  const [top, bottom] = live.settings.items;
+  assert.equal(byUuid.get(top.source_uuid).id, "browser_source");
+  const cap = byUuid.get(bottom.source_uuid);
+  assert.equal(cap.id, "game_capture");
+  assert.equal(cap.settings.capture_mode, "any");
+  assert.equal(bottom.bounds_type, 2, "scale-to-fit bounds");
+  assert.deepEqual(bottom.bounds, { x: 1920, y: 1080 });
+  // Non-gameplay scenes stay single-item.
+  assert.equal(scenesOf(col).find((s) => s.name === "RIVALRY - Starting Soon").settings.items.length, 1);
 });
 
 test("scene names are unique", () => {

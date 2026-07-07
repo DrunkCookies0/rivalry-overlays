@@ -100,54 +100,75 @@ function makeBrowserSource(sourceName, url) {
   };
 }
 
-// Scene wrapping exactly one browser source, full-canvas, locked so a stray
-// click in OBS can't nudge the overlay off 1:1 pixel alignment.
-function makeScene(sceneName, browserSource) {
+// A game-capture source set to grab any fullscreen game (Rocket League) with
+// no config. It sits UNDER the gameplay overlay so the operator just confirms
+// it is capturing RL, instead of hand-adding a capture source.
+function makeGameCapture(sourceName) {
+  return {
+    prev_ver: OBS_PREV_VER,
+    name: sourceName,
+    uuid: crypto.randomUUID(),
+    id: "game_capture",
+    versioned_id: "game_capture",
+    settings: { capture_mode: "any", capture_cursor: false, allow_transparency: false },
+    ...sourceEnvelope(),
+  };
+}
+
+// One full-canvas scene item. `fill:true` scales a source of unknown native
+// size (game/video capture) to the 1920x1080 canvas via bounds; overlays
+// (already authored at 1920x1080) use no bounds. Capture sources stay unlocked
+// so the operator can nudge/reconfigure; overlays are locked to hold 1:1.
+function makeSceneItem(source, id, opts = {}) {
+  const fill = !!opts.fill;
+  return {
+    name: source.name,
+    source_uuid: source.uuid,
+    visible: true,
+    locked: opts.locked !== false,
+    rot: 0,
+    scale_ref: { x: 1920, y: 1080 },
+    align: 5,
+    bounds_type: fill ? 2 : 0, // 2 = OBS_BOUNDS_SCALE_INNER (scale to fit canvas)
+    bounds_align: 0,
+    bounds_crop: false,
+    crop_left: 0,
+    crop_top: 0,
+    crop_right: 0,
+    crop_bottom: 0,
+    id,
+    group_item_backup: false,
+    pos: { x: 0, y: 0 },
+    // *_rel are OBS 31's canvas-relative coordinates. For a full-frame item at
+    // 0,0 with top-left align, top-left in 16:9 relative space is (-16/9, -1).
+    // OBS recomputes these on load, so approximate values are fine.
+    pos_rel: { x: -1.7777777910232544, y: -1 },
+    scale: { x: 1, y: 1 },
+    scale_rel: { x: 1, y: 1 },
+    bounds: fill ? { x: 1920, y: 1080 } : { x: 0, y: 0 },
+    bounds_rel: { x: 0, y: 0 },
+    scale_filter: "disable",
+    blend_method: "default",
+    blend_type: "normal",
+    show_transition: { duration: 0 },
+    hide_transition: { duration: 0 },
+    private_settings: {},
+  };
+}
+
+// Scene wrapping the overlay browser source (top, locked), optionally over an
+// underlay capture source (bottom, e.g. the gameplay game capture). Array order
+// is front-to-back: index 0 renders on top.
+function makeScene(sceneName, browserSource, underlaySource) {
+  const items = [makeSceneItem(browserSource, 1, { locked: true })];
+  if (underlaySource) items.push(makeSceneItem(underlaySource, 2, { fill: true, locked: false }));
   return {
     prev_ver: OBS_PREV_VER,
     name: sceneName,
     uuid: crypto.randomUUID(),
     id: "scene",
     versioned_id: "scene",
-    settings: {
-      custom_size: false,
-      id_counter: 1,
-      items: [
-        {
-          name: browserSource.name,
-          source_uuid: browserSource.uuid,
-          visible: true,
-          locked: true,
-          rot: 0,
-          scale_ref: { x: 1920, y: 1080 },
-          align: 5,
-          bounds_type: 0,
-          bounds_align: 0,
-          bounds_crop: false,
-          crop_left: 0,
-          crop_top: 0,
-          crop_right: 0,
-          crop_bottom: 0,
-          id: 1,
-          group_item_backup: false,
-          pos: { x: 0, y: 0 },
-          // *_rel are OBS 31's canvas-relative coordinates. For a full-frame
-          // 1920x1080 source at 0,0 with top-left align, top-left in the 16:9
-          // relative space is (-16/9, -1); scale 1:1, no bounds.
-          pos_rel: { x: -1.7777777910232544, y: -1 },
-          scale: { x: 1, y: 1 },
-          scale_rel: { x: 1, y: 1 },
-          bounds: { x: 0, y: 0 },
-          bounds_rel: { x: 0, y: 0 },
-          scale_filter: "disable",
-          blend_method: "default",
-          blend_type: "normal",
-          show_transition: { duration: 0 },
-          hide_transition: { duration: 0 },
-          private_settings: {},
-        },
-      ],
-    },
+    settings: { custom_size: false, id_counter: items.length, items },
     ...sourceEnvelope(),
     canvas_uuid: MAIN_CANVAS_UUID,
   };
@@ -166,8 +187,9 @@ function uniqueName(base, taken) {
 //   overlays: registry entries (bridge/overlay-registry.js shape); the caller
 //             pre-filters to approved ones in production.
 //   baseUrl:  e.g. "http://localhost:8477"; joined with each entry's url.
-// Scene order: gameplay ("RIVALRY - Live") first, then OBS_SCENE_NAMES key
-// order, then any unmapped scenes in input order.
+// Scene order follows OBS_SCENE_NAMES key order (Starting Soon first), then any
+// unmapped scenes in input order. The gameplay scene also gets a game-capture
+// underlay.
 function buildSceneCollection({ overlays = [], baseUrl = "", name = "RIVALRY Overlays" } = {}) {
   const keyOrder = Object.keys(OBS_SCENE_NAMES);
   const base = String(baseUrl).replace(/\/+$/, ""); // entry urls start with "/"
@@ -182,15 +204,22 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = "RIVALRY Ove
 
   const takenSceneNames = new Set();
   const takenSourceNames = new Set();
-  const browserSources = [];
+  const mediaSources = []; // browser overlays + any capture underlays
   const sceneSources = [];
 
   for (const o of ordered) {
     const sceneName = uniqueName(OBS_SCENE_NAMES[o.scene] || ("RIVALRY - " + o.name), takenSceneNames);
     const sourceName = uniqueName(o.name + " Overlay", takenSourceNames);
     const src = makeBrowserSource(sourceName, base + o.url);
-    browserSources.push(src);
-    sceneSources.push(makeScene(sceneName, src));
+    mediaSources.push(src);
+    // The gameplay scene ships with a game capture pre-placed under the
+    // scorebug overlay, so the operator never hand-adds a capture source.
+    let underlay = null;
+    if (o.scene === "gameplay") {
+      underlay = makeGameCapture(uniqueName("Rocket League (Game Capture)", takenSourceNames));
+      mediaSources.push(underlay);
+    }
+    sceneSources.push(makeScene(sceneName, src, underlay));
   }
 
   const firstScene = sceneSources.length ? sceneSources[0].name : "";
@@ -198,7 +227,7 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = "RIVALRY Ove
   // Top-level shape and key set copied from the OBS 31.0.1 reference export.
   return {
     name,
-    sources: [...browserSources, ...sceneSources],
+    sources: [...mediaSources, ...sceneSources],
     groups: [],
     scene_order: sceneSources.map((s) => ({ name: s.name })),
     current_scene: firstScene,

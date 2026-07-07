@@ -173,6 +173,37 @@ function createOBSController() {
     return { sceneCreated: !existingScenes.includes(sceneName), sourceCreated: true };
   }
 
+  // Pre-place a game-capture source at the BOTTOM of a scene (under the overlay)
+  // set to grab any fullscreen game, scaled to fill the canvas. Idempotent: if a
+  // source with this name already exists it is left alone. Lets the gameplay
+  // scene ship with RL capture ready instead of the operator hand-adding it.
+  async function ensureGameCapture({ sceneName, sourceName }) {
+    if (!connected) throw new Error("OBS not connected");
+    const inputs = (await obs.call("GetInputList", {})).inputs.map((i) => i.inputName);
+    if (inputs.includes(sourceName)) return { created: false };
+    const created = await obs.call("CreateInput", {
+      sceneName,
+      inputName: sourceName,
+      inputKind: "game_capture",
+      inputSettings: { capture_mode: "any", capture_cursor: false, allow_transparency: false },
+    });
+    // New inputs land on top; push to the bottom so the overlay stays in front.
+    await obs.call("SetSceneItemIndex", { sceneName, sceneItemId: created.sceneItemId, sceneItemIndex: 0 });
+    await obs.call("SetSceneItemTransform", {
+      sceneName,
+      sceneItemId: created.sceneItemId,
+      sceneItemTransform: {
+        boundsType: "OBS_BOUNDS_SCALE_INNER",
+        boundsWidth: 1920,
+        boundsHeight: 1080,
+        positionX: 0,
+        positionY: 0,
+        alignment: 5,
+      },
+    });
+    return { created: true };
+  }
+
   return {
     on: emitter.on.bind(emitter),
     off: emitter.off.bind(emitter),
@@ -185,6 +216,7 @@ function createOBSController() {
     removeScene,
     switchScene,
     createSceneWithBrowserSource,
+    ensureGameCapture,
     get status() {
       return { connected, enabled: !!(settings && settings.enabled), error: lastError };
     },

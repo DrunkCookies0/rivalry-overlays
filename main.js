@@ -424,13 +424,11 @@ async function setupObsScenes() {
       return (ra === -1 ? sceneRank.length : ra) - (rb === -1 ? sceneRank.length : rb);
     });
   const scenes = list.map((o) => ({
+    scene: o.scene,
     sceneName: OBS_SCENE_NAMES[o.scene] || ("RIVALRY - " + o.name),
     sourceName: o.name + " Overlay",
     url: base + o.url,
   }));
-  if (!scenes.some((s) => s.sceneName === "RIVALRY - Live")) {
-    scenes.unshift({ sceneName: "RIVALRY - Live", sourceName: "RIVALRY Overlay", url: OVERLAY_URL });
-  }
   try {
     // Build everything inside a dedicated collection (created if absent, else
     // reused) so we never disturb the producer's existing scenes. A freshly
@@ -439,12 +437,20 @@ async function setupObsScenes() {
     const defaults = created ? await obsController.sceneNames() : [];
     let sceneCount = 0;
     for (const s of scenes) {
-      try { await obsController.createSceneWithBrowserSource(s); sceneCount++; }
-      catch (e) { console.error("[rivalry] scene setup failed:", e.message); }
+      try {
+        await obsController.createSceneWithBrowserSource(s);
+        // The gameplay scene also gets a game capture pre-placed under the
+        // scorebug, so the operator just confirms it is grabbing Rocket League.
+        if (s.scene === "gameplay") {
+          await obsController.ensureGameCapture({ sceneName: s.sceneName, sourceName: "Rocket League (Game Capture)" });
+        }
+        sceneCount++;
+      } catch (e) { console.error("[rivalry] scene setup failed:", e.message); }
     }
-    // Land OBS on our first scene, then clear the default(s) now that they are
-    // no longer the active program scene (RemoveScene refuses the active one).
-    await obsController.switchScene("RIVALRY - Live");
+    // Land OBS on the first broadcast scene (Starting Soon), then clear the
+    // default(s) now that they are no longer the active program scene
+    // (RemoveScene refuses the active one).
+    if (scenes[0]) await obsController.switchScene(scenes[0].sceneName);
     if (created) {
       const ours = new Set(scenes.map((s) => s.sceneName));
       for (const name of defaults) if (!ours.has(name)) await obsController.removeScene(name);
