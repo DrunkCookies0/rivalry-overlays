@@ -536,6 +536,175 @@ async function setupObsScenes() {
   }
 }
 
+// =============================================================================
+// Zero-touch OBS setup
+// -----------------------------------------------------------------------------
+// One button, no typing. Finds OBS, reads OBS's OWN websocket settings (so the
+// producer never sees a password), turns the server on if it is off, starts OBS
+// if it isn't running, connects, and builds the scenes.
+//
+// Each step reports itself on the control bus so the wizard shows a live
+// checklist instead of a spinner. Anything we cannot do safely stops with a
+// plain-language instruction and leaves the manual path available.
+// =============================================================================
+const obsDiscovery = require("./bridge/obs-discovery");
+
+let autoSetupRunning = false;
+function reportSetupStep(step, state, detail) {
+  if (bridgeHandle && bridgeHandle.broadcastControl) {
+    bridgeHandle.broadcastControl({ type: "obs-setup-progress", payload: { step, state, detail: detail || "" } });
+  }
+  console.log(`[rivalry] obs-setup ${step}: ${state}${detail ? " — " + detail : ""}`);
+}
+
+// Poll until the OBS controller reports connected, or give up.
+function waitForObsConnection(timeoutMs) {
+  const started = Date.now();
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (obsController && obsController.status.connected) return resolve(true);
+      if (Date.now() - started > timeoutMs) return resolve(false);
+      setTimeout(tick, 500);
+    };
+    tick();
+  });
+}
+// Connected is not the same as ready. OBS opens its websocket while the rest of
+// it is still loading and answers early requests with "OBS is not ready to
+// perform the request" — which is what a cold-start scene build hits. Poll a
+// harmless request until it succeeds.
+async function waitForObsReady(timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      await obsController.sceneNames();
+      return true;
+    } catch (e) {
+      if (Date.now() >= deadline) return false;
+      await new Promise((r) => setTimeout(r, 750));
+    }
+  }
+}
+
+function waitFor(predicate, timeoutMs, intervalMs = 1000) {
+  const started = Date.now();
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (predicate()) return resolve(true);
+      if (Date.now() - started > timeoutMs) return resolve(false);
+      setTimeout(tick, intervalMs);
+    };
+    tick();
+  });
+}
+
+async function autoSetupObs() {
+  if (autoSetupRunning) return { ok: false, error: "already running" };
+  autoSetupRunning = true;
+  const fail = (step, detail) => {
+    reportSetupStep(step, "fail", detail);
+    autoSetupRunning = false;
+    return { ok: false, error: detail, step };
+  };
+  try {
+    // 1. Where is OBS?
+    reportSetupStep("find", "busy");
+    const install = obsDiscovery.findObsInstall();
+    if (!install.found) {
+      return fail("find", "Couldn't find OBS Studio on this PC. Install it from obsproject.com, then run this again.");
+    }
+    reportSetupStep("find", "done", install.exePath);
+
+    // 2. Its websocket settings. A missing config means OBS has never run, so
+    //    let OBS create its own rather than authoring one for it.
+    reportSetupStep("config", "busy");
+    let configDir = obsDiscovery.resolveConfigDir({ installDir: install.installDir });
+    let ws = obsDiscovery.readWebSocketConfig(configDir);
+    if (!ws.exists) {
+      reportSetupStep("config", "busy", "Starting OBS once so it can create its settings…");
+      const launched = obsDiscovery.launchObs(install);
+      if (!launched.ok) return fail("config", "Couldn't start OBS: " + launched.reason);
+      const appeared = await waitFor(() => {
+        configDir = obsDiscovery.resolveConfigDir({ installDir: install.installDir });
+        return obsDiscovery.readWebSocketConfig(configDir).exists;
+      }, 60000);
+      if (!appeared) {
+        return fail("config", "OBS started but hasn't written its settings yet. Finish the OBS setup wizard, then run this again.");
+      }
+      ws = obsDiscovery.readWebSocketConfig(configDir);
+    }
+
+    // 3. Server off? It can only be switched on while OBS is closed, because
+    //    OBS rewrites this file on exit and would discard the change.
+    if (!ws.enabled) {
+      if (obsDiscovery.isObsRunning()) {
+        return fail("config", "OBS's WebSocket server is off. Close OBS completely, then click this again — the app will switch it on for you.");
+      }
+      const enabled = obsDiscovery.enableWebSocketServer(configDir, { running: false });
+      if (!enabled.ok) {
+        return fail("config", enabled.reason === "no-config"
+          ? "OBS hasn't saved its settings yet. Open OBS once, close it, then run this again."
+          : "Couldn't update OBS's settings (" + enabled.reason + "). Use the manual steps instead.");
+      }
+      ws = obsDiscovery.readWebSocketConfig(configDir);
+    }
+    reportSetupStep("config", "done",
+      `WebSocket server on, port ${ws.port}${ws.authRequired ? " (password read from OBS)" : " (no password needed)"}`);
+
+    // 4. Running? Note "running" means its websocket is listening, not merely
+    //    that the process exists — OBS binds the port only once its UI has
+    //    finished loading, which on a cold start is tens of seconds later.
+    reportSetupStep("launch", "busy");
+    const alreadyUp = obsDiscovery.isObsRunning();
+    if (!alreadyUp) {
+      const launched = obsDiscovery.launchObs(install);
+      if (!launched.ok) return fail("launch", "Couldn't start OBS: " + launched.reason);
+      reportSetupStep("launch", "busy", "Waiting for OBS to finish starting…");
+    }
+    const portUp = await obsDiscovery.waitForPort(ws.port, { timeoutMs: alreadyUp ? 15000 : 90000 });
+    if (!portUp) {
+      // Most common cause by far: OBS is up but showing a dialog (a crash
+      // prompt after an unclean exit, or its first-run wizard) and hasn't got
+      // as far as opening its websocket. Say that, rather than a vague timeout.
+      return fail("launch", obsDiscovery.isObsRunning()
+        ? "OBS is open but hasn't finished starting. If it's showing a message (Crash Detected, Safe Mode, or the setup wizard), answer it, then click this again."
+        : `Nothing is listening on port ${ws.port}. Open OBS, check Tools, WebSocket Server Settings, then click this again.`);
+    }
+    reportSetupStep("launch", "done", alreadyUp ? "OBS is already running" : "Started OBS");
+
+    // 5. Connect. The password comes from OBS's own config, never from a human.
+    reportSetupStep("connect", "busy");
+    obsSettings = {
+      ...obsSettings,
+      enabled: true,
+      url: `ws://localhost:${ws.port}`,
+      password: ws.authRequired ? ws.password : "",
+    };
+    obsSettingsStore.save(app.getPath("userData"), obsSettings);
+    await obsController.applySettings(obsSettings).catch(() => {});
+    const connected = await waitForObsConnection(45000);
+    if (!connected) {
+      const why = (obsController && obsController.status.error) || "no response";
+      return fail("connect", "OBS is running but wouldn't accept the connection (" + why + "). Try the manual steps.");
+    }
+    reportSetupStep("connect", "done");
+
+    // 6. Scenes — once OBS will actually answer requests.
+    reportSetupStep("scenes", "busy");
+    if (!(await waitForObsReady(60000))) {
+      return fail("scenes", "OBS connected but is still loading. Wait for it to finish, then click this again.");
+    }
+    const built = await setupObsScenes();
+    if (!built.ok) return fail("scenes", built.error || "scene build failed");
+    reportSetupStep("scenes", "done", `${built.sceneCount} scenes in "${built.collection}"`);
+
+    autoSetupRunning = false;
+    return { ok: true, ...built };
+  } catch (e) {
+    return fail("scenes", (e && e.message) || "unexpected error");
+  }
+}
+
 // Toggle dev mode on/off. When turning on, prompts for the local repo folder
 // (unless one was previously saved). When turning off, reverts the HTTP root
 // to the packaged app dir. Persists across launches.
@@ -694,8 +863,17 @@ function setupObsIntegration() {
 }
 
 async function handleObsAction(payload) {
-  if (!obsController || !obsController.status.connected) return;
   const action = payload && payload.action;
+  // Zero-touch setup runs BEFORE there is a connection — that is the point of
+  // it — so it is handled ahead of the connected guard below.
+  if (action === "auto-setup") {
+    const result = await autoSetupObs();
+    if (bridgeHandle && bridgeHandle.broadcastControl) {
+      bridgeHandle.broadcastControl({ type: "obs-action-result", payload: { action, ...result } });
+    }
+    return;
+  }
+  if (!obsController || !obsController.status.connected) return;
   if (action === "setup-scenes") {
     const result = await setupObsScenes();
     // Report back so the control panel / setup wizard can confirm the one-click

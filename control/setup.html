@@ -101,6 +101,26 @@
   .mono{font-family:Consolas,monospace;font-size:11px;color:#5b6d80;white-space:pre-wrap;
     word-break:break-all;margin-top:10px;line-height:1.6;}
 
+  /* zero-touch setup checklist (step 2). Each row lights up as its step
+     reports in, so a 20-second setup shows progress instead of a dead button. */
+  ul.checklist{list-style:none;margin:16px 0 0;padding:0;}
+  ul.checklist li{display:flex;align-items:flex-start;gap:10px;padding:7px 0;font-size:14px;color:#5b6d80;}
+  ul.checklist li .tick{width:16px;height:16px;border-radius:50%;flex:none;margin-top:2px;
+    border:2px solid rgba(255,255,255,.14);}
+  ul.checklist li.busy{color:var(--ink);}
+  ul.checklist li.busy .tick{border-color:var(--rivalry);border-top-color:transparent;animation:spin .8s linear infinite;}
+  ul.checklist li.done{color:var(--ink);}
+  ul.checklist li.done .tick{background:var(--ok);border-color:var(--ok);}
+  ul.checklist li.fail{color:var(--warn);}
+  ul.checklist li.fail .tick{background:var(--warn);border-color:var(--warn);}
+  ul.checklist li .detail{display:block;font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  details.manual{margin-top:18px;border-top:1px solid rgba(255,255,255,.07);padding-top:12px;}
+  details.manual summary{cursor:pointer;font-size:12px;letter-spacing:1px;text-transform:uppercase;
+    color:var(--muted);}
+  details.manual summary:hover{color:var(--ink);}
+  details.manual .opt-grid{grid-template-columns:1fr 1fr;}
+
   /* live status line (step 2) + copy row (step 3) */
   .livebar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:14px;}
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5b6d80;flex:none;}
@@ -189,39 +209,52 @@
     <div class="card">
       <h2>Get the scenes into OBS</h2>
       <p class="lede">
-        The overlay graphics load into OBS as browser sources. Easiest way: let the app build
-        all 7 scenes for you in one click. Prefer to do it by hand? The file import is on the right.
+        The overlay graphics load into OBS as browser sources. Click the button and the app does
+        all of it: finds OBS, switches on the connection it needs, starts it, and builds the
+        7 broadcast scenes. There is no password to find or type.
       </p>
-      <div class="opt-grid">
-        <div class="opt rec">
-          <span class="flag rec">Recommended, one click</span>
-          <h3>Build my scenes automatically</h3>
-          <p class="copy">Creates a new <b>RIVALRY Casterverse</b> collection in OBS with all 7 scenes and sources wired. Your other collections stay untouched.</p>
-          <ol class="howto">
-            <li>In OBS, open the <b>Tools</b> menu, click <b>WebSocket Server Settings</b>.</li>
-            <li>Turn on <b>Enable WebSocket server</b>. If it shows a password, copy it.</li>
-            <li>Paste the password below (leave blank if there wasn't one), click <b>Connect</b>.</li>
-          </ol>
-          <div class="urlrow">
-            <input type="password" id="obsPass" placeholder="OBS WebSocket password (blank if none)" />
-            <button type="button" class="second" id="obsConnect">Connect</button>
+      <button type="button" class="apply big" id="obsAuto" style="width:100%;">SET UP OBS FOR ME</button>
+      <ul class="checklist" id="obsSteps">
+        <li data-step="find"><span class="tick"></span><span class="txt">Find OBS Studio</span></li>
+        <li data-step="config"><span class="tick"></span><span class="txt">Switch on its connection</span></li>
+        <li data-step="launch"><span class="tick"></span><span class="txt">Start OBS</span></li>
+        <li data-step="connect"><span class="tick"></span><span class="txt">Connect to it</span></li>
+        <li data-step="scenes"><span class="tick"></span><span class="txt">Build the 7 scenes</span></li>
+      </ul>
+      <div class="note" id="obsBuildResult" aria-live="polite">Your other scene collections are left alone.</div>
+
+      <details class="manual">
+        <summary>Do it manually instead</summary>
+        <div class="opt-grid" style="margin-top:12px;">
+          <div class="opt">
+            <span class="flag adv">Manual</span>
+            <h3>Connect by hand</h3>
+            <p class="copy">If the automatic setup can't reach your OBS (a portable copy, say), connect it yourself.</p>
+            <ol class="howto">
+              <li>In OBS, open the <b>Tools</b> menu, click <b>WebSocket Server Settings</b>.</li>
+              <li>Turn on <b>Enable WebSocket server</b>. If it shows a password, copy it.</li>
+              <li>Paste the password below (leave blank if there wasn't one), click <b>Connect</b>.</li>
+            </ol>
+            <div class="urlrow">
+              <input type="password" id="obsPass" placeholder="OBS WebSocket password (blank if none)" />
+              <button type="button" class="second" id="obsConnect">Connect</button>
+            </div>
+            <button type="button" class="apply" id="obsBuild" disabled style="width:100%;margin-top:8px;">BUILD MY SCENES</button>
           </div>
-          <button type="button" class="apply" id="obsBuild" disabled style="width:100%;margin-top:8px;">BUILD MY SCENES</button>
-          <div class="note" id="obsBuildResult" aria-live="polite">Connect to OBS first, then this lights up.</div>
+          <div class="opt">
+            <span class="flag adv">Manual</span>
+            <h3>Import a file instead</h3>
+            <p class="copy">No WebSocket needed. Download the collection and import it in OBS.</p>
+            <a class="btn second" href="/obs/scene-collection.json" download="rivalry-casterverse.json">DOWNLOAD SCENE COLLECTION</a>
+            <ol class="howto">
+              <li>In OBS, click the <b>Scene Collection</b> menu.</li>
+              <li>Click <b>Import</b>, pick <b>rivalry-casterverse.json</b>.</li>
+              <li>Open the menu again and switch to <b>RIVALRY Casterverse</b>.</li>
+            </ol>
+            <div class="note">All 7 scenes arrive pre-wired. Keep this app running whenever OBS is open.</div>
+          </div>
         </div>
-        <div class="opt">
-          <span class="flag adv">Manual</span>
-          <h3>Import a file instead</h3>
-          <p class="copy">No WebSocket needed. Download the collection and import it in OBS.</p>
-          <a class="btn second" href="/obs/scene-collection.json" download="rivalry-casterverse.json">DOWNLOAD SCENE COLLECTION</a>
-          <ol class="howto">
-            <li>In OBS, click the <b>Scene Collection</b> menu.</li>
-            <li>Click <b>Import</b>, pick <b>rivalry-casterverse.json</b>.</li>
-            <li>Open the menu again and switch to <b>RIVALRY Casterverse</b>.</li>
-          </ol>
-          <div class="note">All 7 scenes arrive pre-wired. Keep this app running whenever OBS is open.</div>
-        </div>
-      </div>
+      </details>
       <div class="livebar"><span class="dot" id="obsDot"></span><span id="obsLive">Checking OBS status...</span></div>
     </div>
     <div class="foot">
@@ -510,16 +543,13 @@ function renderObs() {
   if (!reachable) { dot.className = "dot"; line.textContent = "App not reachable, OBS status unavailable."; return; }
   if (obs.connected) {
     dot.className = "dot ok";
-    line.textContent = "OBS is connected. Click Build my scenes.";
-    if (build && build.disabled && build.textContent !== "BUILDING..." && $("obsBuildResult").dataset.done !== "1") {
-      $("obsBuildResult").textContent = "OBS connected. Click Build my scenes.";
-    }
+    line.textContent = "OBS is connected.";
   } else if (obs.enabled) {
     dot.className = "dot warn";
     line.textContent = "Trying to reach OBS..." + (obs.error ? " (" + obs.error + ")" : " Is the WebSocket server enabled in OBS?");
   } else {
     dot.className = "dot";
-    line.textContent = "OBS link off. Enable it in OBS (Tools, WebSocket Server Settings), then Connect.";
+    line.textContent = "Not connected to OBS yet.";
   }
 }
 
@@ -547,6 +577,22 @@ function connectBus() {
       }
       return;
     }
+    if (m.type === "obs-setup-progress" && m.payload) {
+      applySetupStep(m.payload);
+      return;
+    }
+    if (m.type === "obs-action-result" && m.payload && m.payload.action === "auto-setup") {
+      const r = m.payload, b = $("obsAuto"), el = $("obsBuildResult");
+      b.disabled = false; b.textContent = "SET UP OBS FOR ME";
+      if (r.ok) {
+        el.style.color = "var(--ok)"; el.dataset.done = "1";
+        el.textContent = "Done. " + r.sceneCount + " scenes are in the \"" + r.collection + "\" collection in OBS.";
+      } else {
+        el.style.color = "var(--warn)";
+        el.textContent = r.error || "Setup stopped. Try the manual steps below.";
+      }
+      return;
+    }
     if (m.type === "obs-action-result" && m.payload && m.payload.action === "setup-scenes") {
       const r = m.payload, el = $("obsBuildResult"), b = $("obsBuild");
       if (r.ok) {
@@ -561,6 +607,42 @@ function connectBus() {
     }
   };
 }
+/* Zero-touch setup: one button, and a checklist fed by obs-setup-progress
+ * broadcasts from the main process. Detail text is set with textContent — it
+ * can contain a file path or an OBS error string. */
+function applySetupStep({ step, state, detail }) {
+  const li = document.querySelector('#obsSteps li[data-step="' + step + '"]');
+  if (!li) return;
+  li.classList.remove("busy", "done", "fail");
+  li.classList.add(state);
+  let d = li.querySelector(".detail");
+  if (detail) {
+    if (!d) { d = document.createElement("span"); d.className = "detail"; li.querySelector(".txt").appendChild(d); }
+    d.textContent = detail;
+  } else if (d) {
+    d.remove();
+  }
+  // A failed step leaves the ones after it visibly untouched rather than
+  // spinning forever.
+  if (state === "fail") {
+    let after = li.nextElementSibling;
+    while (after) { after.classList.remove("busy"); after = after.nextElementSibling; }
+  }
+}
+
+$("obsAuto").addEventListener("click", () => {
+  const b = $("obsAuto"), el = $("obsBuildResult");
+  if (!cbusReady) { el.style.color = "var(--warn)"; el.textContent = "App link not ready yet, give it a second."; return; }
+  document.querySelectorAll("#obsSteps li").forEach((li) => {
+    li.classList.remove("busy", "done", "fail");
+    const d = li.querySelector(".detail"); if (d) d.remove();
+  });
+  b.disabled = true; b.textContent = "SETTING UP…";
+  el.style.color = "var(--muted)"; delete el.dataset.done;
+  el.textContent = "Working. If OBS isn't open yet, it will start on its own.";
+  cbus.send(JSON.stringify({ type: "obs-action", payload: { action: "auto-setup" } }));
+});
+
 $("obsConnect").addEventListener("click", () => {
   if (!cbusReady) { $("obsBuildResult").textContent = "App link not ready yet, give it a second."; return; }
   // Shallow-merged in main.js, so we only touch the connection fields and leave
