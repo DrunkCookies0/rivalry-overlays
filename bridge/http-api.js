@@ -65,6 +65,9 @@ function createApiRouter(ctx) {
         connected: !!(obs.status && obs.status.connected),
         error: (obs.status && obs.status.error) || null,
       },
+      // Access key: booleans + who it is issued to, never the key itself.
+      // Read-only here; activating goes over the Origin-guarded control bus.
+      license: ctx.getLicenseStatus ? ctx.getLicenseStatus() : { valid: true, required: false },
       setupComplete: ctx.isSetupComplete(),
     });
   }

@@ -13,6 +13,10 @@ overlays/**/*.json  text eol=lf
 overlays/**/*.svg   text eol=lf
 overlays/keys/*.pem text eol=lf
 
+# The access-key public key is not hashed, but keeping it LF everywhere means a
+# fingerprint printed on Windows CI matches one printed locally.
+config/*.pem        text eol=lf
+
 # Common binaries a designer might drop into an overlay folder: never convert.
 overlays/**/*.png   binary
 overlays/**/*.jpg   binary

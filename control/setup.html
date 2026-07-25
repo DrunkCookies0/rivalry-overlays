@@ -145,6 +145,25 @@
     <button type="button" class="step" data-step="3" disabled><span class="idx">3</span><span class="lbl">Control panel</span></button>
   </div>
 
+  <!-- ===================== ACTIVATION (gates everything) =====================
+       Shown instead of the wizard when this install has no valid access key.
+       Not a numbered step: nothing else in here is worth doing until it passes,
+       and once activated a producer never sees it again. -->
+  <section class="panel" id="panelActivate">
+    <div class="card">
+      <h2>Enter your access key</h2>
+      <p class="lede">
+        RIVALRY Casterverse is issued to approved casters and producers. Paste the access key you
+        were sent to unlock the overlay scenes. It is checked on this machine, so you only do this once.
+      </p>
+      <div class="urlrow">
+        <input type="text" id="licenseKey" placeholder="RCV1...." spellcheck="false" autocomplete="off" />
+        <button type="button" class="apply" id="licenseActivate">ACTIVATE</button>
+      </div>
+      <div class="note" id="licenseMsg" aria-live="polite">Don't have one? Ask in the RIVALRY Discord about the caster program.</div>
+    </div>
+  </section>
+
   <!-- ======================= STEP 1: ROCKET LEAGUE ======================= -->
   <section class="panel on" id="panel1">
     <div class="card">
@@ -330,11 +349,46 @@ async function poll() {
 
 function renderAll(force) {
   renderVersion();
+  renderLicense();
   renderRl(force);
   renderPaths();
   renderObs();
   renderStepper();
 }
+
+/* ---- activation gate ------------------------------------------------------
+ * A build that doesn't enforce keys (dev / unpackaged) reports required:false
+ * and this never appears. While it IS showing, the wizard and its stepper are
+ * hidden so there is exactly one thing on screen to do. */
+function licenseBlocked() {
+  const l = lastStatus && lastStatus.license;
+  return !!(l && l.required && !l.valid);
+}
+let licenseShown = null;
+function renderLicense() {
+  const blocked = licenseBlocked();
+  if (blocked === licenseShown) return;   // don't fight the input on every poll
+  licenseShown = blocked;
+  $("panelActivate").classList.toggle("on", blocked);
+  document.querySelector(".steps").style.display = blocked ? "none" : "";
+  document.querySelector(".sub").style.display = blocked ? "none" : "";
+  for (let i = 1; i <= STEP_COUNT; i++) $("panel" + i).classList.toggle("on", !blocked && i === current);
+  if (!blocked && lastStatus && lastStatus.license && lastStatus.license.valid) {
+    const m = $("licenseMsg");
+    m.style.color = "var(--ok)";
+    m.textContent = "Activated for " + lastStatus.license.name + ".";
+  }
+}
+
+$("licenseActivate").addEventListener("click", () => {
+  const key = $("licenseKey").value.trim();
+  const m = $("licenseMsg");
+  if (!key) { m.style.color = "var(--warn)"; m.textContent = "Paste your key first."; return; }
+  if (!cbusReady) { m.style.color = "var(--warn)"; m.textContent = "App link not ready yet, give it a second."; return; }
+  m.style.color = "var(--muted)"; m.textContent = "Checking...";
+  cbus.send(JSON.stringify({ type: "license-key", payload: { key: key } }));
+});
+$("licenseKey").addEventListener("keydown", (e) => { if (e.key === "Enter") $("licenseActivate").click(); });
 
 function renderVersion() {
   const v = lastStatus && lastStatus.version;
@@ -480,6 +534,19 @@ function connectBus() {
   cbus.onerror = () => { try { cbus.close(); } catch (e) {} };
   cbus.onmessage = (e) => {
     let m; try { m = JSON.parse(e.data); } catch (err) { return; }
+    if (m.type === "license-status" && m.payload) {
+      const p = m.payload, el = $("licenseMsg");
+      if (p.rejected) {
+        el.style.color = "var(--warn)";
+        el.textContent = p.rejected;
+      } else if (p.valid) {
+        el.style.color = "var(--ok)";
+        el.textContent = "Activated for " + p.name + ". Loading setup...";
+        $("licenseKey").value = "";
+        poll(); // flip out of the gate without waiting for the next tick
+      }
+      return;
+    }
     if (m.type === "obs-action-result" && m.payload && m.payload.action === "setup-scenes") {
       const r = m.payload, el = $("obsBuildResult"), b = $("obsBuild");
       if (r.ok) {

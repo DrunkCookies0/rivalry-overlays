@@ -73,6 +73,20 @@
   </div>
   <div class="sub">Push team branding and series score to the overlay in real time.</div>
 
+  <!-- Access key. Hidden entirely once activated (and in builds that don't
+       enforce it) — a producer mid-show should never see licensing chrome. -->
+  <div class="card full" id="licenseCard" style="display:none;margin-bottom:18px;border-left:3px solid var(--warn);">
+    <h2>Activate RIVALRY Casterverse</h2>
+    <div class="muted-note" style="margin-bottom:8px;">
+      Overlay scenes stay off until this copy is activated with the access key you were issued.
+    </div>
+    <div class="row" style="gap:8px;align-items:flex-end;">
+      <div style="flex:2"><label>Access key</label><input type="text" id="licenseKey" placeholder="RCV1...." spellcheck="false" autocomplete="off" /></div>
+      <button class="mini" id="licenseActivate" type="button">Activate</button>
+      <div id="licenseStatus" class="muted-note" style="align-self:center;flex:2;">checking…</div>
+    </div>
+  </div>
+
   <div class="card full" id="scenesCard" style="margin-bottom:18px;border-left:3px solid var(--rivalry);">
     <h2>Overlays / Scenes <span class="muted-note">(add each as an OBS Browser Source, 1920 × 1080)</span></h2>
     <div class="row" style="gap:8px;margin-bottom:6px;align-items:center;">
@@ -702,6 +716,8 @@ connect = function(){
       } else if (m && m.type === "rl-status") {
         rlLive = !!(m.payload && m.payload.connected);
         setStatus();
+      } else if (m && m.type === "license-status") {
+        renderLicense(m.payload);
       }
     } catch { /* ignore */ }
   };
@@ -769,6 +785,34 @@ $("refreshScenes").addEventListener("click", renderScenes);
 // same manual fields (names, logos via the local /league/logo proxy, series,
 // event/round) and pushes. Everything stays hand-editable; best-of / seeds /
 // records are not in the league API yet and stay operator-entered.
+// ---- Access key -----------------------------------------------------------
+// The card only exists for installs that need activating. Once a key is in,
+// this disappears for good; there is no reason to show licensing chrome to
+// someone who is about to go live.
+function renderLicense(l){
+  const card = $("licenseCard"), el = $("licenseStatus");
+  if (!l) return;
+  const blocked = !!(l.required && !l.valid);
+  card.style.display = blocked ? "" : "none";
+  if (!blocked) return;
+  if (l.rejected) { el.style.color = "#f1c40f"; el.textContent = l.rejected; }
+  else { el.style.color = ""; el.textContent = l.reason || "Not activated."; }
+}
+$("licenseActivate").addEventListener("click", () => {
+  if (!(connected && ws.readyState === ws.OPEN)) return;
+  const key = $("licenseKey").value.trim();
+  if (!key) { $("licenseStatus").textContent = "Paste your key first."; return; }
+  $("licenseStatus").style.color = ""; $("licenseStatus").textContent = "checking…";
+  ws.send(JSON.stringify({ type: "license-key", payload: { key } }));
+  $("licenseKey").value = "";
+});
+// Seed from /status.json: license-status is only broadcast on change, so a
+// panel opened later needs the current answer up front.
+(async function initLicense(){
+  try { renderLicense((await (await fetch("/status.json", { cache: "no-store" })).json()).license); }
+  catch { /* app not reachable; the connection banner already says so */ }
+})();
+
 let leagueMatchId = null;
 function setMode(mode){
   document.querySelectorAll("#modeToggle .seg-btn").forEach(x => x.classList.toggle("on", x.dataset.mode === mode));

@@ -20,7 +20,10 @@
     "release": "electron-builder --win --publish always --config electron-builder.prod.js",
     "overlay:keygen": "node tools/overlay-keys.js",
     "overlay:sign": "node tools/sign-overlay.js",
-    "overlay:verify": "node tools/verify-overlay.js"
+    "overlay:verify": "node tools/verify-overlay.js",
+    "key:keygen": "node tools/license-keys.js",
+    "key:issue": "node tools/issue-key.js",
+    "key:verify": "node tools/verify-key.js"
   },
   "dependencies": {
     "electron-updater": "^6.3.9",

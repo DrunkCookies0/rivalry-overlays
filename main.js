@@ -43,6 +43,8 @@ const { createApiRouter } = require("./bridge/http-api");
 const leagueSettingsStore = require("./bridge/league-settings");
 const { createLeagueClient } = require("./bridge/league-client");
 const { migrateUserData } = require("./bridge/userdata-migrate");
+const license = require("./bridge/license");
+const licenseStore = require("./bridge/license-store");
 
 const HTTP_PORT = 49080;
 // Gameplay overlay now lives in the multi-scene tree (overlays/rivalry-gameplay,
@@ -99,6 +101,61 @@ function rescanOverlays() {
     (overlayReg.hasKey ? "" : " (no public key)") + (gateActive() ? " [gate ON]" : " [preview]"));
 }
 
+// --- Casterverse access key (see bridge/license.js) ---------------------------
+// The packaged app serves overlay scenes only to an approved holder. The public
+// key is read from the APP directory, never from the (swappable) dev HTTP root:
+// entitlement must not be re-pointable by changing where overlays are served
+// from. Enforced in packaged builds only — running from source is a normal dev
+// workflow and the repo is public anyway.
+let licensePublicKey = null;
+let licenseKeyState = { key: "", activatedAt: "" };
+let licenseState = { valid: false, reason: "not activated yet", name: "", tier: "", expires: null, id: "" };
+function licenseRequired() { return app.isPackaged; }
+function refreshLicense() {
+  if (licensePublicKey === null) {
+    const p = path.join(__dirname, "config", "casterverse-license-public.pem");
+    try { licensePublicKey = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : ""; }
+    catch { licensePublicKey = ""; }
+  }
+  licenseState = license.publicStatus(license.verifyKey(licenseKeyState.key, licensePublicKey || null));
+  console.log(`[rivalry] access key: ${licenseState.valid ? "active (" + licenseState.name + ")" : licenseState.reason}` +
+    (licenseRequired() ? "" : " [not enforced — dev build]"));
+  return licenseState;
+}
+function licenseBlocks() { return licenseRequired() && !licenseState.valid; }
+function broadcastLicenseStatus(rejected) {
+  if (!bridgeHandle || !bridgeHandle.broadcastControl) return;
+  bridgeHandle.broadcastControl({
+    type: "license-status",
+    payload: {
+      ...licenseState,
+      required: licenseRequired(),
+      keyMask: license.maskKey(licenseKeyState.key),
+      // Set only when a just-entered key was refused, so the panel can show the
+      // failure without it being mistaken for the state of the stored key.
+      ...(rejected ? { rejected: String(rejected) } : {}),
+    },
+  });
+}
+
+// Shown in the OBS browser source instead of a scene when the app is not
+// activated. A black source with no explanation is the single worst thing to
+// hand a producer mid-setup, so this says what happened and what to do.
+function activationNoticeHtml() {
+  const why = licenseState.reason ? String(licenseState.reason).replace(/[<>&]/g, "") : "";
+  return `<!doctype html><meta charset="utf-8"><title>Activation required</title>
+<style>html,body{margin:0;height:100%;background:#0b1219;color:#f1eeee;
+font-family:"Segoe UI",system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
+.c{max-width:640px;padding:40px;text-align:center}
+h1{font-size:26px;letter-spacing:.14em;margin:0 0 14px;text-transform:uppercase;font-style:italic}
+p{font-size:16px;line-height:1.6;color:#9fb0be;margin:0 0 10px}
+b{color:#f1c40f}</style>
+<div class="c"><h1>RIVALRY Casterverse</h1>
+<p>This copy is not activated, so overlay scenes are not being served.</p>
+<p>Open the control panel and enter your <b>access key</b>, then refresh this source.</p>
+<p style="font-size:13px;opacity:.7">${why}</p></div>`;
+}
+
 function startHttpServer(rootDir) {
   setHttpRoot(rootDir);
   const server = http.createServer((req, res) => {
@@ -121,6 +178,14 @@ function startHttpServer(rootDir) {
       }));
     }
     if (urlPath === "/" || urlPath === "") urlPath = "/control/control.html";
+
+    // Access-key gate, ahead of the signature gate: an unactivated install
+    // serves no overlay scene, signed or not. The control panel, status routes
+    // and uploaded assets stay reachable — that is how someone activates.
+    if (licenseBlocks() && (urlPath.startsWith("/overlays/") || urlPath.startsWith("/overlay/"))) {
+      res.writeHead(200, { "Content-Type": MIME[".html"] });
+      return res.end(activationNoticeHtml());
+    }
 
     // Signed-overlay gate: in the packaged app, deny unapproved scene folders and
     // inject the signed flag into an approved scene's entry HTML so the SDK drops
@@ -243,7 +308,10 @@ function createWindow() {
   // EXCEPTION: until the setup wizard has been finished once, boot onto the
   // wizard and show the window — a first-run app that hides in the tray is
   // indistinguishable from a broken install to a new producer.
-  const firstRun = !isSetupComplete();
+  // An install that has lost its entitlement (never activated, or the key
+  // expired) lands on the wizard too — its first step is activation, and that
+  // is the only thing worth doing until it passes.
+  const firstRun = !isSetupComplete() || licenseBlocks();
   mainWindow = new BrowserWindow({
     width: 900,
     height: 1040,
@@ -277,7 +345,7 @@ function showWindow() {
   else {
     // If the wizard was left open but setup is done, land on the panel.
     try {
-      if (isSetupComplete() && mainWindow.webContents.getURL().includes("/control/setup.html")) {
+      if (isSetupComplete() && !licenseBlocks() && mainWindow.webContents.getURL().includes("/control/setup.html")) {
         mainWindow.loadURL(CONTROL_URL);
       }
     } catch {}
@@ -311,6 +379,12 @@ function buildTrayMenu() {
   return Menu.buildFromTemplate([
     { label: APP_TITLE, enabled: false },
     { label: META.label, enabled: false },
+    {
+      label: licenseState.valid
+        ? `Licensed to ${licenseState.name}`
+        : (licenseRequired() ? "NOT ACTIVATED — enter your access key" : "Access key: not enforced (dev build)"),
+      enabled: false,
+    },
     { type: "separator" },
     { label: "Show control panel", click: showWindow },
     {
@@ -763,6 +837,25 @@ if (!app.requestSingleInstanceLock()) {
       }
     });
     collector = startReplayCollector({});
+    // Access key: load + verify before the HTTP server starts, so an
+    // unactivated install never serves a scene even for one request.
+    licenseKeyState = licenseStore.load(app.getPath("userData"));
+    refreshLicense();
+    bridgeHandle.events.on("control", (msg) => {
+      if (!msg || msg.type !== "license-key" || !msg.payload) return;
+      const entered = String(msg.payload.key || "").trim();
+      const check = license.verifyKey(entered, licensePublicKey || null);
+      if (check.valid) {
+        licenseKeyState = { key: entered, activatedAt: new Date().toISOString() };
+        licenseStore.save(app.getPath("userData"), licenseKeyState);
+        refreshLicense();
+        refreshTrayMenu();
+      }
+      // A rejected key is never stored and never changes live state; the panel
+      // just hears why it bounced, alongside whatever is actually active.
+      broadcastLicenseStatus(check.valid ? null : check.reason);
+    });
+
     leagueSettings = leagueSettingsStore.load(app.getPath("userData"));
     if (process.argv.includes("--league-mock")) leagueSettings = { ...leagueSettings, mock: true };
     leagueClient = createLeagueClient({ getSettings: () => leagueSettings });
@@ -795,6 +888,7 @@ if (!app.requestSingleInstanceLock()) {
       getLeagueClient: () => leagueClient,
       getLeagueSettings: () => leagueSettings,
       maskLeagueKey: leagueSettingsStore.mask,
+      getLicenseStatus: () => ({ ...licenseState, required: licenseRequired(), keyMask: license.maskKey(licenseKeyState.key) }),
     });
     const initialRoot = devSettings.enabled ? devSettings.path : __dirname;
     startHttpServer(initialRoot);
