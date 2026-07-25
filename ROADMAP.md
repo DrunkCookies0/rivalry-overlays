@@ -1,4 +1,4 @@
-# RIVALRY Overlay - Path to Perfect
+# RIVALRY Casterverse - Path to Perfect
 
 ## Context
 

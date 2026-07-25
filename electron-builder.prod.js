@@ -20,8 +20,8 @@
 "use strict";
 
 module.exports = {
-  appId: "gg.rivalry.overlay",
-  productName: "RIVALRY Overlay",
+  appId: "gg.rivalry.casterverse",
+  productName: "RIVALRY Casterverse",
   directories: { output: "dist" },
   files: [
     "main.js",
@@ -45,14 +45,14 @@ module.exports = {
   win: {
     target: ["nsis"],
     icon: "build/icon.ico",
-    artifactName: "RIVALRY-Overlay-Setup-${version}.${ext}",
+    artifactName: "RIVALRY-Casterverse-Setup-${version}.${ext}",
   },
   nsis: {
     oneClick: true,                       // silent install, no wizard
     perMachine: false,                    // per-user, no admin / UAC
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
-    shortcutName: "RIVALRY Overlay",
+    shortcutName: "RIVALRY Casterverse",
     installerIcon: "build/icon.ico",
     uninstallerIcon: "build/icon.ico",
     deleteAppDataOnUninstall: false,      // preserve OBS settings + auth token

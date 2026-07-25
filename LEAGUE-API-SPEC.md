@@ -1,4 +1,4 @@
-# RIVALRY Overlay <-> League API: requested endpoints
+# RIVALRY Casterverse <-> League API: requested endpoints
 
 Spec for the overlay app's integration with the league backend (`rivalry-dev/rivalry-web`). Written against the backend models as of 2026-06-17. Most of this is "expose existing data via key-gated endpoints," not new data modeling, except where called out.
 

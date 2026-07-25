@@ -323,8 +323,8 @@
       </div>
       <div id="obsSetupResult" class="muted-note" style="margin-top:8px;"></div>
       <div class="muted-note" style="margin-top:8px;">
-        One click builds a new <b style="color:var(--ink)">RIVALRY Overlays</b> collection in OBS with all 7 scenes and sources wired. Your other collections are left alone.
-        No OBS WebSocket? <a href="/obs/scene-collection.json" download="rivalry-overlays.json" style="color:var(--accent);">Download the scene collection</a> and import it (OBS: Scene Collection menu, Import).
+        One click builds a new <b style="color:var(--ink)">RIVALRY Casterverse</b> collection in OBS with all 7 scenes and sources wired. Your other collections are left alone.
+        No OBS WebSocket? <a href="/obs/scene-collection.json" download="rivalry-casterverse.json" style="color:var(--accent);">Download the scene collection</a> and import it (OBS: Scene Collection menu, Import).
       </div>
       <div class="muted-note" style="margin-top:12px;">Scene deck — click to switch OBS live (needs "Create OBS scene" run + OBS connected):</div>
       <div class="row" id="sceneDeck" style="gap:6px;margin-top:6px;"></div>
@@ -382,7 +382,7 @@ function connect(){
 let rlLive = null; // last rl-status from the bridge; null until the first one arrives
 function setStatus(){
   $("dot").className = "dot" + (connected ? " ok" : "");
-  let t = connected ? "connected to bridge" : "bridge offline (start the RIVALRY Overlay app)";
+  let t = connected ? "connected to bridge" : "bridge offline (start RIVALRY Casterverse)";
   if (connected && rlLive !== null) t += rlLive ? " · Rocket League live" : " · waiting for Rocket League";
   $("statusText").textContent = t;
 }
@@ -626,7 +626,7 @@ $("obsSetupScenes").addEventListener("click", () => {
   if (connected && ws.readyState === ws.OPEN) {
     const el = $("obsSetupResult");
     el.style.color = "var(--muted)";
-    el.textContent = "Building the RIVALRY Overlays collection in OBS...";
+    el.textContent = "Building the RIVALRY Casterverse collection in OBS...";
     ws.send(JSON.stringify({ type: "obs-action", payload: { action: "setup-scenes" } }));
   }
 });

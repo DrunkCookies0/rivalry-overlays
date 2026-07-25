@@ -14,8 +14,8 @@
 "use strict";
 
 module.exports = {
-  appId: "gg.rivalry.overlay.beta",
-  productName: "RIVALRY Overlay Beta",
+  appId: "gg.rivalry.casterverse.beta",
+  productName: "RIVALRY Casterverse Beta",
   directories: { output: "dist-beta" },
   files: [
     "main.js",
@@ -32,22 +32,22 @@ module.exports = {
     "!overlays/**/*.md", // authoring docs (CONTRACT / MANIFEST-SPEC / README)
   ],
   extraMetadata: {
-    name: "rivalry-overlay-beta",
-    productName: "RIVALRY Overlay Beta",
+    name: "rivalry-casterverse-beta",
+    productName: "RIVALRY Casterverse Beta",
     ...(process.env.BUILD_VERSION ? { version: process.env.BUILD_VERSION } : {}),
     ...(process.env.BUILD_SHA ? { buildSha: process.env.BUILD_SHA } : {}),
   },
   win: {
     target: ["nsis"],
     icon: "build/icon.ico",
-    artifactName: "RIVALRY-Overlay-Beta-Setup-${version}.${ext}",
+    artifactName: "RIVALRY-Casterverse-Beta-Setup-${version}.${ext}",
   },
   nsis: {
     oneClick: true,                       // silent install, no wizard
     perMachine: false,                    // per-user, no admin / UAC
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
-    shortcutName: "RIVALRY Overlay Beta",
+    shortcutName: "RIVALRY Casterverse Beta",
     installerIcon: "build/icon.ico",
     uninstallerIcon: "build/icon.ico",
     deleteAppDataOnUninstall: false,

@@ -165,7 +165,7 @@ test("collection survives a JSON stringify/parse round-trip", () => {
 
 test("empty overlays input yields a valid zero-scene collection", () => {
   const col = buildSceneCollection({ overlays: [], baseUrl: BASE });
-  assert.equal(col.name, "RIVALRY Overlays");
+  assert.equal(col.name, "RIVALRY Casterverse");
   assert.deepEqual(col.sources, []);
   assert.deepEqual(col.groups, []);
   assert.deepEqual(col.scene_order, []);

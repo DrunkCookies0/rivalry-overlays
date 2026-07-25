@@ -177,7 +177,7 @@
         <div class="opt rec">
           <span class="flag rec">Recommended, one click</span>
           <h3>Build my scenes automatically</h3>
-          <p class="copy">Creates a new <b>RIVALRY Overlays</b> collection in OBS with all 7 scenes and sources wired. Your other collections stay untouched.</p>
+          <p class="copy">Creates a new <b>RIVALRY Casterverse</b> collection in OBS with all 7 scenes and sources wired. Your other collections stay untouched.</p>
           <ol class="howto">
             <li>In OBS, open the <b>Tools</b> menu, click <b>WebSocket Server Settings</b>.</li>
             <li>Turn on <b>Enable WebSocket server</b>. If it shows a password, copy it.</li>
@@ -194,11 +194,11 @@
           <span class="flag adv">Manual</span>
           <h3>Import a file instead</h3>
           <p class="copy">No WebSocket needed. Download the collection and import it in OBS.</p>
-          <a class="btn second" href="/obs/scene-collection.json" download="rivalry-overlays.json">DOWNLOAD SCENE COLLECTION</a>
+          <a class="btn second" href="/obs/scene-collection.json" download="rivalry-casterverse.json">DOWNLOAD SCENE COLLECTION</a>
           <ol class="howto">
             <li>In OBS, click the <b>Scene Collection</b> menu.</li>
-            <li>Click <b>Import</b>, pick <b>rivalry-overlays.json</b>.</li>
-            <li>Open the menu again and switch to <b>RIVALRY Overlays</b>.</li>
+            <li>Click <b>Import</b>, pick <b>rivalry-casterverse.json</b>.</li>
+            <li>Open the menu again and switch to <b>RIVALRY Casterverse</b>.</li>
           </ol>
           <div class="note">All 7 scenes arrive pre-wired. Keep this app running whenever OBS is open.</div>
         </div>
@@ -369,7 +369,7 @@ function renderRl(force) {
       '<div class="st-body">Checking the Rocket League feed...</div></div></div>';
   } else if (key === "down") {
     html = '<div class="state"><span class="sdot"></span><div>' +
-      '<div class="st-body">Can\'t reach the overlay app right now. If the RIVALRY Overlays app is closed, start it. This page will pick it up automatically.</div></div></div>';
+      '<div class="st-body">Can\'t reach the overlay app right now. If RIVALRY Casterverse is closed, start it. This page will pick it up automatically.</div></div></div>';
   } else if (key === "nodir") {
     html = '<div class="state amber"><span class="sdot"></span><div>' +
       '<div class="st-title">Rocket League folder not found.</div>' +
@@ -506,7 +506,7 @@ $("obsBuild").addEventListener("click", () => {
   if (!cbusReady) return;
   const b = $("obsBuild"); b.disabled = true; b.textContent = "BUILDING...";
   const el = $("obsBuildResult"); el.style.color = "var(--muted)"; delete el.dataset.done;
-  el.textContent = "Building the RIVALRY Overlays collection...";
+  el.textContent = "Building the RIVALRY Casterverse collection...";
   cbus.send(JSON.stringify({ type: "obs-action", payload: { action: "setup-scenes" } }));
 });
 
@@ -534,7 +534,7 @@ $("finishBtn").addEventListener("click", async () => {
     btn.textContent = label;
     const m = $("finishMsg");
     m.style.display = "";
-    m.textContent = "Couldn't save. Check that the RIVALRY Overlays app is running, then try again.";
+    m.textContent = "Couldn't save. Check that RIVALRY Casterverse is running, then try again.";
   }
 });
 

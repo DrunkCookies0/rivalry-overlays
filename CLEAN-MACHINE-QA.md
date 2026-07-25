@@ -12,7 +12,7 @@ Pick one environment:
 
 1. Enable it: Start, "Turn Windows features on or off", check **Windows Sandbox**, reboot.
 2. Launch Windows Sandbox.
-3. Drag the beta installer (`RIVALRY-Overlay-Beta-Setup-*.exe`) into the sandbox window.
+3. Drag the beta installer (`RIVALRY-Casterverse-Beta-Setup-*.exe`) into the sandbox window.
 4. Install OBS inside the sandbox (download from obsproject.com, needs OBS 30+).
 5. Note: Rocket League cannot realistically run in the sandbox, so RL-dependent steps are skipped there. Do a full pass on Option B before shipping.
 

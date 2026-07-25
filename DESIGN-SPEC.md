@@ -1,4 +1,4 @@
-# RIVALRY Overlay - Design Spec
+# RIVALRY Casterverse - Design Spec
 
 Reference for designers making custom assets for the broadcast overlay.
 All positions are relative to a **1920 x 1080** canvas (the size OBS

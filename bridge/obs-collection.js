@@ -34,6 +34,11 @@ const crypto = require("crypto");
 // importable file can never disagree about scene names. Key order doubles as
 // broadcast scene order (the sequence a show runs in). Bracket is intentionally
 // absent for now (only needed at playoffs); the scene folder is in git history.
+// OBS scene-collection name the app builds into (websocket path) and names the
+// downloadable file after. Lives here with the scene names so the two paths
+// can't drift.
+const OBS_COLLECTION_NAME = "RIVALRY Casterverse";
+
 const OBS_SCENE_NAMES = {
   "starting-soon": "RIVALRY - Starting Soon",
   "caster": "RIVALRY - Casters",
@@ -190,7 +195,7 @@ function uniqueName(base, taken) {
 // Scene order follows OBS_SCENE_NAMES key order (Starting Soon first), then any
 // unmapped scenes in input order. The gameplay scene also gets a game-capture
 // underlay.
-function buildSceneCollection({ overlays = [], baseUrl = "", name = "RIVALRY Overlays" } = {}) {
+function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTION_NAME } = {}) {
   const keyOrder = Object.keys(OBS_SCENE_NAMES);
   const base = String(baseUrl).replace(/\/+$/, ""); // entry urls start with "/"
 
@@ -255,4 +260,4 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = "RIVALRY Ove
   };
 }
 
-module.exports = { buildSceneCollection, OBS_SCENE_NAMES };
+module.exports = { buildSceneCollection, OBS_SCENE_NAMES, OBS_COLLECTION_NAME };

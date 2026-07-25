@@ -1,4 +1,4 @@
-# RIVALRY Overlay - Project Handoff
+# RIVALRY Casterverse - Project Handoff
 
 A complete handoff for anyone taking over this project. It explains
 what the app is, how it works, every file, how to run and ship it, what is done, what is
@@ -8,7 +8,7 @@ shaky, and what is next.
 
 ## 1. What this is and why it exists
 
-RIVALRY Overlay is an in-house Rocket League broadcast overlay for the RIVALRY esports
+RIVALRY Casterverse is an in-house Rocket League broadcast overlay for the RIVALRY esports
 league. It draws the on-stream scoreboard, boost meters, stat feed, goal graphics, and
 stinger transitions, and it auto-collects match replays.
 
@@ -21,7 +21,7 @@ banned. Fully under RIVALRY's control and tailored to the league experience.
 ## 2. How it works (architecture)
 
 ```
-Rocket League                  RIVALRY Overlay app (Electron)          OBS
+Rocket League                  RIVALRY Casterverse app (Electron)          OBS
 [Stats API]    raw TCP    ->   bridge: TCP -> WebSocket          ->    Browser Source (overlay)
 :49123         JSON            :49124  game feed (ws)                  Custom Browser Dock (control)
                                :49777  control relay (ws)
@@ -143,7 +143,7 @@ npm run setup         # writes DefaultStatsAPI.ini (or the app does it on launch
 npm start             # run the app against a real Rocket League
 
 # build the Windows installer:
-npm run dist          # produces dist\RIVALRY-Overlay-Setup-<version>.exe
+npm run dist          # produces dist\RIVALRY-Casterverse-Setup-<version>.exe
 ```
 
 OBS setup: add a Browser Source at `http://localhost:49080/overlay/overlay.html`

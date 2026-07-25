@@ -64,7 +64,7 @@ So the updater is harmless when there is nothing to update.
 # 1. (optional but recommended) smoke-test the packaged build locally first
 npm install
 npm run pack            # builds dist\win-unpacked\ without producing the .exe
-# launch dist\win-unpacked\RIVALRY Overlay.exe and click through
+# launch dist\win-unpacked\RIVALRY Casterverse.exe and click through
 
 # 2. tag and push - this is the one step that actually ships
 git tag v1.0.0
@@ -75,7 +75,7 @@ That tag push triggers `.github/workflows/release.yml`, which on
 `windows-latest`:
 1. `npm install`
 2. `npm run release` (`electron-builder --win --publish always`)
-3. Uploads `RIVALRY-Overlay-Setup-1.0.0.exe` AND `latest.yml` AND a `.blockmap`
+3. Uploads `RIVALRY-Casterverse-Setup-1.0.0.exe` AND `latest.yml` AND a `.blockmap`
    to a new GitHub Release `v1.0.0`, using the workflow's `GITHUB_TOKEN`.
 
 Once that Release exists, any installed copy of the app on the planet will
@@ -171,7 +171,7 @@ End-users never see this. The MCP is dev-time only, not the shipped app.
 
 ## 6.5 OBS integration in the shipped app (new)
 
-Producers can now connect the RIVALRY Overlay to OBS via obs-websocket from
+Producers can now connect RIVALRY Casterverse to OBS via obs-websocket from
 the control panel ("OBS INTEGRATION" card). Once enabled and connected:
 
 - **"Create OBS scene"** button creates a `RIVALRY - Live` scene with the
@@ -230,16 +230,35 @@ Two co-existing installs on the same machine:
 
 |                          | Production                                                 | Beta                                                             |
 | ------------------------ | ---------------------------------------------------------- | ---------------------------------------------------------------- |
-| `appId`                  | `gg.rivalry.overlay`                                       | `gg.rivalry.overlay.beta`                                        |
-| Windows app name         | RIVALRY Overlay                                            | RIVALRY Overlay Beta                                             |
-| Tray + window title      | RIVALRY Overlay                                            | RIVALRY Overlay (BETA)                                           |
-| Installer file           | `RIVALRY-Overlay-Setup-${version}.exe`                     | `RIVALRY-Overlay-Beta-Setup-${version}.exe`                      |
-| Settings folder          | `%AppData%\RIVALRY Overlay\`                               | `%AppData%\RIVALRY Overlay Beta\`                                |
+| `appId`                  | `gg.rivalry.casterverse`                                   | `gg.rivalry.casterverse.beta`                                    |
+| Windows app name         | RIVALRY Casterverse                                            | RIVALRY Casterverse Beta                                             |
+| Tray + window title      | RIVALRY Casterverse                                            | RIVALRY Casterverse (BETA)                                           |
+| Installer file           | `RIVALRY-Casterverse-Setup-${version}.exe`                     | `RIVALRY-Casterverse-Beta-Setup-${version}.exe`                      |
+| Settings folder          | `%AppData%\RIVALRY Casterverse\`                               | `%AppData%\RIVALRY Casterverse Beta\`                                |
 | Where the installer comes from | Tag push -> [release.yml](.github/workflows/release.yml) | Every PR -> [pr-build.yml](.github/workflows/pr-build.yml) artifact |
 | Auto-updater             | On, stable channel                                         | Off (each PR build is throwaway)                                 |
 
-Build configs live in [electron-builder.yml](electron-builder.yml) (prod) and
-[electron-builder.beta.yml](electron-builder.beta.yml) (beta).
+Build configs live in [electron-builder.prod.js](electron-builder.prod.js) (prod) and
+[electron-builder.beta.js](electron-builder.beta.js) (beta).
+
+### One-time note: the RIVALRY Casterverse rename (v0.6.12)
+
+The app was renamed from "RIVALRY Overlay" to **RIVALRY Casterverse**, which
+changes the Windows `appId`. Windows treats a new appId as a different program,
+so an installed pre-rename build is **not** upgraded in place and the updater
+will not offer the renamed build to it:
+
+- Anyone running an older install should uninstall it once, then install the
+  renamed build. Two installs otherwise fight over ports 49080 / 49124 / 49777
+  (the app shows a port-conflict dialog when that happens).
+- Their settings are preserved: on first launch the renamed app copies
+  `control-state.json`, `obs-settings.json`, `league-settings.json`,
+  `dev-settings.json`, the setup marker and `user-assets/` out of the old
+  `%AppData%\rivalry-overlay\` (or `%AppData%\RIVALRY Overlay Beta\`) folder.
+  See [bridge/userdata-migrate.js](bridge/userdata-migrate.js).
+- OBS scenes are untouched, but the app now builds into a scene collection
+  named **RIVALRY Casterverse**. The old "RIVALRY Overlays" collection is left
+  in place; delete it in OBS once the new one is confirmed working.
 
 ### Building locally
 
@@ -255,7 +274,7 @@ npm run dist:beta     # beta installer -> dist-beta\
 2. The "PR Build (Beta installer)" workflow runs automatically. The bot
    leaves a comment on the PR with a link once the build finishes (~5 min).
 3. Click through to the Actions run, scroll to "Artifacts", download the
-   `rivalry-overlay-beta-<sha>` zip. Inside is the `.exe` installer.
+   `rivalry-casterverse-beta-<sha>` zip. Inside is the `.exe` installer.
 4. Install. The first run scaffolds its own settings folder, totally
    separate from the production install.
 
@@ -274,7 +293,7 @@ npm run dist:beta     # beta installer -> dist-beta\
 ## 7. Open decisions / next moves
 
 - [ ] **Do a packaged-build smoke test before tagging v1.0.0?** Options:
-  - Run `npm run pack`, click through `dist\win-unpacked\RIVALRY Overlay.exe`,
+  - Run `npm run pack`, click through `dist\win-unpacked\RIVALRY Casterverse.exe`,
     then tag. Safer.
   - Just tag and let CI build. Faster. If broken, yank the release and tag
     `v1.0.1` (you cannot reuse a tag).

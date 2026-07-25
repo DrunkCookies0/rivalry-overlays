@@ -112,7 +112,7 @@ function createApiRouter(ctx) {
         });
         res.writeHead(200, {
           "Content-Type": "application/json",
-          "Content-Disposition": 'attachment; filename="rivalry-overlays.json"',
+          "Content-Disposition": 'attachment; filename="rivalry-casterverse.json"',
         });
         res.end(JSON.stringify(collection, null, 2));
       } catch (e) {

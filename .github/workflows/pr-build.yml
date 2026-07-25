@@ -86,8 +86,8 @@ jobs:
         id: upload
         uses: actions/upload-artifact@v4
         with:
-          name: rivalry-overlay-beta-${{ github.sha }}
-          path: dist-beta/RIVALRY-Overlay-Beta-Setup-*.exe
+          name: rivalry-casterverse-beta-${{ github.sha }}
+          path: dist-beta/RIVALRY-Casterverse-Beta-Setup-*.exe
           retention-days: 30
           if-no-files-found: error
 
@@ -131,7 +131,7 @@ jobs:
               `- [GitHub Release page](${releaseUrl})`,
               `- [Workflow Artifacts (zipped)](${runUrl})`,
               ``,
-              `Installs as **RIVALRY Overlay Beta** alongside any production install. Settings live in \`%AppData%\\RIVALRY Overlay Beta\\\`.`,
+              `Installs as **RIVALRY Casterverse Beta** alongside any production install. Settings live in \`%AppData%\\RIVALRY Casterverse Beta\\\`.`,
             ].join('\n');
 
             // Find an existing comment from this workflow and update it, else create a new one.

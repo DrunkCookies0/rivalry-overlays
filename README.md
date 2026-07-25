@@ -1,4 +1,4 @@
-# RIVALRY Overlay
+# RIVALRY Casterverse
 
 A Rocket League broadcast suite for league play, shipped as a single Windows installer. It reads Rocket League's official Stats API (Psyonix's sanctioned broadcast interface), so it is EAC-safe: no mods, no injection, nothing touches the game. One install gives you 7 broadcast scenes, a control panel that docks inside OBS, and OBS integration that can build and switch your scenes for you.
 
@@ -8,9 +8,9 @@ A Rocket League broadcast suite for league play, shipped as a single Windows ins
 
 This section is for broadcast producers. Total time: about five minutes.
 
-1. Download `RIVALRY-Overlay-Setup-<version>.exe` from [Releases](../../releases).
+1. Download `RIVALRY-Casterverse-Setup-<version>.exe` from [Releases](../../releases).
 2. Run it. Windows SmartScreen will warn you. Click **More info**, then **Run anyway**. This is expected: the installer is not code-signed yet, and buying a signing certificate is what would remove the warning.
-3. Launch **RIVALRY Overlay**. A guided setup wizard opens on first launch:
+3. Launch **RIVALRY Casterverse**. A guided setup wizard opens on first launch:
 
 | Step | What the app does | What you do |
 |---|---|---|
@@ -113,7 +113,7 @@ screenshots to capture and drop into docs/img/ (1920x1080 window grabs unless no
 ### How the data flows
 
 ```
-Rocket League               RIVALRY Overlay app             OBS
+Rocket League               RIVALRY Casterverse app             OBS
 [Stats API]   raw TCP  ->   bridge + web server    ->   Browser Sources
 :49123        JSON          :49124 game feed (ws)       http://localhost:49080
                             :49777 control bus (ws)     /overlays/<id>/index.html
@@ -169,8 +169,8 @@ Legacy note: the shipped gameplay overlay is `overlays/rivalry-gameplay/index.ht
 
 ### Build, release, CI
 
-- `npm run dist` builds `dist\RIVALRY-Overlay-Setup-<version>.exe` via electron-builder (NSIS). Bump `version` in `package.json` per release.
-- **Beta channel:** `pr-build.yml` builds and publishes a beta installer as a GitHub prerelease on every PR to `main` and every push to `feat/**` branches. Beta uses a separate appId and product name ("RIVALRY Overlay Beta") so it installs alongside production. The 5 newest prereleases are kept.
+- `npm run dist` builds `dist\RIVALRY-Casterverse-Setup-<version>.exe` via electron-builder (NSIS). Bump `version` in `package.json` per release.
+- **Beta channel:** `pr-build.yml` builds and publishes a beta installer as a GitHub prerelease on every PR to `main` and every push to `feat/**` branches. Beta uses a separate appId and product name ("RIVALRY Casterverse Beta") so it installs alongside production. The 5 newest prereleases are kept.
 - **Production:** `release.yml` builds and publishes on `v*` tags. Auto-update ships via electron-updater.
 - The installer is unsigned, so SmartScreen warns on first run. A code-signing certificate (`win.certificateFile` in the build config, or an EV/cloud signer) would remove that.
 

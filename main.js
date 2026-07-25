@@ -1,5 +1,5 @@
 /* =============================================================================
- * RIVALRY Overlay - Electron main process
+ * RIVALRY Casterverse - Electron main process
  * -----------------------------------------------------------------------------
  * On launch:
  *   1. Writes DefaultStatsAPI.ini into the user's Rocket League config so the
@@ -42,6 +42,7 @@ const overlayRegistry = require("./bridge/overlay-registry");
 const { createApiRouter } = require("./bridge/http-api");
 const leagueSettingsStore = require("./bridge/league-settings");
 const { createLeagueClient } = require("./bridge/league-client");
+const { migrateUserData } = require("./bridge/userdata-migrate");
 
 const HTTP_PORT = 49080;
 // Gameplay overlay now lives in the multi-scene tree (overlays/rivalry-gameplay,
@@ -52,12 +53,12 @@ const CONTROL_URL = `http://localhost:${HTTP_PORT}/control/control.html`;
 const SETUP_URL = `http://localhost:${HTTP_PORT}/control/setup.html`;
 const TRAY_ICON = path.join(__dirname, "assets", "tray.png");
 
-// Beta builds (built via electron-builder.beta.yml for CI PR artifacts) set
-// productName to "RIVALRY Overlay Beta". We surface that in the tray + window
-// title so producers running both prod + beta side by side can tell them apart
-// at a glance. Detection runs once at boot.
+// Beta builds (built via electron-builder.beta.js for CI PR artifacts) set
+// productName to "RIVALRY Casterverse Beta". We surface that in the tray +
+// window title so producers running both prod + beta side by side can tell them
+// apart at a glance. Detection runs once at boot.
 const IS_BETA = (app.getName() || "").toLowerCase().includes("beta");
-const APP_TITLE = IS_BETA ? "RIVALRY Overlay (BETA)" : "RIVALRY Overlay";
+const APP_TITLE = IS_BETA ? "RIVALRY Casterverse (BETA)" : "RIVALRY Casterverse";
 const META = getMeta(IS_BETA);
 
 const MIME = {
@@ -407,8 +408,7 @@ function refreshTrayMenu() {
 // re-running is safe and just no-ops if scenes / sources already exist.
 // Scene names live in obs-collection.js so the websocket path and the
 // importable scene-collection file can never disagree.
-const { OBS_SCENE_NAMES } = require("./bridge/obs-collection");
-const OBS_COLLECTION_NAME = "RIVALRY Overlays";
+const { OBS_SCENE_NAMES, OBS_COLLECTION_NAME } = require("./bridge/obs-collection");
 async function setupObsScenes() {
   if (!obsController || !obsController.status.connected) return { ok: false, error: "OBS not connected" };
   const base = `http://localhost:${HTTP_PORT}`;
@@ -473,7 +473,7 @@ async function toggleDevMode() {
   } else {
     const result = await dialog.showOpenDialog({
       properties: ["openDirectory"],
-      title: "Choose RIVALRY Overlays repo folder",
+      title: "Choose the RIVALRY Casterverse repo folder",
       defaultPath: devSettings.path || app.getPath("home"),
     });
     if (result.canceled || !result.filePaths.length) return;
@@ -481,7 +481,7 @@ async function toggleDevMode() {
     if (!fs.existsSync(path.join(picked, "overlays", "rivalry-gameplay", "manifest.json"))) {
       dialog.showMessageBox({
         type: "warning",
-        message: "That folder does not look like a rivalry-overlays repo",
+        message: "That folder does not look like the Casterverse repo",
         detail: "Expected to find overlays/rivalry-gameplay/manifest.json inside it.",
       });
       return;
@@ -625,7 +625,7 @@ async function handleObsAction(payload) {
   if (action === "setup-scenes") {
     const result = await setupObsScenes();
     // Report back so the control panel / setup wizard can confirm the one-click
-    // build ("Created 8 scenes in a new RIVALRY Overlays collection") or show
+    // build ("Created 7 scenes in a new RIVALRY Casterverse collection") or show
     // the error, instead of the button firing into a void.
     if (bridgeHandle && bridgeHandle.broadcastControl) {
       bridgeHandle.broadcastControl({ type: "obs-action-result", payload: { action, ...result } });
@@ -726,7 +726,17 @@ if (!app.requestSingleInstanceLock()) {
     // Windows needs an explicit AppUserModelID for native notifications
     // to work reliably in unpackaged dev runs. Without it, the toast appears
     // but the notification subsystem can behave strangely.
-    try { app.setAppUserModelId("com.rivalry.overlay"); } catch {}
+    // Must match the installer's appId or Windows treats toasts as coming from
+    // an unregistered app and quietly drops them.
+    try { app.setAppUserModelId(IS_BETA ? "gg.rivalry.casterverse.beta" : "gg.rivalry.casterverse"); } catch {}
+
+    // The rebrand moved userData ("RIVALRY Overlay*" -> "RIVALRY Casterverse*").
+    // Carry the producer's saved state across ONCE, before anything reads it.
+    try {
+      const legacy = path.join(app.getPath("appData"), IS_BETA ? "RIVALRY Overlay Beta" : "rivalry-overlay");
+      const m = migrateUserData(legacy, app.getPath("userData"));
+      if (m.migrated) console.log("[rivalry] migrated settings from", m.from, "->", m.copied.join(", "));
+    } catch (e) { console.error("[rivalry] userData migration:", e.message); }
 
     const r = runIniSetup();
     console.log("[rivalry] stats API config:", r.ok ? "written" : "RL folder not found yet");
