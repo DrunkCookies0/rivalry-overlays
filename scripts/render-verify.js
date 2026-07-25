@@ -23,6 +23,7 @@
 "use strict";
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const http = require("http");
 const net = require("net");
@@ -65,7 +66,7 @@ const SCENE_CHECKS = {
   "rivalry-match-preview": { selector: ".mp-name", description: "team name node" },
   "rivalry-starting-soon": { selector: ".ss-name", description: "team name node" },
   "rivalry-up-next": { selector: ".un-list", description: "up-next match list" },
-  "rivalry-casters": { selector: "#csCams", description: "caster cams container" },
+  "rivalry-casters": { selector: ".cs-frame", description: "caster cam frame" },
   "rivalry-postgame": { selector: ".pg-boards", description: "team stat boards" },
   "rivalry-brb": { selector: ".brb-title", description: "BE RIGHT BACK title" },
 };
@@ -167,6 +168,10 @@ function preflightSignatures() {
 // App lifecycle: spawn electron --mock, wait for /status.json, tree-kill
 // ---------------------------------------------------------------------------
 
+// Throwaway Electron profile for this run, so results never depend on state
+// left behind by a previous session (see spawnApp).
+const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "rivalry-verify-"));
+
 function portInUse(port) {
   return new Promise((resolve) => {
     const sock = net.connect({ host: "127.0.0.1", port });
@@ -209,7 +214,13 @@ function spawnApp() {
   delete env.ELECTRON_RUN_AS_NODE;
 
   const e = resolveElectron();
-  const child = spawn(e.cmd, [...e.args, ".", "--mock"], {
+  // Hermetic profile. Without this the harness inherits whatever is in the
+  // developer's real userData — a retained control payload from an earlier
+  // session can point a team logo at /league/logo for a match this run has no
+  // key for, and the scene fails a "console clean" check for reasons that have
+  // nothing to do with the code under test. (That exact false failure is why
+  // this is here.)
+  const child = spawn(e.cmd, [...e.args, ".", "--mock", `--user-data-dir=${userDataDir}`], {
     env,
     cwd: REPO_ROOT,
     stdio: ["ignore", "pipe", "pipe"],

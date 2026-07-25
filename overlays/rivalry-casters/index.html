@@ -6,8 +6,18 @@
 <title>RIVALRY — Casters</title>
 <link rel="stylesheet" href="../shared/rivalry-theme.css" />
 <style>
+/* Casters overlay = a GRAPHICS layer only. The decorative background is punched
+   with transparent cam holes so the real camera sources (VDO.Ninja browser
+   sources or a webcam Video Capture Device) sit BEHIND this overlay in OBS and
+   show through the frames. Two layouts via ?layout=duo (default) or ?layout=solo. */
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
-.scene-root[data-scene="caster"]{position:relative;width:1920px;height:1080px;font-family:var(--rv-font-body);color:var(--rv-ink);overflow:hidden;background:var(--rv-jet-black);}
+.scene-root[data-scene="caster"]{position:relative;width:1920px;height:1080px;font-family:var(--rv-font-body);color:var(--rv-ink);overflow:hidden;}
+
+/* Decorative background. EVERY decorative layer lives inside .cs-deco, and the
+   mask (built in JS from the cam rects) is applied to that wrapper — not to the
+   gradient alone. Masking only the gradient left the grid texture and the gold
+   seam painting across the camera holes, i.e. straight over a caster's face. */
+.scene-root[data-scene="caster"] .cs-deco{position:absolute;inset:0;}
 .scene-root[data-scene="caster"] .cs-bg{position:absolute;inset:0;background:
   radial-gradient(120% 80% at 20% 0%, rgba(47,125,255,.20), transparent 55%),
   radial-gradient(120% 80% at 82% 100%, rgba(255,118,1,.16), transparent 55%),
@@ -29,22 +39,26 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .scene-root[data-scene="caster"] .cs-underbar{margin-top:8px;width:150px;height:4px;background:linear-gradient(90deg,var(--rv-gold),rgba(241,196,15,0));}
 .scene-root[data-scene="caster"] .cs-event{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:17px;letter-spacing:.20em;color:var(--rv-muted);text-align:right;max-width:420px;}
 
-.scene-root[data-scene="caster"] .cs-cams{position:absolute;left:0;right:0;top:212px;bottom:92px;display:flex;align-items:center;justify-content:center;gap:36px;padding:0 64px;}
-.scene-root[data-scene="caster"] .cs-frame{position:relative;aspect-ratio:16/9;background:linear-gradient(180deg,#15303d,#0a1922);
-  box-shadow:0 20px 56px rgba(0,0,0,.55), inset 0 0 0 2px rgba(241,196,15,.22), inset 0 0 0 4px rgba(0,0,0,.4);}
-.scene-root[data-scene="caster"] .cs-cams[data-count="1"] .cs-frame{height:78%;}
-.scene-root[data-scene="caster"] .cs-cams[data-count="2"] .cs-frame{width:46%;}
-.scene-root[data-scene="caster"] .cs-cams[data-count="3"] .cs-frame{width:31.5%;}
-.scene-root[data-scene="caster"] .cs-vid{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;}
-.scene-root[data-scene="caster"] .cs-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
-  background:radial-gradient(80% 80% at 50% 38%, rgba(32,73,111,.5), rgba(10,25,34,.9));}
-.scene-root[data-scene="caster"] .cs-mono{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:120px;line-height:1;color:rgba(241,238,238,.16);}
-.scene-root[data-scene="caster"] .cs-wait{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:14px;letter-spacing:.32em;color:var(--rv-muted);}
-.scene-root[data-scene="caster"] .cs-plate{position:absolute;left:0;right:0;bottom:0;padding:18px 22px 16px;display:flex;flex-direction:column;gap:2px;
-  background:linear-gradient(0deg, rgba(8,14,20,.94) 10%, rgba(8,14,20,.55) 60%, transparent);}
+/* Frames are absolutely positioned per layout rect (set in JS). The interior is
+   fully transparent (the cam shows through); only the border chrome + nameplate
+   paint. */
+.scene-root[data-scene="caster"] .cs-frame{position:absolute;background:transparent;
+  box-shadow:0 20px 56px rgba(0,0,0,.55), inset 0 0 0 2px rgba(241,196,15,.32), inset 0 0 0 5px rgba(0,0,0,.5);}
+.scene-root[data-scene="caster"] .cs-frame::before{content:"";position:absolute;left:-2px;top:-2px;width:60px;height:60px;
+  border-top:4px solid var(--rv-gold);border-left:4px solid var(--rv-gold);}
+.scene-root[data-scene="caster"] .cs-frame::after{content:"";position:absolute;right:-2px;bottom:-2px;width:60px;height:60px;
+  border-bottom:4px solid var(--rv-gold);border-right:4px solid var(--rv-gold);}
+.scene-root[data-scene="caster"] .cs-plate{position:absolute;left:0;right:0;bottom:0;padding:16px 20px 14px;display:flex;flex-direction:column;gap:2px;
+  background:linear-gradient(0deg, rgba(8,14,20,.96) 12%, rgba(8,14,20,.55) 62%, transparent);}
 .scene-root[data-scene="caster"] .cs-plate::before{content:"";position:absolute;left:0;top:0;width:64px;height:4px;background:var(--rv-gold);}
-.scene-root[data-scene="caster"] .cs-name{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:30px;text-transform:uppercase;letter-spacing:.02em;}
-.scene-root[data-scene="caster"] .cs-role{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:13px;letter-spacing:.24em;color:var(--rv-gold);text-transform:uppercase;}
+.scene-root[data-scene="caster"] .cs-name{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:30px;text-transform:uppercase;letter-spacing:.02em;line-height:1;}
+.scene-root[data-scene="caster"] .cs-role{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:13px;letter-spacing:.24em;color:var(--rv-gold);text-transform:uppercase;margin-top:4px;}
+/* Preview-only hint shown when this page is opened without cameras behind it
+   (design review, control-panel preview). Hidden on air via ?live=1 so it never
+   sits over a real cam. */
+.scene-root[data-scene="caster"] .cs-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:22px;letter-spacing:.3em;color:rgba(241,238,238,.22);text-transform:uppercase;}
+.scene-root[data-scene="caster"][data-live="1"] .cs-hint{display:none;}
 
 .scene-root[data-scene="caster"] .cs-foot{position:absolute;left:0;right:0;bottom:34px;text-align:center;
   font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.28em;color:var(--rv-muted);text-transform:uppercase;}
@@ -53,9 +67,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 <body>
   <div class="rv-stage">
     <div class="scene-root" data-scene="caster">
-      <div class="cs-bg"></div>
-      <div class="cs-grid-tex"></div>
-      <div class="cs-seam"></div>
+      <div class="cs-deco" id="csDeco">
+        <div class="cs-bg"></div>
+        <div class="cs-grid-tex"></div>
+        <div class="cs-seam"></div>
+      </div>
       <header class="cs-top">
         <div class="cs-brand">
           <div class="cs-mark"></div>
@@ -68,7 +84,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
         </div>
         <span class="cs-event" data-field="eventTitle">RIVALRY SEASON 1</span>
       </header>
-      <div class="cs-cams" id="csCams" data-count="1"></div>
+      <div id="csFrames"></div>
       <footer class="cs-foot" data-field="round">CASTERS</footer>
     </div>
   </div>
@@ -78,71 +94,77 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   <script>
   (function () {
     var root = document.querySelector('.scene-root');
-    var rl = RivalryOverlay.connect({ game: false }); // control-only
-    RivalryBind(root, rl);                              // header: league / event / round
-    RivalryFit('.rv-stage');
-    var cams = document.getElementById('csCams');
+    var params = new URLSearchParams(location.search);
 
-    // Turn a caster's "stream" field into a safe VDO.Ninja embed URL. Accepts a
-    // full vdo.ninja URL OR a bare stream ID; rejects anything else (no
-    // javascript:/data:/arbitrary embeds, even though control data is trusted).
-    function vdoSrc(stream) {
-      var s = String(stream || '').trim();
-      if (!s) return '';
-      if (/^https?:\/\//i.test(s)) {
-        try { var u = new URL(s); if (/(^|\.)vdo\.ninja$/i.test(u.hostname)) return s; } catch (e) {}
-        return '';
-      }
-      if (/^[A-Za-z0-9_-]+$/.test(s)) return 'https://vdo.ninja/?view=' + encodeURIComponent(s) + '&cleanoutput&autostart';
-      return '';
-    }
+    // Fixed cam rects (px on the 1920x1080 stage). The OBS cam sources are
+    // pre-placed at THESE SAME rects behind the overlay, so the two must stay in
+    // sync (mirrored in bridge/obs-collection.js CASTER_LAYOUTS).
+    var LAYOUTS = {
+      duo:  [ { x: 90,  y: 300, w: 853, h: 480 }, { x: 977, y: 300, w: 853, h: 480 } ],
+      solo: [ { x: 360, y: 250, w: 1200, h: 675 } ],
+    };
+    var layout = LAYOUTS[params.get('layout')] ? params.get('layout') : 'duo';
+    var rects = LAYOUTS[layout];
+    // ?live=1 hides the "CAMERA N" preview hint (set on the OBS browser source
+    // URL so it never paints over a real cam).
+    if (params.get('live') === '1') root.setAttribute('data-live', '1');
 
-    function frame(c) {
+    // Punch transparent holes through ALL the decorative art at each cam rect,
+    // so the camera sources behind this overlay in OBS show through cleanly.
+    //
+    // The mask is ONE path with even-odd fill: an outer 1920x1080 subpath plus
+    // one subpath per cam rect. Even-odd makes the interior of each rect fall
+    // outside the fill, so those pixels have alpha 0.
+    //
+    // It has to be alpha, not a black-on-white image: CSS mask-image samples an
+    // SVG's ALPHA channel by default, so black rects on a white rect are all
+    // equally opaque and mask nothing at all. That is exactly what this overlay
+    // did before — the mask looked right in the source and was a silent no-op,
+    // leaving the grid texture and gold seam painted across the casters' faces.
+    (function maskHoles() {
+      var d = 'M0 0H1920V1080H0Z';
+      rects.forEach(function (r) {
+        d += 'M' + r.x + ' ' + r.y + 'H' + (r.x + r.w) + 'V' + (r.y + r.h) + 'H' + r.x + 'Z';
+      });
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">' +
+        '<path fill="#fff" fill-rule="evenodd" d="' + d + '"/></svg>';
+      var uri = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+      var deco = document.getElementById('csDeco');
+      deco.style.webkitMaskImage = uri; deco.style.maskImage = uri;
+      deco.style.webkitMaskSize = '1920px 1080px'; deco.style.maskSize = '1920px 1080px';
+      deco.style.webkitMaskRepeat = 'no-repeat'; deco.style.maskRepeat = 'no-repeat';
+    })();
+
+    // Build a frame (border chrome + nameplate) at each rect.
+    var frames = document.getElementById('csFrames');
+    var plates = rects.map(function (r, i) {
       var f = document.createElement('div');
       f.className = 'cs-frame rv-cut';
-      var src = vdoSrc(c.stream);
-      if (src) {
-        var ifr = document.createElement('iframe');
-        ifr.className = 'cs-vid';
-        ifr.src = src;
-        ifr.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
-        ifr.setAttribute('frameborder', '0');
-        f.appendChild(ifr);
-      } else {
-        var ph = document.createElement('div'); ph.className = 'cs-ph';
-        var mono = document.createElement('span'); mono.className = 'cs-mono';
-        mono.textContent = (c.name || '?').trim().charAt(0).toUpperCase();
-        var wait = document.createElement('span'); wait.className = 'cs-wait';
-        wait.textContent = c.name ? 'WAITING FOR FEED' : 'NO CASTER';
-        ph.appendChild(mono); ph.appendChild(wait); f.appendChild(ph);
-      }
+      f.style.left = r.x + 'px'; f.style.top = r.y + 'px'; f.style.width = r.w + 'px'; f.style.height = r.h + 'px';
+      var hint = document.createElement('div'); hint.className = 'cs-hint'; hint.textContent = 'Camera ' + (i + 1);
+      f.appendChild(hint);
       var plate = document.createElement('div'); plate.className = 'cs-plate';
-      var nm = document.createElement('span'); nm.className = 'cs-name'; nm.textContent = c.name || '';
-      plate.appendChild(nm);
-      if (c.role) { var role = document.createElement('span'); role.className = 'cs-role'; role.textContent = c.role; plate.appendChild(role); }
+      var nm = document.createElement('span'); nm.className = 'cs-name';
+      var role = document.createElement('span'); role.className = 'cs-role';
+      plate.appendChild(nm); plate.appendChild(role);
       f.appendChild(plate);
-      return f;
-    }
-
-    function renderCams(casters) {
-      var active = (casters || []).filter(function (c) { return c && (c.name || c.stream); }).slice(0, 3);
-      if (!active.length) active = [{ name: '', role: '' }]; // one placeholder so the scene isn't blank
-      cams.setAttribute('data-count', String(active.length));
-      cams.innerHTML = '';
-      active.forEach(function (c) { cams.appendChild(frame(c)); });
-    }
-
-    // Only re-render when the caster set actually changes, so unrelated control
-    // pushes don't reload the VDO.Ninja iframes (which would drop the feeds).
-    var lastKey = null;
-    rl.onControl(function (c) {
-      var casters = (c && c.casters) || [];
-      var key = JSON.stringify(casters.map(function (x) { return [x && x.name, x && x.role, x && x.stream]; }));
-      if (key === lastKey) return;
-      lastKey = key;
-      renderCams(casters);
+      frames.appendChild(f);
+      return { nm: nm, role: role, hint: hint };
     });
-    renderCams([]); // initial placeholder before any control data
+
+    // Nameplates come from the control feed (caster names/roles); the camera
+    // video comes from the OBS sources behind, not from here.
+    RivalryBind(root, RivalryOverlay.connect({ game: false })); // header: league / event / round
+    RivalryOverlay.connect({ game: false }).onControl(function (c) {
+      var casters = (c && c.casters) || [];
+      plates.forEach(function (p, i) {
+        var caster = casters[i] || {};
+        p.nm.textContent = caster.name || '';
+        p.role.textContent = caster.role || '';
+        p.hint.style.display = caster.name ? 'none' : ''; // once named, drop the placeholder label
+      });
+    });
+    RivalryFit('.rv-stage');
   })();
   </script>
 </body>
