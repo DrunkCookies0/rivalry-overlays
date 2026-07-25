@@ -1,0 +1,47 @@
+{
+  "id": "68a1f0c4e2b7431d9c001002",
+  "circuitName": "Summer 2026 - 2v2 East",
+  "seasonName": "Summer 2026",
+  "round": 3,
+  "isBye": false,
+  "isForfeitLoss": false,
+  "scheduledDate": "2026-07-13T23:45:00.000Z",
+  "team1": {
+    "rosterId": "68a1f0c4e2b7431d9c00a003",
+    "name": "NOVA",
+    "logoUrl": "logo-a.png",
+    "wins": 5,
+    "losses": 0,
+    "players": [
+      {
+        "userId": "u-nova-1",
+        "name": "Ashwing",
+        "teamRole": "captain",
+        "stats": null
+      },
+      {
+        "userId": "u-nova-2",
+        "name": "Tidebreak",
+        "teamRole": null,
+        "stats": null
+      }
+    ]
+  },
+  "team2": {
+    "rosterId": "68a1f0c4e2b7431d9c00a004",
+    "name": "ECLIPSE",
+    "logoUrl": null,
+    "wins": 2,
+    "losses": 3,
+    "players": [
+      {
+        "userId": "u-eclipse-1",
+        "name": "Marrow",
+        "teamRole": null,
+        "stats": null
+      }
+    ]
+  },
+  "createdAt": "2026-06-30T18:02:11.000Z",
+  "updatedAt": "2026-07-11T09:14:52.000Z"
+}

@@ -46,6 +46,20 @@
   .scene-row input.u{flex:1;min-width:160px;font-family:monospace;font-size:12px;}
   .scene-row .mini{background:#243040;color:var(--ink);padding:6px 10px;font-size:12px;}
   .mini{background:#243040;color:var(--ink);padding:6px 10px;font-size:12px;}
+  /* Match-finder filter chips. The league API has no circuit/round filter, so
+     these are built from whatever the search actually returned. */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{background:#1b2532;color:var(--muted);border:1px solid rgba(255,255,255,.08);
+    padding:5px 11px;border-radius:14px;font-size:11px;letter-spacing:.4px;cursor:pointer;
+    text-transform:uppercase;font-weight:700;}
+  .chip:hover{color:var(--ink);}
+  .chip.on{background:var(--accent);color:#0b0f14;border-color:var(--accent);}
+  .match-row{display:flex;align-items:center;gap:8px;padding:9px 0;flex-wrap:wrap;
+    border-top:1px solid rgba(255,255,255,.05);}
+  .match-row .vs{font-weight:700;min-width:230px;}
+  .match-row .rec{color:var(--muted);font-weight:400;font-size:11px;}
+  .match-row .meta{flex:1;min-width:180px;}
+  .match-row.soon .vs{color:var(--accent);}
   .logo-prev{width:30px;height:30px;object-fit:contain;background:#0b0f14;border-radius:4px;
     border:1px solid rgba(255,255,255,.1);display:none;}
   .logo-drop{outline:2px dashed var(--accent);outline-offset:-2px;}
@@ -105,20 +119,29 @@
   </div>
 
   <div class="card full" id="leagueCard" style="display:none;margin-bottom:18px;border-left:3px solid var(--accent);">
-    <h2>League match <span class="muted-note">(pick a scheduled match, team names / logos / series fill in automatically)</span></h2>
+    <h2>Find your match <span class="muted-note">(team names, logos and records fill in from the league)</span></h2>
     <div class="row" style="gap:8px;align-items:flex-end;">
       <div style="flex:2"><label>League API key (stored on this machine only)</label><input type="password" id="leagueKey" placeholder="paste your key, then Save" /></div>
       <button class="mini" id="leagueSaveKey" type="button">Save key</button>
-      <div id="leagueStatus" class="muted-note" style="align-self:center;flex:2;">checking...</div>
+      <div id="leagueStatus" class="muted-note" style="align-self:center;flex:2;">checking…</div>
     </div>
-    <div class="row" style="gap:8px;margin-top:10px;">
-      <button class="mini" id="leagueLoad" type="button">Load matches</button>
-      <button class="mini" id="leagueRefresh" type="button" style="display:none;">Refresh from league</button>
-      <div id="leagueActive" class="muted-note" style="align-self:center;"></div>
+    <div class="row" style="gap:8px;margin-top:12px;align-items:flex-end;">
+      <div style="flex:2"><label>Search by team</label><input type="text" id="leagueSearch" placeholder="team name, then Enter" autocomplete="off" /></div>
+      <button class="mini" id="leagueLoad" type="button">Find matches</button>
+      <button class="mini" id="leagueRefresh" type="button" style="display:none;">Refresh loaded match</button>
     </div>
-    <div id="leagueMatches" style="margin-top:6px;"></div>
+    <!-- Filters are built from whatever came back, because the league API has
+         no circuit/round filter of its own. -->
+    <div id="leagueFilters" style="margin-top:10px;display:none;">
+      <div class="muted-note" style="margin-bottom:4px;">Circuit</div>
+      <div id="leagueCircuits" class="chips"></div>
+      <div class="muted-note" style="margin:8px 0 4px;">When</div>
+      <div id="leagueWhen" class="chips"></div>
+    </div>
+    <div id="leagueMatches" style="margin-top:10px;"></div>
+    <div id="leagueActive" class="muted-note" style="margin-top:6px;"></div>
     <div class="muted-note" style="margin-top:8px;">
-      Everything stays editable after filling. Best-of, seeds, and records are not in the league data yet, set those by hand.
+      Everything stays editable after filling. Best-of and seeds aren't in the league data, set those by hand.
     </div>
   </div>
 
@@ -845,45 +868,149 @@ $("leagueSaveKey").addEventListener("click", () => {
   $("leagueKey").value = "";
   setTimeout(refreshLeagueStatus, 500);
 });
-async function loadLeagueMatches(){
+/* ---- match finder ----------------------------------------------------------
+ * The league API can only text-search team names, so the app pulls the
+ * scheduled set and narrows it here. Two filters, both built from the data that
+ * actually came back (no hardcoded circuit list to go stale between seasons):
+ *   Circuit  - one chip per distinct circuitName ("2v2 East", "Tier 3", ...)
+ *   When     - Upcoming (default) / Today / All
+ * Upcoming keeps matches that started within the last 3 hours, so a series
+ * already underway doesn't vanish off the list mid-show. */
+let leagueList = [];
+let leagueFilter = { circuit: "", when: "upcoming" };
+const GRACE_MS = 3 * 60 * 60 * 1000;
+
+function matchTime(m){
+  const t = m.scheduledDate ? Date.parse(m.scheduledDate) : NaN;
+  return Number.isNaN(t) ? null : t;
+}
+function whenLabel(m){
+  const t = matchTime(m);
+  if (t === null) return m.isBye ? "bye" : "time TBD";
+  const d = new Date(t), now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  return sameDay ? "today " + time : d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) + " " + time;
+}
+function passesFilter(m){
+  if (leagueFilter.circuit && m.event.circuit !== leagueFilter.circuit) return false;
+  const t = matchTime(m);
+  if (leagueFilter.when === "today") {
+    if (t === null) return false;
+    return new Date(t).toDateString() === new Date().toDateString();
+  }
+  if (leagueFilter.when === "upcoming") {
+    if (t === null) return false;           // byes / unscheduled aren't "upcoming"
+    return t > Date.now() - GRACE_MS;
+  }
+  return true;
+}
+
+function renderLeagueFilters(circuits){
+  const box = $("leagueFilters");
+  box.style.display = circuits.length ? "" : "none";
+  const cHost = $("leagueCircuits"); cHost.innerHTML = "";
+  const mk = (label, on, click) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip" + (on ? " on" : ""); b.textContent = label;
+    b.addEventListener("click", click);
+    return b;
+  };
+  cHost.appendChild(mk("All circuits", !leagueFilter.circuit, () => { leagueFilter.circuit = ""; renderLeagueMatches(); }));
+  for (const c of circuits) {
+    cHost.appendChild(mk(c, leagueFilter.circuit === c, () => { leagueFilter.circuit = c; renderLeagueMatches(); }));
+  }
+  const wHost = $("leagueWhen"); wHost.innerHTML = "";
+  for (const [key, label] of [["upcoming", "Upcoming"], ["today", "Today"], ["all", "All"]]) {
+    wHost.appendChild(mk(label, leagueFilter.when === key, () => { leagueFilter.when = key; renderLeagueMatches(); }));
+  }
+}
+
+function renderLeagueMatches(){
   const host = $("leagueMatches");
-  host.textContent = "loading matches...";
-  try {
-    const r = await (await fetch("/league/matches")).json();
-    if (!r.ok) { host.textContent = leagueErrorText(r.error); return; }
-    const list = Array.isArray(r.data) ? r.data : [];
-    if (!list.length) { host.textContent = "No matches found."; return; }
-    host.innerHTML = "";
-    for (const m of list) {
-      const t = Array.isArray(m.teams) ? m.teams : [];
-      const row = document.createElement("div");
-      row.className = "scene-row";
-      const nm = document.createElement("span");
-      nm.className = "nm"; nm.style.minWidth = "220px";
-      nm.textContent = (t[0] && t[0].name || "TBD") + " vs " + (t[1] && t[1].name || "TBD");
-      const info = document.createElement("span");
-      info.className = "muted-note"; info.style.flex = "1";
-      const when = m.scheduledDate ? new Date(m.scheduledDate).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
-      info.textContent = [m.season, m.circuit, m.tier, m.status, when].filter(Boolean).join(" · ");
-      const useBtn = document.createElement("button");
-      useBtn.className = "mini"; useBtn.textContent = "Use now";
-      useBtn.addEventListener("click", () => useLeagueMatch(m.matchId));
-      // Queue it for later instead of cutting to it immediately.
+  const circuits = [];
+  for (const m of leagueList) if (m.event.circuit && !circuits.includes(m.event.circuit)) circuits.push(m.event.circuit);
+  renderLeagueFilters(circuits);
+
+  const shown = leagueList.filter(passesFilter);
+  host.innerHTML = "";
+  if (!shown.length) {
+    const none = document.createElement("div");
+    none.className = "muted-note";
+    none.textContent = leagueList.length
+      ? "Nothing matches those filters. Try “All”, or search a team name above."
+      : "No matches found.";
+    host.appendChild(none);
+    return;
+  }
+  for (const m of shown) {
+    const [a, b] = m.teams;
+    const t = matchTime(m);
+    const row = document.createElement("div");
+    row.className = "match-row" + (t !== null && t - Date.now() < 2 * 60 * 60 * 1000 && t > Date.now() - GRACE_MS ? " soon" : "");
+
+    const vs = document.createElement("span");
+    vs.className = "vs";
+    if (m.isBye || !b) {
+      vs.textContent = (a ? a.name : "TBD") + " — bye";
+    } else {
+      vs.appendChild(document.createTextNode(a ? a.name : "TBD"));
+      const ra = document.createElement("span"); ra.className = "rec"; ra.textContent = a ? ` (${a.record})` : "";
+      vs.appendChild(ra);
+      vs.appendChild(document.createTextNode("  vs  " + b.name));
+      const rb = document.createElement("span"); rb.className = "rec"; rb.textContent = ` (${b.record})`;
+      vs.appendChild(rb);
+    }
+
+    const meta = document.createElement("span");
+    meta.className = "muted-note meta";
+    meta.textContent = [m.event.circuit, m.event.roundLabel, whenLabel(m)].filter(Boolean).join(" · ");
+
+    row.appendChild(vs); row.appendChild(meta);
+    // A bye has nothing to broadcast, so it is listed for context only.
+    if (!m.isBye && b) {
       const qBtn = document.createElement("button");
       qBtn.className = "mini"; qBtn.textContent = "Add to queue";
       qBtn.addEventListener("click", () => queueAdd({
         matchId: m.matchId,
-        teamA: { name: (t[0] && t[0].name) || "", logo: "", tag: "", seed: "", record: "" },
-        teamB: { name: (t[1] && t[1].name) || "", logo: "", tag: "", seed: "", record: "" },
-        round: [m.season, m.circuit, m.tier].filter(Boolean).join(" | "),
-        startTime: when,
+        teamA: { name: a ? a.name : "", logo: "", tag: "", seed: "", record: a ? a.record : "" },
+        teamB: { name: b.name, logo: "", tag: "", seed: "", record: b.record },
+        round: m.event.composedTitle,
+        startTime: t === null ? "" : new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
       }));
-      row.appendChild(nm); row.appendChild(info); row.appendChild(qBtn); row.appendChild(useBtn);
-      host.appendChild(row);
+      const useBtn = document.createElement("button");
+      useBtn.className = "mini"; useBtn.textContent = "Use now";
+      useBtn.addEventListener("click", () => useLeagueMatch(m.matchId));
+      row.appendChild(qBtn); row.appendChild(useBtn);
+    }
+    host.appendChild(row);
+  }
+}
+
+async function loadLeagueMatches(){
+  const host = $("leagueMatches");
+  host.textContent = "searching…";
+  const search = $("leagueSearch").value.trim();
+  try {
+    const r = await (await fetch("/league/matches?search=" + encodeURIComponent(search))).json();
+    if (!r.ok) { host.textContent = leagueErrorText(r.error); return; }
+    leagueList = Array.isArray(r.data) ? r.data : [];
+    // A team search is deliberate: don't then hide their matches behind a
+    // date filter the producer didn't choose.
+    if (search) leagueFilter = { circuit: "", when: "all" };
+    renderLeagueMatches();
+    if (r.truncated) {
+      const warn = document.createElement("div");
+      warn.className = "muted-note";
+      warn.style.marginTop = "6px";
+      warn.textContent = "Showing the first " + leagueList.length + " of " + r.total +
+        " matches. Search a team name to find one that isn't listed.";
+      host.appendChild(warn);
     }
   } catch { host.textContent = "App not reachable."; }
 }
 $("leagueLoad").addEventListener("click", loadLeagueMatches);
+$("leagueSearch").addEventListener("keydown", (e) => { if (e.key === "Enter") loadLeagueMatches(); });
 async function useLeagueMatch(matchId, fresh){
   const el = $("leagueActive");
   el.textContent = "loading match...";
@@ -894,11 +1021,17 @@ async function useLeagueMatch(matchId, fresh){
     const ta = (d.teams && d.teams[0]) || {}, tb = (d.teams && d.teams[1]) || {};
     $("nameA").value = ta.name || ""; $("nameB").value = tb.name || "";
     $("logoA").value = ta.logoUrl || ""; $("logoB").value = tb.logoUrl || "";
-    state.series.a = ta.seriesWins|0; state.series.b = tb.seriesWins|0;
+    // Circuit standings, straight from the API — these used to be typed by hand.
+    if (ta.record) $("recordA").value = ta.record;
+    if (tb.record) $("recordB").value = tb.record;
+    // Series score is the tonight's-series count, which the league doesn't
+    // track: a fresh match always starts 0-0 and the operator drives it.
+    state.series.a = 0; state.series.b = 0;
     $("seriesA").textContent = state.series.a; $("seriesB").textContent = state.series.b;
     if (d.event && d.event.composedTitle) $("eventTitle").value = d.event.composedTitle.toUpperCase();
     if (d.event && d.event.roundLabel) $("round").value = d.event.roundLabel.toUpperCase();
     if (d.scheduledDate) $("startTime").value = new Date(d.scheduledDate).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    fillPlayerNames(d);
     updateLogoPreview("A"); updateLogoPreview("B");
     leagueMatchId = d.matchId || matchId;
     el.textContent = "Filled from: " + ($("nameA").value || "?") + " vs " + ($("nameB").value || "?");
@@ -907,6 +1040,25 @@ async function useLeagueMatch(matchId, fresh){
   } catch { el.textContent = "App not reachable."; }
 }
 $("leagueRefresh").addEventListener("click", () => { if (leagueMatchId) useLeagueMatch(leagueMatchId, true); });
+
+/* Roster names into the goal-banner rows: team A takes slots 0-2, team B 3-5,
+ * so a 2v2 leaves a visible gap rather than interleaving the teams. All six are
+ * cleared first — loading a different match must not leave last match's players
+ * behind. Titles are only overwritten when the league actually has a role for
+ * that player, so hand-typed titles survive a refresh. */
+function fillPlayerNames(d){
+  const teams = (d && d.teams) || [];
+  for (let i = 0; i < 6; i++) $("pName" + i).value = "";
+  teams.forEach((team, side) => {
+    if (!team || !Array.isArray(team.players)) return;
+    team.players.slice(0, 3).forEach((p, i) => {
+      const slot = side * 3 + i;
+      if (slot > 5) return;
+      $("pName" + slot).value = p.name || "";
+      if (p.title) $("pTitle" + slot).value = p.title;
+    });
+  });
+}
 // ---- VDO.Ninja caster links: room -> push links (send to casters) + auto-fill the view feeds
 function sanitizeRoom(r){ return String(r || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40); }
 function generateVdo(){

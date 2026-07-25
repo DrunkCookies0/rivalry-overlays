@@ -1,0 +1,65 @@
+{
+  "id": "68a1f0c4e2b7431d9c001006",
+  "circuitName": "Summer 2026 - 3v3 Tier 3",
+  "seasonName": "Summer 2026",
+  "round": 2,
+  "isBye": false,
+  "isForfeitLoss": false,
+  "scheduledDate": "2026-07-14T02:00:00.000Z",
+  "team1": {
+    "rosterId": "68a1f0c4e2b7431d9c00a006",
+    "name": "SUNDOWN",
+    "logoUrl": "logo-a.png",
+    "wins": 1,
+    "losses": 3,
+    "players": [
+      {
+        "userId": "u-sun-1",
+        "name": "Perrin",
+        "teamRole": "captain",
+        "stats": null
+      },
+      {
+        "userId": "u-sun-2",
+        "name": "Lyric",
+        "teamRole": null,
+        "stats": null
+      },
+      {
+        "userId": "u-sun-3",
+        "name": "Crake",
+        "teamRole": null,
+        "stats": null
+      }
+    ]
+  },
+  "team2": {
+    "rosterId": "68a1f0c4e2b7431d9c00a005",
+    "name": "IRONCLAD",
+    "logoUrl": "logo-b.png",
+    "wins": 3,
+    "losses": 1,
+    "players": [
+      {
+        "userId": "u-iron-1",
+        "name": "Halvard",
+        "teamRole": "captain",
+        "stats": null
+      },
+      {
+        "userId": "u-iron-2",
+        "name": "Quill",
+        "teamRole": null,
+        "stats": null
+      },
+      {
+        "userId": "u-iron-3",
+        "name": "Bastion",
+        "teamRole": null,
+        "stats": null
+      }
+    ]
+  },
+  "createdAt": "2026-06-30T18:02:11.000Z",
+  "updatedAt": "2026-07-11T09:14:52.000Z"
+}

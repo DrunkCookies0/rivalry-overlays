@@ -1,0 +1,20 @@
+{
+  "id": "68a1f0c4e2b7431d9c001004",
+  "circuitName": "Summer 2026 - 3v3 West",
+  "seasonName": "Summer 2026",
+  "round": 3,
+  "isBye": true,
+  "isForfeitLoss": false,
+  "scheduledDate": null,
+  "team1": {
+    "rosterId": "68a1f0c4e2b7431d9c00a007",
+    "name": "HOLLOWPOINT",
+    "logoUrl": null,
+    "wins": 2,
+    "losses": 2,
+    "players": []
+  },
+  "team2": null,
+  "createdAt": "2026-06-30T18:02:11.000Z",
+  "updatedAt": "2026-07-11T09:14:52.000Z"
+}

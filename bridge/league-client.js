@@ -1,10 +1,23 @@
 /* =============================================================================
  * RIVALRY league API client  (main process)
  * -----------------------------------------------------------------------------
- * Talks to the rivalry-web /api/v1 surface described in LEAGUE-API-SPEC.md.
- * The match endpoints are specced but not live yet, so every response-shape
- * assumption is funneled through normalizeMatch(): if the backend ships a
- * slightly different shape, there is exactly ONE place to fix.
+ * Talks to the LIVE rivalry-web /api/v1 surface on therivalry.gg. Shapes here
+ * were taken from the published OpenAPI document (GET /api/docs/json) on
+ * 2026-07-25, not from the older request doc in LEAGUE-API-SPEC.md — the two
+ * disagree, and the live one wins. Every response-shape assumption is still
+ * funneled through normalizeMatch(): one place to fix when the backend moves.
+ *
+ * What is actually live (and what it means for the product):
+ *   POST /api/v1/matches/search   {search?, page, pageSize<=100}
+ *        Text search matches TEAM / ROSTER NAMES only. There is no circuit,
+ *        tier, region, week or date filter server-side, so the finder pulls
+ *        pages and groups by the circuitName each match carries. If the
+ *        backend ever adds real filters, they belong in listMatches().
+ *   GET  /api/v1/matches/{id}
+ *   GET  /api/v1/me               -> {message, keyName}
+ *
+ * Matches carry team wins/losses, so records fill themselves in; they were
+ * hand-entered before because the older spec had no such field.
  *
  * Design notes:
  *   - createLeagueClient({ getSettings }) takes a GETTER, not a settings
@@ -55,54 +68,66 @@ function str(v) {
   return "";
 }
 
+function num(v) {
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+}
+
 function normalizePlayer(rawPlayer) {
   const p = rawPlayer && typeof rawPlayer === "object" ? rawPlayer : {};
   return {
     userId: str(p.userId),
     name: str(p.name),
-    title: str(p.title), // P2, not modeled backend-side yet -> usually ""
-    badges: Array.isArray(p.badges)
-      ? p.badges.filter((b) => typeof b === "string").slice(0, 3) // spec cap: 3
-      : [],
-    avatarUrl: str(p.avatarUrl),
-    ranks: p.ranks && typeof p.ranks === "object" ? p.ranks : null,
+    // Live field is teamRole ("captain" etc.). Surfaced as `title` too because
+    // that is what the player-titles overlay binding already reads.
+    role: str(p.teamRole),
+    title: str(p.teamRole),
+    stats: p.stats && typeof p.stats === "object" ? p.stats : null,
   };
 }
 
+// A team, or null for the empty side of a bye. wins/losses are the team's
+// standing in the circuit, which is exactly the "4-1" record the scorebar wants.
 function normalizeTeam(rawTeam) {
-  const t = rawTeam && typeof rawTeam === "object" ? rawTeam : {};
+  if (!rawTeam || typeof rawTeam !== "object") return null;
+  const wins = num(rawTeam.wins);
+  const losses = num(rawTeam.losses);
   return {
-    rosterId: str(t.rosterId),
-    name: str(t.name),
-    logoUrl: str(t.logoUrl),
-    seriesWins: typeof t.seriesWins === "number" ? t.seriesWins : 0,
-    players: Array.isArray(t.players) ? t.players.map(normalizePlayer) : [],
+    rosterId: str(rawTeam.rosterId),
+    name: str(rawTeam.name),
+    logoUrl: str(rawTeam.logoUrl),
+    wins,
+    losses,
+    record: `${wins}-${losses}`,
+    players: Array.isArray(rawTeam.players) ? rawTeam.players.map(normalizePlayer) : [],
   };
 }
 
-// Pure. Accepts anything (including null / non-objects) and returns the full
+// Pure. Accepts anything (including null / non-objects) and returns the
 // overlay-side match shape with every field safely defaulted.
+//
+// teams stays a 2-slot ARRAY even though the API sends team1/team2: overlays,
+// the logo proxy and the control panel all think in side a / side b, and a bye
+// simply leaves slot b null rather than shifting everything up by one.
 function normalizeMatch(raw) {
   const src = raw && typeof raw === "object" ? raw : {};
-  const ev = src.event && typeof src.event === "object" ? src.event : {};
-  const season = str(ev.season);
-  const circuit = str(ev.circuit);
-  const tier = str(ev.tier);
-  const roundLabel = str(ev.roundLabel);
+  const season = str(src.seasonName);
+  const circuit = str(src.circuitName);
+  const round = typeof src.round === "number" && Number.isFinite(src.round) ? src.round : null;
+  const roundLabel = round === null ? "" : `Round ${round}`;
   return {
-    matchId: str(src.matchId),
-    status: str(src.status),
-    round: src.round == null ? null : src.round,
+    matchId: str(src.id),
+    round,
+    isBye: src.isBye === true,
+    isForfeitLoss: src.isForfeitLoss === true,
     event: {
       season,
       circuit,
-      tier,
       roundLabel,
       // Broadcast header line; empty segments are skipped, never " |  | ".
       composedTitle: [season, circuit, roundLabel].filter(Boolean).join(" | "),
     },
     scheduledDate: str(src.scheduledDate),
-    teams: Array.isArray(src.teams) ? src.teams.map(normalizeTeam) : [],
+    teams: [normalizeTeam(src.team1), normalizeTeam(src.team2)],
   };
 }
 
@@ -144,7 +169,8 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
     }
   }
 
-  async function apiGet(pathname, query) {
+  // Shared by apiGet/apiPost: resolve the URL, attach the key, read JSON.
+  async function apiRequest(pathname, { query, body } = {}) {
     const s = settings();
     // Checked BEFORE any network I/O: no key means we never even dial out.
     if (!s.apiKey) return { ok: false, error: "no-key" };
@@ -157,7 +183,13 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
     for (const [k, v] of Object.entries(query || {})) {
       if (v !== undefined && v !== null && v !== "") url.searchParams.set(k, String(v));
     }
-    const r = await fetchWithTimeout(url, { headers: { "x-api-key": s.apiKey } });
+    const init = { headers: { "x-api-key": s.apiKey } };
+    if (body !== undefined) {
+      init.method = "POST";
+      init.headers["Content-Type"] = "application/json";
+      init.body = JSON.stringify(body);
+    }
+    const r = await fetchWithTimeout(url, init);
     if (!r.ok) return r;
     if (!r.response.ok) return { ok: false, error: "http-" + r.response.status };
     try {
@@ -167,12 +199,59 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
     }
   }
 
+  const apiGet = (pathname, query) => apiRequest(pathname, { query });
+  const apiPost = (pathname, body) => apiRequest(pathname, { body: body || {} });
+
   // -- fixtures (mock mode) ----------------------------------------------
+
+  // Fixture dates are fixed points in time, so a month after they were written
+  // every mock match reads as "in the past" and the finder's Upcoming filter
+  // shows an empty list. Mock mode exists to demo the real flow, so slide the
+  // whole set forward as one block: the earliest match becomes tonight, and the
+  // spacing between matches (and which are same-night) is preserved exactly.
+  let mockShiftMs = null;
+  function mockDateShift() {
+    if (mockShiftMs !== null) return mockShiftMs;
+    mockShiftMs = 0;
+    try {
+      const all = JSON.parse(fs.readFileSync(path.join(FIXTURES_DIR, "matches.json"), "utf8"));
+      const times = (Array.isArray(all) ? all : [])
+        .map((m) => Date.parse(m && m.scheduledDate))
+        .filter((t) => !Number.isNaN(t));
+      if (!times.length) return mockShiftMs;
+      const tonight = new Date();
+      tonight.setHours(19, 0, 0, 0); // 7pm local, a normal match-night slot
+      mockShiftMs = tonight.getTime() - Math.min(...times);
+    } catch { /* leave the shift at zero; fixtures still load */ }
+    return mockShiftMs;
+  }
+  function shiftDates(value) {
+    const shift = mockDateShift();
+    if (!shift) return value;
+    const walk = (node) => {
+      if (Array.isArray(node)) return node.map(walk);
+      if (node && typeof node === "object") {
+        const out = {};
+        for (const [k, v] of Object.entries(node)) {
+          if (k === "scheduledDate" && typeof v === "string" && v) {
+            const t = Date.parse(v);
+            out[k] = Number.isNaN(t) ? v : new Date(t + shift).toISOString();
+          } else {
+            out[k] = walk(v);
+          }
+        }
+        return out;
+      }
+      return node;
+    };
+    return walk(value);
+  }
+
   function readFixtureJson(name) {
     const file = path.join(FIXTURES_DIR, name);
     if (!fs.existsSync(file)) return { ok: false, error: "mock-missing", detail: name };
     try {
-      return { ok: true, data: JSON.parse(fs.readFileSync(file, "utf8")) };
+      return { ok: true, data: shiftDates(JSON.parse(fs.readFileSync(file, "utf8"))) };
     } catch {
       return { ok: false, error: "bad-json", detail: name };
     }
@@ -180,25 +259,61 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
 
   // -- methods -------------------------------------------------------------
 
-  // Proves the key works. /api/v1/me is the intended route, but until the
-  // backend builds it (only users + user-ranks are live today) a 404 there
-  // says nothing about the key — so fall back to a known key-gated route.
+  // Proves the key works and reports which key it is (the league names them).
   async function validateKey() {
     const s = settings();
     if (isMock(s)) return { ok: true, data: { name: "Mock League", via: "mock" } };
     const me = await apiGet("/api/v1/me");
-    if (me.ok) return { ok: true, data: { name: (me.data && me.data.name) || null, via: "me" } };
-    if (me.error !== "http-404") return me;
-    const probe = await apiGet("/api/v1/users", { limit: 1 });
-    if (probe.ok) return { ok: true, data: { name: null, via: "users" } };
-    return probe;
+    if (!me.ok) return me;
+    return { ok: true, data: { name: (me.data && me.data.keyName) || null, via: "me" } };
   }
 
-  // query keys (status/from/to/...) pass straight through to the endpoint.
-  async function listMatches(query) {
+  // The finder's data source. `search` is the only filter the API has (team /
+  // roster names); everything else the panel offers is grouped client-side from
+  // the circuitName each match already carries.
+  //
+  // With no search term we page through the whole scheduled/pending set so the
+  // circuit list is complete — capped, and the cap is REPORTED (`truncated`)
+  // rather than silently hiding matches from a producer looking for theirs.
+  const PAGE_SIZE = 100;      // API maximum
+  const MAX_PAGES = 5;        // 500 matches; a season is far smaller
+
+  async function listMatches({ search = "", maxPages = MAX_PAGES } = {}) {
     const s = settings();
-    if (isMock(s)) return readFixtureJson("matches.json");
-    return apiGet("/api/v1/matches", query);
+    if (isMock(s)) {
+      const fixture = readFixtureJson("matches.json");
+      if (!fixture.ok) return fixture;
+      const all = Array.isArray(fixture.data) ? fixture.data : (fixture.data.data || []);
+      const term = String(search || "").trim().toLowerCase();
+      const data = term
+        ? all.filter((m) => [m.team1, m.team2].some((t) => t && String(t.name).toLowerCase().includes(term)))
+        : all;
+      return { ok: true, data, truncated: false, total: data.length };
+    }
+
+    const term = String(search || "").trim();
+    const out = [];
+    let total = 0;
+    let truncated = false;
+    // A search term is already narrow, so one page of it is plenty.
+    const pageLimit = term ? 1 : Math.max(1, maxPages);
+    for (let page = 1; page <= pageLimit; page++) {
+      const r = await apiPost("/api/v1/matches/search", {
+        ...(term ? { search: term } : {}),
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      if (!r.ok) return page === 1 ? r : { ok: true, data: out, truncated: true, total };
+      const body = r.data && typeof r.data === "object" ? r.data : {};
+      const batch = Array.isArray(body.data) ? body.data : [];
+      out.push(...batch);
+      const pg = body.pagination || {};
+      total = num(pg.total) || out.length;
+      const totalPages = num(pg.totalPages) || 1;
+      if (page >= totalPages || batch.length === 0) break;
+      if (page === pageLimit && page < totalPages) truncated = true;
+    }
+    return { ok: true, data: out, truncated, total };
   }
 
   async function getMatch(id, { fresh = false } = {}) {
@@ -233,8 +348,9 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
     }
     const match = await getMatch(matchId, { fresh });
     if (!match.ok) return match;
-    const teams = Array.isArray(match.data.teams) ? match.data.teams : [];
-    const team = teams[side === "a" ? 0 : 1];
+    // getMatch caches the RAW response (team1/team2), so normalize before
+    // indexing by side — this is why a/b never depended on API key order.
+    const team = normalizeMatch(match.data).teams[side === "a" ? 0 : 1];
     const logoUrl = team && typeof team.logoUrl === "string" ? team.logoUrl : "";
     const s = settings();
     if (!logoUrl) {

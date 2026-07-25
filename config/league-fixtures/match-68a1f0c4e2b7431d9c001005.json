@@ -1,0 +1,75 @@
+{
+  "id": "68a1f0c4e2b7431d9c001005",
+  "circuitName": "Summer 2026 - 2v2 East",
+  "seasonName": "Summer 2026",
+  "round": 4,
+  "isBye": false,
+  "isForfeitLoss": false,
+  "scheduledDate": "2026-07-20T23:00:00.000Z",
+  "team1": {
+    "rosterId": "68a1f0c4e2b7431d9c00a001",
+    "name": "FROST",
+    "logoUrl": "logo-a.png",
+    "wins": 4,
+    "losses": 1,
+    "players": [
+      {
+        "userId": "u-frost-1",
+        "name": "Kaidan",
+        "teamRole": "captain",
+        "stats": {
+          "goals": 21,
+          "assists": 9,
+          "saves": 17,
+          "shootingPercentage": 38.2,
+          "demosInflicted": 6,
+          "demosTaken": 4,
+          "goalsPerGame": 1.4,
+          "assistsPerGame": 0.6,
+          "savesPerGame": 1.13,
+          "demosPerGame": 0.4
+        }
+      },
+      {
+        "userId": "u-frost-2",
+        "name": "Vessel",
+        "teamRole": null,
+        "stats": {
+          "goals": 21,
+          "assists": 9,
+          "saves": 17,
+          "shootingPercentage": 38.2,
+          "demosInflicted": 6,
+          "demosTaken": 4,
+          "goalsPerGame": 1.4,
+          "assistsPerGame": 0.6,
+          "savesPerGame": 1.13,
+          "demosPerGame": 0.4
+        }
+      }
+    ]
+  },
+  "team2": {
+    "rosterId": "68a1f0c4e2b7431d9c00a003",
+    "name": "NOVA",
+    "logoUrl": "logo-a.png",
+    "wins": 5,
+    "losses": 0,
+    "players": [
+      {
+        "userId": "u-nova-1",
+        "name": "Ashwing",
+        "teamRole": "captain",
+        "stats": null
+      },
+      {
+        "userId": "u-nova-2",
+        "name": "Tidebreak",
+        "teamRole": null,
+        "stats": null
+      }
+    ]
+  },
+  "createdAt": "2026-06-30T18:02:11.000Z",
+  "updatedAt": "2026-07-11T09:14:52.000Z"
+}

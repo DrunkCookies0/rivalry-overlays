@@ -245,9 +245,42 @@ function createApiRouter(ctx) {
       });
       return true;
     }
+    // The match finder. The league API can only text-search team names, so
+    // everything else a producer wants to narrow by (which circuit, which
+    // round, is it tonight) is derived HERE from fields every match carries,
+    // and handed to the panel already grouped. Doing it in the main process
+    // means one request per search instead of the panel paging the API itself.
     if (urlPath === "/league/matches") {
-      client.listMatches(Object.fromEntries(leagueQuery(req))).then((r) => {
-        sendJson(res, r.ok ? 200 : 502, r);
+      const q = leagueQuery(req);
+      const search = q.get("search") || "";
+      client.listMatches({ search }).then((r) => {
+        if (!r.ok) return sendJson(res, 502, r);
+        const { normalizeMatch } = require("./league-client");
+        const data = (r.data || []).map(normalizeMatch);
+        // Soonest first; matches with no date (byes, unscheduled) sink to the
+        // bottom rather than sorting as epoch 0 at the top.
+        data.sort((a, b) => {
+          const ta = a.scheduledDate ? Date.parse(a.scheduledDate) : Infinity;
+          const tb = b.scheduledDate ? Date.parse(b.scheduledDate) : Infinity;
+          return (Number.isNaN(ta) ? Infinity : ta) - (Number.isNaN(tb) ? Infinity : tb);
+        });
+        const circuits = [];
+        const rounds = new Set();
+        for (const m of data) {
+          if (m.event.circuit && !circuits.includes(m.event.circuit)) circuits.push(m.event.circuit);
+          if (m.round !== null) rounds.add(m.round);
+        }
+        sendJson(res, 200, {
+          ok: true,
+          data,
+          circuits,
+          rounds: [...rounds].sort((a, b) => a - b),
+          total: r.total || data.length,
+          // True when the API had more pages than we pulled. Surfaced so the
+          // panel can say so instead of pretending this is the whole schedule.
+          truncated: !!r.truncated,
+          searched: search,
+        });
       });
       return true;
     }
