@@ -50,7 +50,7 @@ Pick one environment:
 ### OBS import
 
 - [ ] OBS: Scene Collection menu, Import, pick the downloaded file: import succeeds.
-- [ ] All 8 scenes are present: Starting Soon, Match Preview, Casters, Gameplay, Post-Game Results, Up Next, Be Right Back, Bracket.
+- [ ] All 7 scenes are present, in broadcast order: Starting Soon, Casters, Match Preview, Gameplay (Live), Post-Game Results, Up Next, Be Right Back.
 - [ ] Each scene has its browser source, pointed at `http://localhost:49080/overlays/...`, 1920x1080.
 - [ ] Presentation scenes (Starting Soon, BRB) render, not blank.
 - [ ] **[RL]** Start a match or freeplay and spectate/play: the Gameplay scene shows live data. There is no mock on a clean machine (no npm), so this check needs real RL. Note: the gameplay scene shows live data only during a match; blank outside one is correct.

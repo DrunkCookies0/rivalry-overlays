@@ -1,6 +1,6 @@
 # RIVALRY Overlay
 
-A Rocket League broadcast suite for league play, shipped as a single Windows installer. It reads Rocket League's official Stats API (Psyonix's sanctioned broadcast interface), so it is EAC-safe: no mods, no injection, nothing touches the game. One install gives you 8 broadcast scenes, a control panel that docks inside OBS, and OBS integration that can build and switch your scenes for you.
+A Rocket League broadcast suite for league play, shipped as a single Windows installer. It reads Rocket League's official Stats API (Psyonix's sanctioned broadcast interface), so it is EAC-safe: no mods, no injection, nothing touches the game. One install gives you 7 broadcast scenes, a control panel that docks inside OBS, and OBS integration that can build and switch your scenes for you.
 
 ---
 
@@ -15,7 +15,7 @@ This section is for broadcast producers. Total time: about five minutes.
 | Step | What the app does | What you do |
 |---|---|---|
 | 1. Rocket League | Writes RL's stats config file automatically, then waits for the game. | Restart Rocket League once. The wizard shows "waiting for Rocket League", then goes green. |
-| 2. OBS | Offers a ready-made OBS scene collection (also available from the control panel). | Download it, then in OBS: **Scene Collection** menu, **Import**. All 8 scenes arrive pre-wired. Alternative: connect obs-websocket and click **Create all OBS scenes**. |
+| 2. OBS | Offers a ready-made OBS scene collection (also available from the control panel). | Download it, then in OBS: **Scene Collection** menu, **Import**. All 7 scenes arrive pre-wired. Alternative: connect obs-websocket and click **Create all OBS scenes**. |
 | 3. Control panel | Shows you the panel URL. | In OBS: **Docks**, **Custom Browser Docks**, add `http://localhost:49080/`. Or open that URL in any browser. |
 
 That is the whole setup. To re-run the wizard at any time: tray icon, **Setup guide**.
@@ -26,7 +26,7 @@ The app lives in the system tray and starts with Windows by default, so it is re
 
 ## Running a broadcast
 
-### The 8 scenes
+### The 7 scenes
 
 Each scene is a 1920x1080 OBS Browser Source. The pre-made scene collection wires all of them; URLs are also one click away in the panel's Scenes card.
 

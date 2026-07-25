@@ -108,6 +108,21 @@
     </div>
   </div>
 
+  <div class="card full" id="queueCard" style="margin-bottom:18px;">
+    <h2>Match queue <span class="muted-note">(line up the night's series, then load each one when it starts)</span></h2>
+    <div class="row" style="gap:8px;margin-bottom:8px;">
+      <button class="mini" id="queueAddCurrent" type="button">Add current teams as a series</button>
+      <button class="mini" id="queueNext" type="button">Load next series</button>
+      <div style="flex:1"></div>
+      <button class="mini" id="queueClear" type="button">Clear queue</button>
+    </div>
+    <div id="queueList"></div>
+    <div class="muted-note" style="margin-top:8px;">
+      Loading a series fills the team fields below and resets the series score to 0-0. The queue is saved with everything
+      else, so it survives restarting the app.
+    </div>
+  </div>
+
   <div class="grid">
     <div class="card">
       <h2>Team A (Blue)</h2>
@@ -308,7 +323,7 @@
       </div>
       <div id="obsSetupResult" class="muted-note" style="margin-top:8px;"></div>
       <div class="muted-note" style="margin-top:8px;">
-        One click builds a new <b style="color:var(--ink)">RIVALRY Overlays</b> collection in OBS with all 8 scenes and sources wired. Your other collections are left alone.
+        One click builds a new <b style="color:var(--ink)">RIVALRY Overlays</b> collection in OBS with all 7 scenes and sources wired. Your other collections are left alone.
         No OBS WebSocket? <a href="/obs/scene-collection.json" download="rivalry-overlays.json" style="color:var(--accent);">Download the scene collection</a> and import it (OBS: Scene Collection menu, Import).
       </div>
       <div class="muted-note" style="margin-top:12px;">Scene deck — click to switch OBS live (needs "Create OBS scene" run + OBS connected):</div>
@@ -350,7 +365,7 @@
 const CONTROL_WS = "ws://localhost:49777";
 let ws = null, connected = false;
 const $ = (id) => document.getElementById(id);
-const state = { series:{a:0,b:0} };
+const state = { series:{a:0,b:0}, queue:[], queueActive:null };
 
 // Fetch + render the build label (e.g. "v0.2.0-beta (a3b9c1d)") in the
 // header so a producer can tell installed builds apart at a glance.
@@ -418,10 +433,97 @@ function payload(){
       startTime: $("startTime").value,
       casters: gatherCasters(),
       upNext: gatherUpNext(),
-      players: gatherPlayers()
+      players: gatherPlayers(),
+      // Producer rundown. Additive optional contract field; overlays ignore it.
+      queue: state.queue
     }
   };
 }
+
+// ---- Match queue ------------------------------------------------------------
+// The night's series, lined up in advance. Entries can come from a league match
+// or from whatever is typed in the panel right now, so it works before the
+// league endpoints exist and for non-league events.
+function teamSnapshot(side){
+  return {
+    name: $("name"+side).value.trim(), logo: $("logo"+side).value.trim(),
+    tag: $("tag"+side).value.trim(), seed: $("seed"+side).value.trim(),
+    record: $("record"+side).value.trim(),
+  };
+}
+function queueAdd(entry){
+  if (!entry) return;
+  entry.id = entry.id || ("s" + Date.now() + Math.floor(Math.random() * 1000));
+  state.queue.push(entry);
+  renderQueue(); push();
+}
+function queueRemove(i){ state.queue.splice(i, 1); renderQueue(); push(); }
+function queueLoad(i){
+  const e = state.queue[i];
+  if (!e) return;
+  const a = e.teamA || {}, b = e.teamB || {};
+  setVal("nameA", a.name); setVal("logoA", a.logo); setVal("tagA", a.tag); setVal("seedA", a.seed); setVal("recordA", a.record);
+  setVal("nameB", b.name); setVal("logoB", b.logo); setVal("tagB", b.tag); setVal("seedB", b.seed); setVal("recordB", b.record);
+  if (e.bestOf) setVal("bestOf", e.bestOf);
+  if (e.round) setVal("round", e.round);
+  if (e.startTime) setVal("startTime", e.startTime);
+  // A freshly loaded series always starts level.
+  state.series.a = 0; state.series.b = 0;
+  $("seriesA").textContent = "0"; $("seriesB").textContent = "0";
+  state.queueActive = e.id;
+  if (e.matchId) leagueMatchId = e.matchId;
+  updateLogoPreview("A"); updateLogoPreview("B");
+  renderQueue(); push();
+}
+function queueNext(){
+  if (!state.queue.length) return;
+  let idx = state.queue.findIndex(e => e.id === state.queueActive);
+  queueLoad(idx < 0 ? 0 : Math.min(idx + 1, state.queue.length - 1));
+}
+function renderQueue(){
+  const host = $("queueList");
+  host.innerHTML = "";
+  if (!state.queue.length){
+    host.innerHTML = '<span class="muted-note">Queue is empty. Add the teams you have typed in below, or add matches from the league card.</span>';
+    return;
+  }
+  state.queue.forEach((e, i) => {
+    const a = (e.teamA && e.teamA.name) || "TBD", b = (e.teamB && e.teamB.name) || "TBD";
+    const row = document.createElement("div");
+    row.className = "scene-row";
+    const nm = document.createElement("span");
+    nm.className = "nm"; nm.style.minWidth = "90px";
+    nm.textContent = "Series " + (i + 1);
+    row.appendChild(nm);
+    if (e.id === state.queueActive){
+      const pill = document.createElement("span");
+      pill.className = "pill ok"; pill.textContent = "on air";
+      row.appendChild(pill);
+    }
+    const info = document.createElement("span");
+    info.className = "muted-note"; info.style.flex = "1";
+    info.textContent = a + " vs " + b + [e.bestOf ? "BO" + e.bestOf : "", e.round || "", e.startTime || ""]
+      .filter(Boolean).map(s => "  ·  " + s).join("");
+    row.appendChild(info);
+    const load = document.createElement("button");
+    load.className = "mini"; load.textContent = "Load";
+    load.addEventListener("click", () => queueLoad(i));
+    row.appendChild(load);
+    const del = document.createElement("button");
+    del.className = "mini"; del.textContent = "Remove";
+    del.addEventListener("click", () => queueRemove(i));
+    row.appendChild(del);
+    host.appendChild(row);
+  });
+}
+$("queueAddCurrent").addEventListener("click", () => queueAdd({
+  teamA: teamSnapshot("A"), teamB: teamSnapshot("B"),
+  bestOf: parseInt($("bestOf").value, 10) || 5,
+  round: $("round").value.trim(), startTime: $("startTime").value.trim(),
+  matchId: leagueMatchId || "",
+}));
+$("queueNext").addEventListener("click", queueNext);
+$("queueClear").addEventListener("click", () => { state.queue = []; state.queueActive = null; renderQueue(); push(); });
 function push(){
   if (connected && ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload()));
 }
@@ -562,6 +664,7 @@ function hydrateControlForm(p){
   const pl = Array.isArray(p.players) ? p.players : [];
   for (let i = 0; i < 6; i++){ const q = pl[i] || {};
     setVal("pName"+i, q.name); setVal("pTitle"+i, q.title); setVal("pBadges"+i, (q.badges || []).join(", ")); }
+  if (Array.isArray(p.queue)){ state.queue = p.queue; renderQueue(); }
   updateLogoPreview("A"); updateLogoPreview("B");
 }
 
@@ -719,9 +822,19 @@ async function loadLeagueMatches(){
       const when = m.scheduledDate ? new Date(m.scheduledDate).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
       info.textContent = [m.season, m.circuit, m.tier, m.status, when].filter(Boolean).join(" · ");
       const useBtn = document.createElement("button");
-      useBtn.className = "mini"; useBtn.textContent = "Use this match";
+      useBtn.className = "mini"; useBtn.textContent = "Use now";
       useBtn.addEventListener("click", () => useLeagueMatch(m.matchId));
-      row.appendChild(nm); row.appendChild(info); row.appendChild(useBtn);
+      // Queue it for later instead of cutting to it immediately.
+      const qBtn = document.createElement("button");
+      qBtn.className = "mini"; qBtn.textContent = "Add to queue";
+      qBtn.addEventListener("click", () => queueAdd({
+        matchId: m.matchId,
+        teamA: { name: (t[0] && t[0].name) || "", logo: "", tag: "", seed: "", record: "" },
+        teamB: { name: (t[1] && t[1].name) || "", logo: "", tag: "", seed: "", record: "" },
+        round: [m.season, m.circuit, m.tier].filter(Boolean).join(" | "),
+        startTime: when,
+      }));
+      row.appendChild(nm); row.appendChild(info); row.appendChild(qBtn); row.appendChild(useBtn);
       host.appendChild(row);
     }
   } catch { host.textContent = "App not reachable."; }
@@ -852,6 +965,7 @@ $("resetSeries").addEventListener("click", () => {
 });
 
 renderScenes();
+renderQueue();
 
 connect();
 </script>

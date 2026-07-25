@@ -9,6 +9,9 @@ LeagueOS/
 RIVALRY-web/
 rockpload/
 Recordings/
+# Raw designer drops (Moldybanana's Summer 2026 art). Only the ported, signed
+# scenes + optimized art get committed — the raw folder is 35MB of dupes.
+Moldy_Overlays/
 *.exe
 *.mp4
 
