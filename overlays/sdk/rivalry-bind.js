@@ -23,11 +23,42 @@
     return path.split(".").reduce(function (o, k) { return o == null ? undefined : o[k]; }, obj);
   }
 
-  function apply(root, data) {
+  // True when the control payload actually carries the group this field belongs
+  // to — i.e. the producer owns it and has left it blank, as opposed to the
+  // scene binding something the control feed never sends.
+  //
+  // This is the difference between two very different situations:
+  //   teamA.tag         -> payload.teamA exists, tag is blank  -> render blank
+  //   brand.leagueName  -> payload has no brand at all         -> keep "RIVALRY"
+  //
+  // Without the distinction, a blank field broadcasts the designer's mock text:
+  // a 3v3 Europe match went out with "NA" on both teams because the producer
+  // had left the region tag empty. Clearing everything instead wiped the league
+  // wordmark off the scene. Only the owned-and-blank case gets cleared.
+  function ownedByPayload(data, path) {
+    var parts = path.split(".");
+    if (parts.length === 1) return data != null && typeof data === "object";
+    var parent = resolve(data, parts.slice(0, -1).join("."));
+    return parent != null && typeof parent === "object";
+  }
+
+  function apply(root, data, live) {
     root.querySelectorAll("[data-field]").forEach(function (el) {
-      var v = resolve(data, el.getAttribute("data-field"));
-      if (v != null && v !== "") el.textContent = String(v);
-      // leave the markup's default text in place when a field is absent/empty
+      var path = el.getAttribute("data-field");
+      var v = resolve(data, path);
+      if (v != null && v !== "") {
+        el.textContent = String(v);
+        if (el.dataset.rvCleared) { el.style.display = el.dataset.rvDisplay || ""; delete el.dataset.rvCleared; }
+      } else if (live && ownedByPayload(data, path)) {
+        // Hidden as well as emptied: a chip or pill with padding still paints a
+        // visible sliver when its text is removed.
+        if (!el.dataset.rvCleared) {
+          el.dataset.rvDisplay = el.style.display || "";
+          el.dataset.rvCleared = "1";
+        }
+        el.textContent = "";
+        el.style.display = "none";
+      }
     });
     root.querySelectorAll("[data-mono]").forEach(function (el) {
       var v = resolve(data, el.getAttribute("data-mono"));
@@ -59,10 +90,10 @@
   global.RivalryBind = function (root, rl, oneShot) {
     if (!root) return;
     if (rl && typeof rl.onControl === "function") {
-      rl.onControl(function (payload) { apply(root, payload || {}); });
+      rl.onControl(function (payload) { apply(root, payload || {}, true); });
     } else if (oneShot) {
-      apply(root, oneShot);
+      apply(root, oneShot, true);
     }
-    return { apply: function (d) { apply(root, d); } };
+    return { apply: function (d) { apply(root, d, true); } };
   };
 })(typeof window !== "undefined" ? window : this);
