@@ -46,6 +46,7 @@ const fs = require("fs");
 const path = require("path");
 
 const { DEFAULTS } = require("./league-settings");
+const license = require("./license");
 
 // Fixtures resolve relative to this module, not cwd, so mock mode works the
 // same from the packaged app, `node --test`, and a dev shell.
@@ -283,6 +284,13 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
   async function validateKey() {
     const s = settings();
     if (isMock(s)) return { ok: true, data: { name: "Mock League", via: "mock" } };
+    // Two different keys exist in this app and they go in different boxes. A
+    // Casterverse access key pasted here would come back as a plain 401 —
+    // "the league rejected your key" — which sends someone off checking a key
+    // that was never the problem. Name it instead, before any network call.
+    if (String(s.apiKey).startsWith(license.PREFIX + ".")) {
+      return { ok: false, error: "access-key-here" };
+    }
     const me = await apiGet("/api/v1/me");
     if (!me.ok) return me;
     return { ok: true, data: { name: (me.data && me.data.keyName) || null, via: "me" } };

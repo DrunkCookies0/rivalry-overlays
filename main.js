@@ -46,6 +46,7 @@ const { migrateUserData } = require("./bridge/userdata-migrate");
 const license = require("./bridge/license");
 const licenseStore = require("./bridge/license-store");
 const { createRevocationStore } = require("./bridge/revocation");
+const portOwner = require("./bridge/port-owner");
 
 const HTTP_PORT = 49080;
 // Gameplay overlay now lives in the multi-scene tree (overlays/rivalry-gameplay,
@@ -287,11 +288,14 @@ let portConflictShown = false;
 function reportPortConflict(port, what) {
   if (portConflictShown) return;
   portConflictShown = true;
+  // Name the program holding the port. Nearly always an older version of this
+  // app, still installed and auto-starting with Windows — which makes a fresh
+  // install of the renamed build come up dead with nothing to go on.
+  const owner = portOwner.findPortOwner(port);
+  if (owner.name) console.error(`[rivalry] port ${port} held by ${owner.name} (pid ${owner.pid})`);
   dialog.showErrorBox(
     `${APP_TITLE} - port ${port} in use`,
-    `The ${what} could not start because port ${port} is already taken.\n\n` +
-    `Is another overlay app (or a second copy of this one) running?\n` +
-    `Close it, then restart ${APP_TITLE}.`
+    portOwner.portConflictMessage(port, what, owner, APP_TITLE, path.basename(process.execPath))
   );
 }
 // Live updater status shown as a row in the tray menu. Without this the

@@ -181,3 +181,11 @@ test("malformed lists fail closed on the LIST, not on the app", () => {
     assert.deepEqual(r.revoked, [], "an unreadable list must revoke nobody, not everybody");
   }
 });
+
+test("pasting the league API key into the access-key box names the mistake", () => {
+  // Both keys arrive in the same Discord message. Telling someone "that doesn't
+  // look like a key" sends them checking the wrong thing.
+  const r = verifyKey("rv_b0b0a31acfb76ef4b46a4866a3eeab966b4a4de1", pair.publicKeyPem);
+  assert.equal(r.valid, false);
+  assert.match(r.reason, /league API key/);
+});

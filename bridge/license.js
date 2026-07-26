@@ -97,6 +97,10 @@ function verifyKey(key, publicKeyPem, { now = Date.now(), revoked = null } = {})
   if (!raw) return { valid: false, reason: "no key entered" };
   if (!publicKeyPem) return { valid: false, reason: "this build has no license public key" };
 
+  // The other key in this app. Naming it beats "that doesn't look like a key".
+  if (raw.startsWith("rv_")) {
+    return { valid: false, reason: "that's your league API key — it goes in the League card, not here" };
+  }
   const parts = raw.split(".");
   if (parts.length !== 3 || parts[0] !== PREFIX) {
     return { valid: false, reason: "that does not look like a Casterverse key (expected RCV1.…)" };

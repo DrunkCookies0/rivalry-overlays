@@ -349,3 +349,22 @@ test("circuit names don't put the season on the broadcast header twice", () => {
   // Circuit that IS the season: blank, so the title says it once.
   assert.equal(t("Summer 2026", "Summer 2026").composedTitle, "Summer 2026 | Round 1");
 });
+
+test("pasting the access key into the league-key box is named, not sent", async () => {
+  // The inverse mistake. Sending it would return a plain 401 and the panel
+  // would blame the league key, which was never the problem.
+  const realFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls++; throw new Error("must not dial out"); };
+  try {
+    const client = createLeagueClient({
+      getSettings: () => ({ apiKey: "RCV1.eyJ2IjoxfQ.sig", baseUrl: "https://therivalry.gg", mock: false }),
+    });
+    const r = await client.validateKey();
+    assert.equal(r.ok, false);
+    assert.equal(r.error, "access-key-here");
+    assert.equal(calls, 0, "no point asking the league about a key that isn't theirs");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

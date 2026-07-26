@@ -95,7 +95,7 @@
       Overlay scenes stay off until this copy is activated with the access key you were issued.
     </div>
     <div class="row" style="gap:8px;align-items:flex-end;">
-      <div style="flex:2"><label>Access key</label><input type="text" id="licenseKey" placeholder="RCV1...." spellcheck="false" autocomplete="off" /></div>
+      <div style="flex:2"><label>Access key <span class="muted-note">— starts with RCV1, issued to you by RIVALRY</span></label><input type="text" id="licenseKey" placeholder="RCV1.…" spellcheck="false" autocomplete="off" /></div>
       <button class="mini" id="licenseActivate" type="button">Activate</button>
       <div id="licenseStatus" class="muted-note" style="align-self:center;flex:2;">checking…</div>
     </div>
@@ -121,7 +121,7 @@
   <div class="card full" id="leagueCard" style="display:none;margin-bottom:18px;border-left:3px solid var(--accent);">
     <h2>Find your match <span class="muted-note">(team names, logos and records fill in from the league)</span></h2>
     <div class="row" style="gap:8px;align-items:flex-end;">
-      <div style="flex:2"><label>League API key (stored on this machine only)</label><input type="password" id="leagueKey" placeholder="paste your key, then Save" /></div>
+      <div style="flex:2"><label>League API key <span class="muted-note">— starts with rv_, from the league site</span></label><input type="password" id="leagueKey" placeholder="rv_…" /></div>
       <button class="mini" id="leagueSaveKey" type="button">Save key</button>
       <div id="leagueStatus" class="muted-note" style="align-self:center;flex:2;">checking…</div>
     </div>
@@ -847,6 +847,7 @@ document.querySelectorAll("#modeToggle .seg-btn").forEach(b =>
 
 function leagueErrorText(err){
   if (err === "no-key") return "No key saved. Paste your league API key above.";
+  if (err === "access-key-here") return "That's your Casterverse access key. This box wants the league API key (starts with rv_).";
   if (err === "http-401") return "Key rejected by the league site. Check it and save again.";
   if (err === "http-404") return "The league match API is not live yet. Use Manual mode for now.";
   if (err === "network") return "Can't reach the league site. Check your internet connection.";
@@ -864,7 +865,18 @@ async function refreshLeagueStatus(){
 }
 $("leagueSaveKey").addEventListener("click", () => {
   if (!(connected && ws.readyState === ws.OPEN)) return;
-  ws.send(JSON.stringify({ type: "league-settings", payload: { apiKey: $("leagueKey").value } }));
+  const key = $("leagueKey").value.trim();
+  const el = $("leagueStatus");
+  // The app has two keys and they look nothing alike, so say which one this is
+  // rather than storing it and reporting the league's 401 back as "your key was
+  // rejected" — that sends people off re-checking a key that was never at fault.
+  if (key.startsWith("RCV1.")) {
+    el.style.color = "#f1c40f";
+    el.textContent = "That's your Casterverse access key. This box wants the league API key (starts with rv_).";
+    return;
+  }
+  el.style.color = "";
+  ws.send(JSON.stringify({ type: "league-settings", payload: { apiKey: key } }));
   $("leagueKey").value = "";
   setTimeout(refreshLeagueStatus, 500);
 });
