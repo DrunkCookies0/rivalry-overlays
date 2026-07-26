@@ -26,6 +26,62 @@ Pick one environment:
 
 ---
 
+## The five-minute drill (run this one first)
+
+The whole point of the product: hand someone the installer, they are streaming in
+five minutes. Time it with a stopwatch, on a profile that has never run the app.
+If a step needs explaining out loud, that step is the bug.
+
+Before starting, from the repo: `npm run key:issue -- --name "Drill"` and keep
+the key on the clipboard. You also need a league API key.
+
+| # | Do this | Expect | Time |
+|---|---------|--------|------|
+| 1 | Run `RIVALRY-Casterverse-Setup-<version>.exe` | Installs with no wizard, no UAC, app opens on its own | |
+| 2 | The window is on **Enter your access key** | Wizard is gated — no scene list, no steps visible yet | |
+| 3 | Paste the key, click **ACTIVATE** | "Activated for Drill", wizard appears | |
+| 4 | Step 1, Rocket League **[RL]** | Green once RL has been launched once and restarted | |
+| 5 | Step 2, click **SET UP OBS FOR ME** | 5 ticks go green; OBS starts if closed; 7 scenes built. **No password is ever requested** | |
+| 6 | Step 3, copy the dock URL into OBS (Docks, Custom Browser Docks) | Control panel appears inside OBS | |
+| 7 | Click **FINISH SETUP** | Lands on the control panel | |
+| 8 | Switch to **Match (league)**, paste the league API key, **Save key** | "Key OK ••••xxxx" | |
+| 9 | Click **Find matches** | Real matches, circuit chips, records | |
+| 10 | Click **Use now** on one | Team names, logos, records and rosters fill in | |
+| 11 | In OBS, switch to **RIVALRY - Starting Soon** | Both teams, their logos and records, on air | |
+
+**Stop the clock at step 11.** Anything past five minutes is a finding, not a
+pass.
+
+### Things that have actually gone wrong here
+
+- **Stale copies of the app running.** The single-instance lock means a second
+  launch quietly hands off to the one already running, so you can test a build
+  that isn't the one you just made. Check with
+  `tasklist /FI "IMAGENAME eq RIVALRY Casterverse.exe"` and kill all of them
+  before a run.
+- **Not a real first run.** Delete `%AppData%\RIVALRY Casterverse\` (or at least
+  `license.json`, `league-settings.json`, `obs-settings.json`,
+  `control-state.json`, `.setup-complete`) or the wizard is skipped and the
+  activation gate never shows.
+- **OBS stuck behind a dialog.** After an unclean shutdown OBS opens a "Crash
+  Detected" prompt and never opens its websocket, so step 5 times out. Answer
+  the dialog and retry — the app deliberately doesn't clear OBS's crash marker.
+- **Placeholder text on air.** Blank fields must render blank. If a scene shows
+  "NA", "12-3" or any other sample value that the panel doesn't contain, that is
+  a bug (see `rivalry-bind.js`).
+
+### Access keys
+
+| Check | Expect |
+|---|---|
+| Launch with no key entered | Every overlay URL serves an "activation required" card, not a black frame |
+| Enter a nonsense key | Refused with a readable reason, nothing stored |
+| `npm run key:revoke -- --name "Drill"`, push, relaunch the app | Overlays go back to the activation card, naming who the key belonged to |
+| `npm run key:revoke -- --name "Drill" --undo`, push, relaunch | Works again |
+| Pull the network cable, relaunch | Still works — the revocation check fails open by design |
+
+---
+
 ## Checklist
 
 ### Install
