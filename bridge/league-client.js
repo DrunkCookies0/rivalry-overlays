@@ -114,6 +114,25 @@ function normalizeMatch(raw) {
   const circuit = str(src.circuitName);
   const round = typeof src.round === "number" && Number.isFinite(src.round) ? src.round : null;
   const roundLabel = round === null ? "" : `Round ${round}`;
+  // Live circuit names carry their own season prefix: seasonName is
+  // "Summer Circuit 2026" while circuitName is "Summer 2026 | 3v3 US-East".
+  // Composing the two verbatim put a season on the broadcast header twice
+  // ("Summer Circuit 2026 | Summer 2026 | 3v3 US-East"). circuitShort is the
+  // part that actually identifies the circuit; it feeds the header line and the
+  // panel's filter chips, while event.circuit keeps the untouched original.
+  let circuitShort = circuit;
+  if (season && circuit.toLowerCase().startsWith(season.toLowerCase())) {
+    // Empty remainder means the circuit IS the season; leave it blank so the
+    // header line doesn't print the season twice. Callers fall back to the
+    // full circuit name for labels.
+    circuitShort = circuit.slice(season.length).replace(/^\s*[|\-–—:]\s*/, "").trim();
+  } else if (circuit.includes("|")) {
+    // Drop a leading segment only when it reads like a season (carries a
+    // year), so a circuit legitimately named "Open | Qualifier" keeps both
+    // halves.
+    const [head, ...rest] = circuit.split("|");
+    if (rest.length && /\b(19|20)\d{2}\b/.test(head)) circuitShort = rest.join("|").trim();
+  }
   return {
     matchId: str(src.id),
     round,
@@ -122,9 +141,10 @@ function normalizeMatch(raw) {
     event: {
       season,
       circuit,
+      circuitShort,
       roundLabel,
       // Broadcast header line; empty segments are skipped, never " |  | ".
-      composedTitle: [season, circuit, roundLabel].filter(Boolean).join(" | "),
+      composedTitle: [season, circuitShort, roundLabel].filter(Boolean).join(" | "),
     },
     scheduledDate: str(src.scheduledDate),
     teams: [normalizeTeam(src.team1), normalizeTeam(src.team2)],

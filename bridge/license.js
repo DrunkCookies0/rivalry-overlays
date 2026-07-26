@@ -37,7 +37,7 @@
 
 const crypto = require("crypto");
 
-const { generateKeys, keyId } = require("./overlay-signing");
+const { generateKeys, keyId, stableStringify } = require("./overlay-signing");
 
 const PREFIX = "RCV1";
 const TIERS = ["caster", "producer", "staff", "dev"];
@@ -88,9 +88,11 @@ function issueKey(fields, privateKeyPem) {
 /**
  * Verify a key. App side — needs only the public PEM (which ships).
  * Never throws; every failure is a {valid:false, reason} the UI can show.
+ * @param {object} [opts]
+ * @param {Set<string>|string[]} [opts.revoked] key ids that have been withdrawn
  * @returns {{valid:boolean, reason:string, payload?:object}}
  */
-function verifyKey(key, publicKeyPem, { now = Date.now() } = {}) {
+function verifyKey(key, publicKeyPem, { now = Date.now(), revoked = null } = {}) {
   const raw = String(key || "").trim();
   if (!raw) return { valid: false, reason: "no key entered" };
   if (!publicKeyPem) return { valid: false, reason: "this build has no license public key" };
@@ -124,6 +126,13 @@ function verifyKey(key, publicKeyPem, { now = Date.now() } = {}) {
   }
   if (!ok) return { valid: false, reason: "key is not valid for this app (wrong or edited key)" };
 
+  // Revocation is checked after the signature, so a forged key can't name a
+  // revoked id to imply it was ever real.
+  if (revoked && payload.id) {
+    const has = typeof revoked.has === "function" ? revoked.has(payload.id) : revoked.includes(payload.id);
+    if (has) return { valid: false, reason: "this key has been withdrawn — ask about a new one", payload };
+  }
+
   if (payload.exp) {
     const until = endOfDayUtc(payload.exp);
     if (until === null) return { valid: false, reason: "key has an unreadable expiry date" };
@@ -131,6 +140,70 @@ function verifyKey(key, publicKeyPem, { now = Date.now() } = {}) {
   }
 
   return { valid: true, reason: "active", payload };
+}
+
+// ---------------------------------------------------------------------------
+// Revocation list
+// ---------------------------------------------------------------------------
+// A signed list of withdrawn key ids. Because it is signed with the same
+// private key as the access keys themselves, it can be published anywhere —
+// a static file on any web server, or the public repo — without needing a
+// service to run or a host to be trusted. Nobody but the key holder can forge
+// or edit one.
+
+const REVOCATION_VERSION = 1;
+
+// The exact bytes that get signed. Sorting the ids means the same set always
+// produces the same signature input regardless of the order they were added.
+function revocationMessage({ updated, revoked }) {
+  return stableStringify({
+    v: REVOCATION_VERSION,
+    updated: String(updated || ""),
+    revoked: [...new Set((revoked || []).map(String))].sort(),
+  });
+}
+
+/** Issuer side. @returns {object} the full list document, ready to publish. */
+function signRevocationList({ revoked = [], updated }, privateKeyPem) {
+  const doc = {
+    v: REVOCATION_VERSION,
+    updated: String(updated || new Date().toISOString()),
+    revoked: [...new Set(revoked.map(String))].sort(),
+  };
+  const sig = crypto.sign(null, Buffer.from(revocationMessage(doc), "utf8"), crypto.createPrivateKey(privateKeyPem));
+  return { ...doc, sig: b64url(sig) };
+}
+
+/**
+ * App side. Never throws.
+ * @returns {{valid:boolean, reason:string, revoked:string[], updated:string}}
+ */
+function verifyRevocationList(doc, publicKeyPem) {
+  const empty = { valid: false, revoked: [], updated: "" };
+  if (!doc || typeof doc !== "object") return { ...empty, reason: "not a revocation list" };
+  if (doc.v !== REVOCATION_VERSION) return { ...empty, reason: `revocation list version ${doc.v} needs a newer app` };
+  if (!publicKeyPem) return { ...empty, reason: "this build has no license public key" };
+  if (typeof doc.sig !== "string" || !Array.isArray(doc.revoked)) {
+    return { ...empty, reason: "revocation list is malformed" };
+  }
+  let ok = false;
+  try {
+    ok = crypto.verify(
+      null,
+      Buffer.from(revocationMessage(doc), "utf8"),
+      crypto.createPublicKey(publicKeyPem),
+      unb64url(doc.sig)
+    );
+  } catch (e) {
+    return { ...empty, reason: "revocation list could not be checked: " + e.message };
+  }
+  if (!ok) return { ...empty, reason: "revocation list signature does not match" };
+  return {
+    valid: true,
+    reason: "verified",
+    revoked: doc.revoked.map(String),
+    updated: String(doc.updated || ""),
+  };
 }
 
 // Display form: never echo a whole key back into a UI, a broadcast, or a log.
@@ -153,4 +226,7 @@ function publicStatus(result) {
   };
 }
 
-module.exports = { issueKey, verifyKey, maskKey, publicStatus, generateKeys, keyId, PREFIX, TIERS };
+module.exports = {
+  issueKey, verifyKey, maskKey, publicStatus, generateKeys, keyId, PREFIX, TIERS,
+  signRevocationList, verifyRevocationList, REVOCATION_VERSION,
+};

@@ -18,6 +18,7 @@
 const fs = require("fs");
 const path = require("path");
 const { issueKey, verifyKey, TIERS } = require("../bridge/license");
+const registry = require("./key-registry");
 
 const ROOT = path.join(__dirname, "..");
 const PRIV = path.join(ROOT, "keys", "casterverse-license-private.pem");
@@ -68,14 +69,19 @@ if (fs.existsSync(PUB)) {
 const p = result.payload;
 fs.mkdirSync(path.dirname(LOG), { recursive: true });
 fs.appendFileSync(LOG, `${p.iss}\t${p.id}\t${p.tier}\t${p.exp || "no expiry"}\t${p.name}\n`, "utf8");
+// The registry is what `key:list` and `key:revoke` work from — without this
+// entry a key can be issued but never withdrawn.
+registry.record(p);
 
 console.log("");
 console.log("  issued to : " + p.name);
 console.log("  tier      : " + p.tier);
 console.log("  expires   : " + (p.exp || "never"));
-console.log("  key id    : " + p.id + "   (logged to keys/issued-keys.log)");
+console.log("  key id    : " + p.id);
 console.log("");
 console.log("  Send them this line:");
 console.log("");
 console.log("  " + result.key);
+console.log("");
+console.log('  Withdraw it later with:  npm run key:revoke -- --name "' + p.name + '"');
 console.log("");

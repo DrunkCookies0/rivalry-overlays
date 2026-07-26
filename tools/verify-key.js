@@ -12,9 +12,10 @@
 
 const fs = require("fs");
 const path = require("path");
-const { verifyKey } = require("../bridge/license");
+const { verifyKey, verifyRevocationList } = require("../bridge/license");
 
 const PUB = path.join(__dirname, "..", "config", "casterverse-license-public.pem");
+const REVOKED = path.join(__dirname, "..", "config", "casterverse-revoked.json");
 const key = process.argv.slice(2).filter((a) => !a.startsWith("--"))[0];
 
 if (!key) {
@@ -26,7 +27,20 @@ if (!fs.existsSync(PUB)) {
   process.exit(1);
 }
 
-const r = verifyKey(key, fs.readFileSync(PUB, "utf8"));
+// Check against the same published revocation list the app uses, so "is this
+// key still good?" gets the same answer here as on a producer's machine.
+let revoked = null;
+if (fs.existsSync(REVOKED)) {
+  try {
+    const list = verifyRevocationList(JSON.parse(fs.readFileSync(REVOKED, "utf8")), fs.readFileSync(PUB, "utf8"));
+    if (list.valid) revoked = new Set(list.revoked);
+    else console.error("[key:verify] WARNING: revocation list did not verify (" + list.reason + ")");
+  } catch (e) {
+    console.error("[key:verify] WARNING: revocation list unreadable (" + e.message + ")");
+  }
+}
+
+const r = verifyKey(key, fs.readFileSync(PUB, "utf8"), { revoked });
 if (!r.valid) {
   console.error("INVALID: " + r.reason);
   process.exit(1);

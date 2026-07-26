@@ -23,6 +23,8 @@
     "overlay:verify": "node tools/verify-overlay.js",
     "key:keygen": "node tools/license-keys.js",
     "key:issue": "node tools/issue-key.js",
+    "key:list": "node tools/list-keys.js",
+    "key:revoke": "node tools/revoke-key.js",
     "key:verify": "node tools/verify-key.js"
   },
   "dependencies": {

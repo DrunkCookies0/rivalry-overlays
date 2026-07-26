@@ -43,8 +43,9 @@ test("normalizeMatch: maps the live match shape", () => {
   assert.equal(m.scheduledDate, "2026-07-13T23:00:00.000Z");
   assert.equal(m.event.season, "Summer 2026");
   assert.equal(m.event.circuit, "Summer 2026 - 2v2 East");
+  assert.equal(m.event.circuitShort, "2v2 East", "the season prefix is dropped for display");
   assert.equal(m.event.roundLabel, "Round 3");
-  assert.equal(m.event.composedTitle, "Summer 2026 | Summer 2026 - 2v2 East | Round 3");
+  assert.equal(m.event.composedTitle, "Summer 2026 | 2v2 East | Round 3");
 
   const [a, b] = m.teams;
   assert.equal(a.name, "FROST");
@@ -88,7 +89,7 @@ test("normalizeMatch: garbage input yields safe defaults without throwing", () =
   assert.equal(m.round, null);
   assert.equal(m.scheduledDate, "");
   assert.deepEqual(m.teams, [null, null]);
-  assert.deepEqual(m.event, { season: "", circuit: "", roundLabel: "", composedTitle: "" });
+  assert.deepEqual(m.event, { season: "", circuit: "", circuitShort: "", roundLabel: "", composedTitle: "" });
 
   assert.doesNotThrow(() => normalizeMatch(null));
   assert.doesNotThrow(() => normalizeMatch(undefined));
@@ -326,4 +327,25 @@ test("mask: empty stays empty, otherwise bullets + last 4", () => {
   assert.equal(mask(""), "");
   assert.equal(mask(undefined), "");
   assert.equal(mask("rivalry-key-abcd1234"), "••••1234");
+});
+
+test("circuit names don't put the season on the broadcast header twice", () => {
+  // The live API sends seasonName "Summer Circuit 2026" alongside circuitName
+  // "Summer 2026 | 3v3 US-East" — two different season strings, so a naive
+  // join printed both. Shapes below are the real ones plus the edges.
+  const t = (seasonName, circuitName, round = 1) => normalizeMatch({ seasonName, circuitName, round }).event;
+
+  const live = t("Summer Circuit 2026", "Summer 2026 | 3v3 US-East");
+  assert.equal(live.circuitShort, "3v3 US-East");
+  assert.equal(live.composedTitle, "Summer Circuit 2026 | 3v3 US-East | Round 1");
+  assert.equal(live.circuit, "Summer 2026 | 3v3 US-East", "the untouched original stays available");
+
+  // Circuit literally prefixed with the season name.
+  assert.equal(t("Summer 2026", "Summer 2026 - 2v2 East").circuitShort, "2v2 East");
+  // No season prefix at all: left alone.
+  assert.equal(t("Summer 2026", "3v3 Europe").circuitShort, "3v3 Europe");
+  // A pipe that isn't a season prefix must survive intact.
+  assert.equal(t("Summer 2026", "Open | Qualifier").circuitShort, "Open | Qualifier");
+  // Circuit that IS the season: blank, so the title says it once.
+  assert.equal(t("Summer 2026", "Summer 2026").composedTitle, "Summer 2026 | Round 1");
 });

@@ -290,6 +290,54 @@ npm run dist:beta     # beta installer -> dist-beta\
 
 ---
 
+## 6.8 Handing out (and taking back) access keys
+
+The packaged app serves overlay scenes only to someone holding a valid access
+key. Everything is driven from this repo — there is no service to run.
+
+```bash
+npm run key:issue -- --name "Moldybanana"          # mint one, send them the line it prints
+npm run key:issue -- --name "Yami" --tier producer # tiers: caster | producer | staff | dev
+npm run key:list                                   # who holds what, and what is revoked
+npm run key:revoke -- --name "Moldybanana"         # withdraw access
+npm run key:revoke -- --name "Moldybanana" --undo  # give it back
+npm run key:verify -- RCV1....                     # "is this key still good?" — same answer the app gives
+```
+
+**Keys do not expire** unless you pass `--expires 2026-12-31`. Withdrawal is by
+revocation, not by expiry date.
+
+### How revocation reaches installs
+
+`key:revoke` rewrites `config/casterverse-revoked.json`, a **signed** list of
+withdrawn key ids. Publishing it is a `git push` — installs fetch it from the
+repo's raw URL on launch and every 6 hours.
+
+Because the list is signed with the same private key as the access keys, it
+cannot be forged or edited by whoever hosts it. That means it can live anywhere:
+the repo (default, free, nothing to run), a static file on a self-hosted box, an
+object store. To move it, change `REVOCATION_URL` in [main.js](main.js) — or set
+`RIVALRY_REVOCATION_URL` for a one-off test. **You do not need to run a server**;
+a service would add an outage mode to a broadcast tool for no benefit.
+
+Design notes worth not undoing:
+
+- **Fails open.** If the list can't be fetched, the last known-good one stands.
+  This runs on machines that are mid-broadcast; a DNS blip must never black out
+  someone's overlays. The cost is that a revoked holder who stays offline keeps
+  working — accepted, and they'd lose live league data anyway.
+- **No rollback.** A fetched list is only adopted if it is at least as new as
+  the one already trusted, so an old (genuinely signed) list can't be replayed to
+  un-revoke someone.
+- **Three sources, newest wins:** the copy that shipped in the build, the last
+  one successfully fetched (cached in userData), and a fresh fetch.
+
+`keys/issued-keys.json` is the record of who holds which key id. It is
+gitignored (real names) and it is what `key:list` and `key:revoke` read — back it
+up alongside the private key. See also section 8.
+
+---
+
 ## 7. Open decisions / next moves
 
 - [ ] **Do a packaged-build smoke test before tagging v1.0.0?** Options:

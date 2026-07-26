@@ -267,7 +267,8 @@ function createApiRouter(ctx) {
         const circuits = [];
         const rounds = new Set();
         for (const m of data) {
-          if (m.event.circuit && !circuits.includes(m.event.circuit)) circuits.push(m.event.circuit);
+          const c = m.event.circuitShort || m.event.circuit;
+          if (c && !circuits.includes(c)) circuits.push(c);
           if (m.round !== null) rounds.add(m.round);
         }
         sendJson(res, 200, {

@@ -45,6 +45,7 @@ const { createLeagueClient } = require("./bridge/league-client");
 const { migrateUserData } = require("./bridge/userdata-migrate");
 const license = require("./bridge/license");
 const licenseStore = require("./bridge/license-store");
+const { createRevocationStore } = require("./bridge/revocation");
 
 const HTTP_PORT = 49080;
 // Gameplay overlay now lives in the multi-scene tree (overlays/rivalry-gameplay,
@@ -107,9 +108,19 @@ function rescanOverlays() {
 // entitlement must not be re-pointable by changing where overlays are served
 // from. Enforced in packaged builds only — running from source is a normal dev
 // workflow and the repo is public anyway.
+// Where installs look for withdrawn keys. A signed static file, so this can be
+// any host — no service to run. Change this one line to move it (e.g. to a
+// self-hosted box); the file's signature is what makes it trustworthy, not
+// where it came from.
+const REVOCATION_URL =
+  process.env.RIVALRY_REVOCATION_URL ||
+  "https://raw.githubusercontent.com/DrunkCookies0/rivalry-overlays/main/config/casterverse-revoked.json";
+const REVOCATION_POLL_MS = 6 * 60 * 60 * 1000;
+
 let licensePublicKey = null;
 let licenseKeyState = { key: "", activatedAt: "" };
 let licenseState = { valid: false, reason: "not activated yet", name: "", tier: "", expires: null, id: "" };
+let revocations = null;
 function licenseRequired() { return app.isPackaged; }
 function refreshLicense() {
   if (licensePublicKey === null) {
@@ -117,7 +128,9 @@ function refreshLicense() {
     try { licensePublicKey = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : ""; }
     catch { licensePublicKey = ""; }
   }
-  licenseState = license.publicStatus(license.verifyKey(licenseKeyState.key, licensePublicKey || null));
+  licenseState = license.publicStatus(license.verifyKey(licenseKeyState.key, licensePublicKey || null, {
+    revoked: revocations ? revocations.revoked : null,
+  }));
   console.log(`[rivalry] access key: ${licenseState.valid ? "active (" + licenseState.name + ")" : licenseState.reason}` +
     (licenseRequired() ? "" : " [not enforced — dev build]"));
   return licenseState;
@@ -1016,9 +1029,32 @@ if (!app.requestSingleInstanceLock()) {
     });
     collector = startReplayCollector({});
     // Access key: load + verify before the HTTP server starts, so an
-    // unactivated install never serves a scene even for one request.
+    // unactivated install never serves a scene even for one request. The
+    // revocation list loads from disk first (shipped copy + cached copy) so
+    // this decision never waits on the network.
     licenseKeyState = licenseStore.load(app.getPath("userData"));
+    revocations = createRevocationStore({
+      shippedFile: path.join(__dirname, "config", "casterverse-revoked.json"),
+      userDataDir: app.getPath("userData"),
+      url: REVOCATION_URL,
+      getPublicKey: () => licensePublicKey,
+    });
+    refreshLicense();          // resolves licensePublicKey as a side effect
+    revocations.loadLocal();
     refreshLicense();
+    // Then check for updates in the background, and every few hours after. A
+    // failed fetch changes nothing: the list already loaded stands.
+    const pullRevocations = () => {
+      revocations.refresh().then((r) => {
+        if (!r.ok || !r.adopted) return;
+        console.log(`[rivalry] revocation list updated: ${r.count} key(s), ${r.updated}`);
+        const wasValid = licenseState.valid;
+        refreshLicense();
+        if (wasValid !== licenseState.valid) { refreshTrayMenu(); broadcastLicenseStatus(); }
+      }).catch(() => {});
+    };
+    pullRevocations();
+    setInterval(pullRevocations, REVOCATION_POLL_MS);
     bridgeHandle.events.on("control", (msg) => {
       if (!msg || msg.type !== "license-key" || !msg.payload) return;
       const entered = String(msg.payload.key || "").trim();

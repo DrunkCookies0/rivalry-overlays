@@ -892,8 +892,9 @@ function whenLabel(m){
   const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   return sameDay ? "today " + time : d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) + " " + time;
 }
+function circuitOf(m){ return m.event.circuitShort || m.event.circuit; }
 function passesFilter(m){
-  if (leagueFilter.circuit && m.event.circuit !== leagueFilter.circuit) return false;
+  if (leagueFilter.circuit && circuitOf(m) !== leagueFilter.circuit) return false;
   const t = matchTime(m);
   if (leagueFilter.when === "today") {
     if (t === null) return false;
@@ -929,11 +930,28 @@ function renderLeagueFilters(circuits){
 function renderLeagueMatches(){
   const host = $("leagueMatches");
   const circuits = [];
-  for (const m of leagueList) if (m.event.circuit && !circuits.includes(m.event.circuit)) circuits.push(m.event.circuit);
+  for (const m of leagueList) { const c = circuitOf(m); if (c && !circuits.includes(c)) circuits.push(c); }
+
+  // Never show an empty list when there ARE matches. A schedule that has all
+  // run (start of a season, or a slate that already happened) would otherwise
+  // leave the default Upcoming filter showing nothing at all, which reads as
+  // "the league API is broken" rather than "nothing is upcoming".
+  let fellBack = false;
+  if (leagueList.length && !leagueList.some(passesFilter) && leagueFilter.when !== "all") {
+    leagueFilter.when = "all";
+    fellBack = true;
+  }
   renderLeagueFilters(circuits);
 
   const shown = leagueList.filter(passesFilter);
   host.innerHTML = "";
+  if (fellBack) {
+    const note = document.createElement("div");
+    note.className = "muted-note";
+    note.style.marginBottom = "6px";
+    note.textContent = "Nothing upcoming, so this is the whole schedule.";
+    host.appendChild(note);
+  }
   if (!shown.length) {
     const none = document.createElement("div");
     none.className = "muted-note";
@@ -964,7 +982,7 @@ function renderLeagueMatches(){
 
     const meta = document.createElement("span");
     meta.className = "muted-note meta";
-    meta.textContent = [m.event.circuit, m.event.roundLabel, whenLabel(m)].filter(Boolean).join(" · ");
+    meta.textContent = [circuitOf(m), m.event.roundLabel, whenLabel(m)].filter(Boolean).join(" · ");
 
     row.appendChild(vs); row.appendChild(meta);
     // A bye has nothing to broadcast, so it is listed for context only.

@@ -117,3 +117,67 @@ test("the shipped public key is present and parseable", () => {
   assert.equal(r.valid, false);
   assert.ok(!/no license public key/.test(r.reason), "the shipped key should load, just reject junk");
 });
+
+// ---------------------------------------------------------------------------
+// Revocation
+// ---------------------------------------------------------------------------
+
+const { signRevocationList, verifyRevocationList } = require("../bridge/license");
+
+test("a revoked key stops verifying, and still says who it belonged to", () => {
+  const { key, payload } = issueKey({ name: "Ex Caster", tier: "caster" }, pair.privateKeyPem);
+  assert.equal(verifyKey(key, pair.publicKeyPem).valid, true);
+
+  const r = verifyKey(key, pair.publicKeyPem, { revoked: new Set([payload.id]) });
+  assert.equal(r.valid, false);
+  assert.match(r.reason, /withdrawn/);
+  assert.equal(r.payload.name, "Ex Caster");
+});
+
+test("revoking one key does not touch anyone else's", () => {
+  const a = issueKey({ name: "Stays" }, pair.privateKeyPem);
+  const b = issueKey({ name: "Goes" }, pair.privateKeyPem);
+  const revoked = new Set([b.payload.id]);
+  assert.equal(verifyKey(a.key, pair.publicKeyPem, { revoked }).valid, true);
+  assert.equal(verifyKey(b.key, pair.publicKeyPem, { revoked }).valid, false);
+});
+
+test("keys never expire unless an expiry was asked for", () => {
+  const { key } = issueKey({ name: "Forever" }, pair.privateKeyPem);
+  assert.equal(verifyKey(key, pair.publicKeyPem).payload.exp, null);
+  assert.equal(verifyKey(key, pair.publicKeyPem, { now: Date.UTC(2099, 0, 1) }).valid, true);
+});
+
+test("a revocation list verifies, and any edit to it does not", () => {
+  const doc = signRevocationList({ revoked: ["aaaa1111", "bbbb2222"], updated: "2026-07-25T00:00:00.000Z" }, pair.privateKeyPem);
+
+  const good = verifyRevocationList(doc, pair.publicKeyPem);
+  assert.equal(good.valid, true);
+  assert.deepEqual(good.revoked, ["aaaa1111", "bbbb2222"]);
+
+  // Removing an id to restore your own access is the obvious attack.
+  assert.equal(verifyRevocationList({ ...doc, revoked: ["aaaa1111"] }, pair.publicKeyPem).valid, false);
+  // So is adding one to cut someone else off.
+  assert.equal(verifyRevocationList({ ...doc, revoked: [...doc.revoked, "cccc3333"] }, pair.publicKeyPem).valid, false);
+  // Or back-dating it.
+  assert.equal(verifyRevocationList({ ...doc, updated: "2020-01-01T00:00:00.000Z" }, pair.publicKeyPem).valid, false);
+});
+
+test("a list signed by someone else is rejected", () => {
+  const doc = signRevocationList({ revoked: ["aaaa1111"], updated: "2026-07-25T00:00:00.000Z" }, other.privateKeyPem);
+  assert.equal(verifyRevocationList(doc, pair.publicKeyPem).valid, false);
+});
+
+test("list order does not change the signature", () => {
+  const one = signRevocationList({ revoked: ["bbbb", "aaaa"], updated: "2026-07-25T00:00:00.000Z" }, pair.privateKeyPem);
+  const two = signRevocationList({ revoked: ["aaaa", "bbbb", "aaaa"], updated: "2026-07-25T00:00:00.000Z" }, pair.privateKeyPem);
+  assert.equal(one.sig, two.sig, "same set of ids, same signature — duplicates and order must not matter");
+});
+
+test("malformed lists fail closed on the LIST, not on the app", () => {
+  for (const bad of [null, undefined, "nope", {}, { v: 1 }, { v: 2, revoked: [], sig: "x" }, { v: 1, revoked: "no", sig: "x" }]) {
+    const r = verifyRevocationList(bad, pair.publicKeyPem);
+    assert.equal(r.valid, false);
+    assert.deepEqual(r.revoked, [], "an unreadable list must revoke nobody, not everybody");
+  }
+});
