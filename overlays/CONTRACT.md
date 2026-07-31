@@ -6,11 +6,12 @@ disappear without a contract version bump. The [SDK](sdk/rivalry-overlay-sdk.js)
 is a convenience layer over this contract, not a replacement for it; you can
 ignore the SDK and speak the raw protocol if you want.
 
-> Manual now, database later. Today a producer types team names/logos/series
-> into the control panel. Later the app fills the same fields from the league
-> database. **The contract below does not change** when that happens, so an
-> overlay built today keeps working unchanged. That is the whole point of the
-> control bus being a defined contract.
+> Manual or league-fed, same fields. A producer can type team names/logos/series
+> into the control panel, or load a RIVALRY league match and have the app fill
+> the same fields from the live league API (shipped 2026-07). **The contract
+> below did not change** when the league source arrived, and it will not change
+> when new sources arrive. That is the whole point of the control bus being a
+> defined contract.
 
 ---
 
@@ -153,9 +154,15 @@ Listen only for `type: "control"`. Other traffic exists on this bus
 | `casters` | array of `{ name, role, handle, stream, avatar }` — `stream` = VDO.Ninja view link or stream ID for that caster's cam (casters scene embeds it; 1-3 casters, layout adapts) |
 | `upNext` | array of `{ teamA, teamB, time, round }` (up-next scene) |
 | `brand` | `{ leagueName, logo }` — optional; scenes default to "RIVALRY" |
-| `bracket` | `{ rounds:[{ name, matchups:[{ teamA, teamB, scoreA, scoreB }] }], champion }` (bracket scene; winner = higher score) |
+| `bracket` | `{ rounds:[{ name, matchups:[{ teamA, teamB, scoreA, scoreB }] }], champion }` — winner = higher score. **No shipped scene consumes this in v1.0** (the bracket scene returns for playoffs); the field stays documented because the contract is additive-only |
+| `players` | array of `{ name, title, badges[] }` — per-player caption data keyed by in-game name (gameplay overlay shows title/badges on the goal banner). Sent by the panel's Player Titles card |
+| `queue` | producer rundown: array of `{ id, matchId, teamA, teamB, bestOf, round, startTime }` plus sibling `queueActive` (id of the on-air entry). Producer-panel bookkeeping; overlays other than chrome may ignore it. Superseded in spirit by `schedule` below, kept for compatibility |
+| `chrome` | `{ leagueName, seasonName, circuitName, socials:[{ network, handle }], showcase:{ label, name, logo } }` — persistent-frame content, set once per event. `showcase` is a generic labelled slot (franchise showcase, future sponsor), never hardcoded to either |
+| `ticker` | `{ manualLines:[string], items:[{ type, text, ... }] }` — bottom-ticker content. `manualLines` always works and is the baseline. `items` is a **discriminated list**: each item carries a `type` (`"schedule"`, `"result"`, `"text"`; future types such as `"live-cast"` may appear) and consumers MUST skip item types they do not recognize |
+| `lowerThird` | `{ visible, kind, title, subtitle, durationSec }` — producer-called lower third (`kind`: `"caster"`, `"announce"`, `"sponsor"`). `durationSec > 0` means auto-dismiss after that many seconds; `0` means hold until `visible:false` |
+| `schedule` | `{ event:{ season, circuit, tier }, activeIndex, series:[{ id, matchId, teamA, teamB, bestOf, round, startTimeIso, startTimeDisplay }] }` — the broadcast night. Drives Up Next, Starting Soon, and ticker schedule items. `startTimeIso` is the sortable truth; `startTimeDisplay` is what renders |
 
-`teamA`/`teamB`/`bestOf`/`series`/`eventTitle` are the original gameplay-overlay fields; everything else was **added (v1, additive)** for the presentation scenes. The gameplay overlay ignores the new fields, and a scene that lacks data for a field keeps its placeholder (lists hide empty slots). Manual entry (control panel) and the future league database fill the **same** fields.
+`teamA`/`teamB`/`bestOf`/`series`/`eventTitle` are the original gameplay-overlay fields; `round`/`startTime`/`casters`/`upNext`/`brand`/`bracket` were **added (v1, additive)** for the presentation scenes; `players`/`queue` arrived with the panel features that send them; `chrome`/`ticker`/`lowerThird`/`schedule` were **added (v1, additive) in the v1.0 chrome work**. Overlays ignore fields they do not consume, and a scene that lacks data for a field keeps its placeholder (lists hide empty slots). Manual entry (control panel) and the league API fill the **same** fields.
 
 Payloads may be **partial** — merge into your current state, don't replace it.
 The SDK does this merge for you.

@@ -47,6 +47,7 @@ const license = require("./bridge/license");
 const licenseStore = require("./bridge/license-store");
 const { createRevocationStore } = require("./bridge/revocation");
 const portOwner = require("./bridge/port-owner");
+const appLog = require("./bridge/app-log");
 
 const HTTP_PORT = 49080;
 // Gameplay overlay now lives in the multi-scene tree (overlays/rivalry-gameplay,
@@ -998,6 +999,13 @@ if (!app.requestSingleInstanceLock()) {
     // Must match the installer's appId or Windows treats toasts as coming from
     // an unregistered app and quietly drops them.
     try { app.setAppUserModelId(IS_BETA ? "gg.rivalry.casterverse.beta" : "gg.rivalry.casterverse"); } catch {}
+
+    // Tee console output into <userData>/logs/casterverse.log plus a ring
+    // buffer, so a packaged install finally has something to hand over when
+    // it misbehaves (diagnostics export reads the ring). Before anything else
+    // logs, so boot lines are captured.
+    appLog.initAppLog(app.getPath("userData"));
+    console.log("[rivalry] boot", META.label);
 
     // The rebrand moved userData ("RIVALRY Overlay*" -> "RIVALRY Casterverse*").
     // Carry the producer's saved state across ONCE, before anything reads it.
