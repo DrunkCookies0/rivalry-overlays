@@ -392,6 +392,25 @@ function updateStatusLabel() {
   }
 }
 
+// Write the diagnostics bundle (same content as GET /diagnostics.json) to the
+// Desktop and reveal it, so "send me the file" is one tray click for a
+// producer mid-trouble. Never throws: a failed export shows an error box
+// instead of dying silently in a tray callback.
+function exportDiagnostics() {
+  try {
+    if (!apiRouter || !apiRouter.buildDiagnostics) throw new Error("app still starting");
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const file = path.join(app.getPath("desktop"), `casterverse-diagnostics-${stamp}.json`);
+    fs.writeFileSync(file, JSON.stringify(apiRouter.buildDiagnostics(), null, 2));
+    shell.showItemInFolder(file);
+  } catch (e) {
+    dialog.showErrorBox(
+      "Export diagnostics failed",
+      e.message + "\n\nThe same data is available at http://localhost:49080/diagnostics.json while the app is running."
+    );
+  }
+}
+
 function buildTrayMenu() {
   const startsWithWindows = app.getLoginItemSettings().openAtLogin;
   return Menu.buildFromTemplate([
@@ -425,6 +444,12 @@ function buildTrayMenu() {
     {
       label: "Open replays folder",
       click: () => { if (collector && collector.archiveDir) shell.openPath(collector.archiveDir); },
+    },
+    {
+      // The support path: one file on the Desktop the producer sends instead
+      // of describing symptoms over a call. Secrets are masked upstream.
+      label: "Export diagnostics",
+      click: exportDiagnostics,
     },
     { type: "separator" },
     { label: obsStatusLabel(), enabled: false },

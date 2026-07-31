@@ -17,6 +17,7 @@
  *   2. OBS COLLECTION    - importable scene-collection download
  *   3. ASSETS            - producer logo uploads
  *   4. LEAGUE            - league-API proxy (key stays in the main process)
+ *   5. DIAGNOSTICS       - one-file support bundle (secrets masked)
  * ===========================================================================*/
 
 "use strict";
@@ -325,6 +326,85 @@ function createApiRouter(ctx) {
     return false;
   }
 
+  // ---------------------------------------------------------------------------
+  // 5. DIAGNOSTICS — one-file support bundle
+  // ---------------------------------------------------------------------------
+  // Everything a remote debugging session needs in a single JSON the producer
+  // can send instead of describing symptoms: build, environment, RL/OBS/league
+  // state, the overlay signature scan, and the recent log tail. NO SECRETS:
+  // the league key appears masked, the access key as its public status only.
+
+  function buildDiagnostics() {
+    const os = require("os");
+    const appLog = require("./app-log");
+    const bridge = ctx.getBridge();
+    const setup = ctx.getSetupInfo() || {};
+    const obs = ctx.getObs() || {};
+    const league = ctx.getLeagueSettings ? ctx.getLeagueSettings() : {};
+    const reg = ctx.getOverlayReg ? ctx.getOverlayReg() : null;
+    return {
+      generatedAt: new Date().toISOString(),
+      build: ctx.meta || null,
+      environment: {
+        platform: process.platform,
+        osRelease: os.release(),
+        arch: process.arch,
+        electron: process.versions.electron || null,
+        userDataDir: ctx.userDataDir || null,
+      },
+      ports: { http: 49080, gameFeed: 49124, controlBus: 49777 },
+      rl: (bridge && bridge.getRlStatus && bridge.getRlStatus()) || null,
+      statsIni: {
+        written: !!setup.ok,
+        rlConfigDirFound: !!setup.dirFound,
+        paths: setup.written || [],
+        checked: setup.checked || [],
+      },
+      obs: {
+        enabled: !!(obs.settings && obs.settings.enabled),
+        url: (obs.settings && obs.settings.url) || null, // loopback only, not a secret
+        connected: !!(obs.status && obs.status.connected),
+        error: (obs.status && obs.status.error) || null,
+        autoSwitchEnabled: !!(obs.settings && obs.settings.autoSwitchEnabled),
+      },
+      league: {
+        configured: !!(league.apiKey || league.mock),
+        mock: !!league.mock,
+        baseUrl: league.baseUrl || "",
+        keyMask: ctx.maskLeagueKey ? ctx.maskLeagueKey(league.apiKey) : "",
+      },
+      license: ctx.getLicenseStatus ? ctx.getLicenseStatus() : null,
+      overlays: reg
+        ? {
+            gateActive: ctx.gateActive ? ctx.gateActive() : null,
+            scannedAt: reg.scannedAt || null,
+            scenes: (reg.list || reg.overlays || []).map((o) => ({
+              id: o.id, scene: o.scene, approved: !!o.approved, reason: o.reason || "", keyId: o.keyId || "",
+            })),
+          }
+        : null,
+      setupComplete: ctx.isSetupComplete(),
+      recentLog: appLog.recentLines(200),
+    };
+  }
+
+  function handleDiagnostics(req, res, urlPath) {
+    if (req.method === "GET" && urlPath === "/diagnostics.json") {
+      try {
+        const body = JSON.stringify(buildDiagnostics(), null, 2);
+        res.writeHead(200, {
+          "Content-Type": "application/json",
+          "Content-Disposition": 'attachment; filename="casterverse-diagnostics.json"',
+        });
+        res.end(body);
+      } catch (e) {
+        sendJson(res, 500, { ok: false, error: "diagnostics failed: " + e.message });
+      }
+      return true;
+    }
+    return false;
+  }
+
   return {
     // Returns true when the request was handled here.
     handle(req, res, urlPath) {
@@ -332,9 +412,13 @@ function createApiRouter(ctx) {
         handleStatusSetup(req, res, urlPath) ||
         handleObsCollection(req, res, urlPath) ||
         handleAssets(req, res, urlPath) ||
-        handleLeague(req, res, urlPath)
+        handleLeague(req, res, urlPath) ||
+        handleDiagnostics(req, res, urlPath)
       );
     },
+    // Exposed for the tray's "Export diagnostics" (writes the same bundle to
+    // a file without going through HTTP).
+    buildDiagnostics,
   };
 }
 
