@@ -6,7 +6,7 @@
 <title>RIVALRY Control Panel</title>
 <style>
   :root{ --rivalry:#e7274a; --accent:#30c0f6; --bg:#0e1218; --panel:#171f29;
-    --ink:#eef3f8; --muted:#8aa0b6; }
+    --ink:#eef3f8; --muted:#8aa0b6; --warn:#f1c40f; }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--ink);
     font-family:'Segoe UI',Roboto,Arial,sans-serif;padding:22px;}
@@ -85,7 +85,7 @@
       margin-left:auto;font-family:'Consolas',monospace;text-transform:none;"></span>
     <a class="plain" href="/control/setup.html">Setup guide</a>
   </div>
-  <div class="sub">Push team branding and series score to the overlay in real time.</div>
+  <div class="sub">Load your league match, line up the night, and drive every scene in real time.</div>
 
   <!-- Access key. Hidden entirely once activated (and in builds that don't
        enforce it) — a producer mid-show should never see licensing chrome. -->
@@ -101,20 +101,15 @@
     </div>
   </div>
 
-  <div class="card full" id="scenesCard" style="margin-bottom:18px;border-left:3px solid var(--rivalry);">
-    <h2>Overlays / Scenes <span class="muted-note">(add each as an OBS Browser Source, 1920 × 1080)</span></h2>
-    <div class="row" style="gap:8px;margin-bottom:6px;align-items:center;">
+  <!-- RV-first: Match mode is the product's default; Manual is the on-air
+       escape hatch for a league outage, one click away, never buried. -->
+  <div class="card full" id="modeCard" style="margin-bottom:18px;">
+    <div class="row" style="gap:10px;align-items:center;">
       <div class="seg" id="modeToggle">
-        <button class="seg-btn on" data-mode="manual">Manual</button>
-        <button class="seg-btn" data-mode="match" title="Auto-fill teams from a scheduled league match">Match (league)</button>
+        <button class="seg-btn on" data-mode="match" title="Auto-fill teams from a scheduled league match">Match (league)</button>
+        <button class="seg-btn" data-mode="manual" title="League unreachable? Run this series manually">Manual</button>
       </div>
-      <div style="flex:1"></div>
-      <button id="refreshScenes" style="background:#243040;color:var(--ink);">Refresh</button>
-    </div>
-    <div id="sceneList"><span class="muted-note">loading scenes…</span></div>
-    <div class="muted-note" style="margin-top:8px;">
-      <b style="color:var(--ink)">Copy</b> a URL into an OBS Browser Source, or <b style="color:var(--ink)">Preview</b> to open it in your browser.
-      First time only: launch Rocket League once after installing so the stats feed turns on.
+      <span class="muted-note" id="modeHint">Match mode fills teams, logos and records from the RIVALRY schedule. Manual is the fallback if the league site is unreachable mid-show.</span>
     </div>
   </div>
 
@@ -146,17 +141,22 @@
   </div>
 
   <div class="card full" id="queueCard" style="margin-bottom:18px;">
-    <h2>Match queue <span class="muted-note">(line up the night's series, then load each one when it starts)</span></h2>
+    <h2>Broadcast schedule <span class="muted-note">(line up the night's series, then load each one when it starts)</span></h2>
+    <div class="row" style="gap:10px;margin-bottom:10px;">
+      <div style="flex:2"><label>Season <span class="muted-note">— set once per night</span></label><input type="text" id="evSeason" placeholder="SUMMER CIRCUIT 2026" /></div>
+      <div style="flex:2"><label>Circuit</label><input type="text" id="evCircuit" placeholder="3V3 EAST" /></div>
+      <div style="flex:1"><label>Tier</label><input type="text" id="evTier" placeholder="TIER 1" /></div>
+    </div>
     <div class="row" style="gap:8px;margin-bottom:8px;">
       <button class="mini" id="queueAddCurrent" type="button">Add current teams as a series</button>
       <button class="mini" id="queueNext" type="button">Load next series</button>
       <div style="flex:1"></div>
-      <button class="mini" id="queueClear" type="button">Clear queue</button>
+      <button class="mini" id="queueClear" type="button">Clear schedule</button>
     </div>
     <div id="queueList"></div>
     <div class="muted-note" style="margin-top:8px;">
-      Loading a series fills the team fields below and resets the series score to 0-0. The queue is saved with everything
-      else, so it survives restarting the app.
+      Loading a series fills the team fields below, resets the series score to 0-0, and updates Up Next, Starting Soon
+      and the ticker in one go. The schedule is saved with everything else, so it survives restarting the app.
     </div>
   </div>
 
@@ -172,6 +172,7 @@
         <button class="mini" id="logoUpA" type="button">Upload</button>
       </div>
       <input type="file" id="logoFileA" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" style="display:none;" />
+      <div class="muted-note" id="logoErrA" style="color:var(--warn);"></div>
       <label>Tag (region / seed)</label>
       <input type="text" id="tagA" placeholder="EU1" />
       <div class="row" style="gap:10px;">
@@ -197,6 +198,7 @@
         <button class="mini" id="logoUpB" type="button">Upload</button>
       </div>
       <input type="file" id="logoFileB" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" style="display:none;" />
+      <div class="muted-note" id="logoErrB" style="color:var(--warn);"></div>
       <label>Tag (region / seed)</label>
       <input type="text" id="tagB" placeholder="EU2" />
       <div class="row" style="gap:10px;">
@@ -275,7 +277,10 @@
     </div>
 
     <div class="card full">
-      <h2>Up Next <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(schedule — blank rows hide on air)</span></h2>
+      <h2>Up Next <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(blank rows hide on air)</span></h2>
+      <div class="muted-note" id="upNextAutoNote" style="display:none;margin-bottom:8px;color:var(--accent);">
+        Filled automatically from the broadcast schedule (the series after the one on air). Clear the schedule to type these by hand.
+      </div>
       <div class="row" style="gap:10px;">
         <div style="flex:2"><label>Match 1 — Team A</label><input type="text" id="nextA0" placeholder="NOVA" /></div>
         <div style="flex:2"><label>Team B</label><input type="text" id="nextB0" placeholder="ECLIPSE" /></div>
@@ -333,6 +338,19 @@
         <div style="flex:2"><label>Player 6 — in-game name</label><input type="text" id="pName5" placeholder="" /></div>
         <div style="flex:3"><label>Title</label><input type="text" id="pTitle5" placeholder="" /></div>
         <div style="flex:3"><label>Badges</label><input type="text" id="pBadges5" placeholder="" /></div>
+      </div>
+    </div>
+
+    <div class="card full" id="scenesCard" style="border-left:3px solid var(--rivalry);">
+      <h2>Overlays / Scenes <span class="muted-note">(add each as an OBS Browser Source, 1920 × 1080)</span></h2>
+      <div class="row" style="gap:8px;margin-bottom:6px;align-items:center;">
+        <div style="flex:1"></div>
+        <button id="refreshScenes" style="background:#243040;color:var(--ink);">Refresh</button>
+      </div>
+      <div id="sceneList"><span class="muted-note">loading scenes…</span></div>
+      <div class="muted-note" style="margin-top:8px;">
+        <b style="color:var(--ink)">Copy</b> a URL into an OBS Browser Source, or <b style="color:var(--ink)">Preview</b> to open it in your browser.
+        First time only: launch Rocket League once after installing so the stats feed turns on.
       </div>
     </div>
 
@@ -457,6 +475,38 @@ function gatherPlayers(){
   }
   return out;
 }
+// With a schedule built, Up Next comes from it automatically (the series after
+// the one on air), so advancing the night updates the Up Next scene in the same
+// push. The manual rows only feed the scene when the schedule is empty.
+function upNextFromQueue(){
+  const idx = state.queue.findIndex(e => e.id === state.queueActive);
+  const from = idx >= 0 ? idx + 1 : 0;
+  return state.queue.slice(from, from + 4).map(e => ({
+    teamA: (e.teamA && e.teamA.name) || "",
+    teamB: (e.teamB && e.teamB.name) || "",
+    time: e.startTime || "",
+    round: e.round || "",
+  }));
+}
+// The schedule contract field (see overlays/CONTRACT.md): the broadcast night
+// as data, driving the chrome ticker and any scene that wants the rundown.
+function gatherSchedule(){
+  return {
+    event: {
+      season: $("evSeason").value.trim(),
+      circuit: $("evCircuit").value.trim(),
+      tier: $("evTier").value.trim(),
+    },
+    activeIndex: state.queue.findIndex(e => e.id === state.queueActive),
+    series: state.queue.map(e => ({
+      id: e.id, matchId: e.matchId || "",
+      teamA: e.teamA, teamB: e.teamB,
+      bestOf: e.bestOf || 5, round: e.round || "",
+      startTimeIso: e.startTimeIso || "",
+      startTimeDisplay: e.startTime || "",
+    })),
+  };
+}
 function payload(){
   return {
     type: "control",
@@ -469,10 +519,14 @@ function payload(){
       round: $("round").value,
       startTime: $("startTime").value,
       casters: gatherCasters(),
-      upNext: gatherUpNext(),
+      upNext: state.queue.length ? upNextFromQueue() : gatherUpNext(),
       players: gatherPlayers(),
       // Producer rundown. Additive optional contract field; overlays ignore it.
-      queue: state.queue
+      queue: state.queue,
+      // Which series is on air. Without this the "on air" marker was lost on
+      // every app restart while the queue itself survived.
+      queueActive: state.queueActive,
+      schedule: gatherSchedule()
     }
   };
 }
@@ -520,8 +574,13 @@ function queueNext(){
 function renderQueue(){
   const host = $("queueList");
   host.innerHTML = "";
+  // Up Next follows the schedule while one exists; grey the manual rows so it
+  // is obvious where the scene's content is coming from right now.
+  const auto = state.queue.length > 0;
+  for (let i = 0; i < 4; i++) ["nextA","nextB","nextTime","nextRound"].forEach(p => { $(p+i).disabled = auto; });
+  $("upNextAutoNote").style.display = auto ? "" : "none";
   if (!state.queue.length){
-    host.innerHTML = '<span class="muted-note">Queue is empty. Add the teams you have typed in below, or add matches from the league card.</span>';
+    host.innerHTML = '<span class="muted-note">Nothing lined up yet. Add matches from the league card above, or add the teams you have typed in below.</span>';
     return;
   }
   state.queue.forEach((e, i) => {
@@ -600,7 +659,8 @@ $("bestOf").addEventListener("input", () => {
 });
 // push on any field change
 ["nameA","logoA","tagA","nameB","logoB","tagB","bestOf","eventTitle",
- "seedA","recordA","seedB","recordB","round","startTime"]
+ "seedA","recordA","seedB","recordB","round","startTime",
+ "evSeason","evCircuit","evTier"]
   .forEach(id => $(id).addEventListener("input", push));
 for (let i = 0; i < 3; i++) ["casterName","casterRole","casterHandle","casterStream"].forEach(p => $(p+i).addEventListener("input", push));
 for (let i = 0; i < 4; i++) ["nextA","nextB","nextTime","nextRound"].forEach(p => $(p+i).addEventListener("input", push));
@@ -701,7 +761,14 @@ function hydrateControlForm(p){
   const pl = Array.isArray(p.players) ? p.players : [];
   for (let i = 0; i < 6; i++){ const q = pl[i] || {};
     setVal("pName"+i, q.name); setVal("pTitle"+i, q.title); setVal("pBadges"+i, (q.badges || []).join(", ")); }
-  if (Array.isArray(p.queue)){ state.queue = p.queue; renderQueue(); }
+  if (Array.isArray(p.queue)) state.queue = p.queue;
+  if (p.queueActive !== undefined) state.queueActive = p.queueActive;
+  if (p.schedule && p.schedule.event){
+    setVal("evSeason", p.schedule.event.season);
+    setVal("evCircuit", p.schedule.event.circuit);
+    setVal("evTier", p.schedule.event.tier);
+  }
+  renderQueue();
   updateLogoPreview("A"); updateLogoPreview("B");
 }
 
@@ -837,19 +904,30 @@ $("licenseActivate").addEventListener("click", () => {
 })();
 
 let leagueMatchId = null;
-function setMode(mode){
+function setMode(mode, persist){
   document.querySelectorAll("#modeToggle .seg-btn").forEach(x => x.classList.toggle("on", x.dataset.mode === mode));
   $("leagueCard").style.display = mode === "match" ? "" : "none";
+  $("modeHint").textContent = mode === "match"
+    ? "Match mode fills teams, logos and records from the RIVALRY schedule. Manual is the fallback if the league site is unreachable mid-show."
+    : "Manual mode: type everything by hand. Every field below works exactly the same; switch back to Match (league) when the league site is reachable again.";
+  if (persist) { try { localStorage.setItem("rv-mode", mode); } catch { /* private mode etc. */ } }
   if (mode === "match") refreshLeagueStatus();
 }
 document.querySelectorAll("#modeToggle .seg-btn").forEach(b =>
-  b.addEventListener("click", () => setMode(b.dataset.mode)));
+  b.addEventListener("click", () => setMode(b.dataset.mode, true)));
+// RV-first: Match mode is the default. A producer's explicit choice sticks
+// across opens; otherwise the panel opens on the match finder.
+(function initMode(){
+  let saved = null;
+  try { saved = localStorage.getItem("rv-mode"); } catch { /* ignore */ }
+  setMode(saved === "manual" ? "manual" : "match");
+})();
 
 function leagueErrorText(err){
   if (err === "no-key") return "No key saved. Paste your league API key above.";
   if (err === "access-key-here") return "That's your Casterverse access key. This box wants the league API key (starts with rv_).";
   if (err === "http-401") return "Key rejected by the league site. Check it and save again.";
-  if (err === "http-404") return "The league match API is not live yet. Use Manual mode for now.";
+  if (err === "http-404") return "The league site doesn't know that match any more (completed or removed). Search again, or run the series manually.";
   if (err === "network") return "Can't reach the league site. Check your internet connection.";
   return "League error: " + err;
 }
@@ -1003,9 +1081,14 @@ function renderLeagueMatches(){
       qBtn.className = "mini"; qBtn.textContent = "Add to queue";
       qBtn.addEventListener("click", () => queueAdd({
         matchId: m.matchId,
-        teamA: { name: a ? a.name : "", logo: "", tag: "", seed: "", record: a ? a.record : "" },
-        teamB: { name: b.name, logo: "", tag: "", seed: "", record: b.record },
+        // The local logo proxy URL is deterministic per match+side, so a queued
+        // series carries working logos without an extra fetch (the proxy
+        // re-resolves the expiring upstream URL on demand).
+        teamA: { name: a ? a.name : "", logo: "/league/logo?matchId=" + encodeURIComponent(m.matchId) + "&side=a", tag: "", seed: "", record: a ? a.record : "" },
+        teamB: { name: b.name, logo: "/league/logo?matchId=" + encodeURIComponent(m.matchId) + "&side=b", tag: "", seed: "", record: b.record },
+        bestOf: parseInt($("bestOf").value, 10) || 5,
         round: m.event.composedTitle,
+        startTimeIso: m.scheduledDate || "",
         startTime: t === null ? "" : new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
       }));
       const useBtn = document.createElement("button");
@@ -1060,6 +1143,12 @@ async function useLeagueMatch(matchId, fresh){
     $("seriesA").textContent = state.series.a; $("seriesB").textContent = state.series.b;
     if (d.event && d.event.composedTitle) $("eventTitle").value = d.event.composedTitle.toUpperCase();
     if (d.event && d.event.roundLabel) $("round").value = d.event.roundLabel.toUpperCase();
+    // Seed the once-per-night event fields from the match, but never clobber
+    // what the producer already typed.
+    if (d.event){
+      if (!$("evSeason").value.trim() && d.event.season) $("evSeason").value = d.event.season.toUpperCase();
+      if (!$("evCircuit").value.trim() && d.event.circuitShort) $("evCircuit").value = d.event.circuitShort.toUpperCase();
+    }
     if (d.scheduledDate) $("startTime").value = new Date(d.scheduledDate).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     fillPlayerNames(d);
     updateLogoPreview("A"); updateLogoPreview("B");
@@ -1133,15 +1222,24 @@ function updateLogoPreview(team){
   const url = $("logo"+team).value.trim();
   const img = $("logoPrev"+team);
   if (url){
-    img.onerror = () => { img.style.display = "none"; };
+    // A silently-hidden preview reads as "no logo set"; say what happened and
+    // what to do instead.
+    img.onerror = () => {
+      img.style.display = "none";
+      $("logoErr"+team).textContent = "Logo did not load from that URL. Check the link, or upload the file instead.";
+    };
+    img.onload = () => { $("logoErr"+team).textContent = ""; };
     img.src = url;
     img.style.display = "inline-block";
   } else {
     img.style.display = "none";
+    $("logoErr"+team).textContent = "";
   }
 }
 async function uploadLogo(team, file){
   if (!file) return;
+  const err = $("logoErr"+team);
+  err.textContent = "";
   try {
     const res = await fetch("/assets/upload", {
       method: "POST",
@@ -1153,9 +1251,9 @@ async function uploadLogo(team, file){
     });
     const j = await res.json();
     if (j && j.ok){ $("logo"+team).value = j.url; updateLogoPreview(team); push(); }
-    else alert("Upload failed: " + ((j && j.error) || "unknown error"));
+    else err.textContent = "Upload failed: " + ((j && j.error) || "unknown error") + ". PNG/JPG/SVG under 5 MB.";
   } catch (e){
-    alert("Upload failed: " + e.message);
+    err.textContent = "Upload failed: " + e.message + ". Is the app running?";
   }
 }
 ["A","B"].forEach(team => {
