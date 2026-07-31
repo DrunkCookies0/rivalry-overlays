@@ -14,8 +14,14 @@
  *        - a per-scene key element (SCENE_CHECKS) is visible under mock data
  *        - with window.__RIVALRY_SIGNED__=true pre-set, the badge is ABSENT
  *        - screenshot saved to .verify/<id>.png (gitignored)
- *   3. control/control.html renders scene rows from the registry, error-free.
- *   4. control/setup.html (if it exists) reaches its feed-is-live state.
+ *   3. Every scene also renders at 1280x720, 2560x1440 and 1920x1200 (16:10):
+ *      key element visible, console clean, screenshot per resolution.
+ *   4. rivalry-gameplay must play its FULL goal sequence under the app mock
+ *      feed (flash -> banner -> replay card -> stinger -> kickoff count) at
+ *      1080p; pass --full (or RIVALRY_VERIFY_FULL=1) to prove it at every
+ *      resolution. --full is mandatory after any gameplay layout change.
+ *   5. control/control.html renders scene rows from the registry, error-free.
+ *   6. control/setup.html (if it exists) reaches its feed-is-live state.
  *
  * Exit 0 only if every check passes. No deps beyond playwright + node builtins.
  * ===========================================================================*/
@@ -41,7 +47,24 @@ const HTTP_PORT = 49080;
 const BASE = `http://127.0.0.1:${HTTP_PORT}`;
 const BOOT_TIMEOUT_MS = 30000;
 const MOCK_SETTLE_MS = 2500; // let the SDK mock feed populate the scene
+const RES_SETTLE_MS = 1500; // shorter settle for the extra-resolution sweep
 const SETUP_LIVE_TIMEOUT_MS = 15000;
+
+// Functional checks (badge, key element, console) run once at BASE_VIEWPORT.
+// Every scene is ALSO rendered at each EXTRA_RESOLUTIONS entry (key element
+// visible + console clean + screenshot) because OBS canvases are not all
+// 1080p: 720p and 1440p streams and 16:10 monitors are real setups.
+const BASE_VIEWPORT = { width: 1920, height: 1080 };
+const EXTRA_RESOLUTIONS = [
+  { width: 1280, height: 720 },
+  { width: 2560, height: 1440 },
+  { width: 1920, height: 1200 }, // 16:10
+];
+
+// --full additionally runs the gameplay goal-sequence capture at every
+// resolution instead of only 1080p. Slow (one mock goal cycle per resolution);
+// mandatory after any gameplay layout change, skippable day to day.
+const FULL_MODE = process.argv.includes("--full") || process.env.RIVALRY_VERIFY_FULL === "1";
 const VERIFY_DIR = path.join(REPO_ROOT, ".verify");
 const PUBLIC_KEY_PATH = path.join(REPO_ROOT, "overlays", "keys", "rivalry-overlay-public.pem");
 
@@ -288,8 +311,8 @@ async function waitForBoot(child) {
 // Page helpers
 // ---------------------------------------------------------------------------
 
-async function openPage(browser, url, { initScript } = {}) {
-  const context = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
+async function openPage(browser, url, { initScript, viewport } = {}) {
+  const context = await browser.newContext({ viewport: viewport || BASE_VIEWPORT });
   if (initScript) await context.addInitScript(initScript);
   const page = await context.newPage();
   const errors = [];
@@ -382,6 +405,97 @@ async function checkScene(browser, entry) {
       return "badge absent";
     } finally {
       await signed.context.close();
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 2b. Extra-resolution sweep (every scene) + goal-sequence capture (gameplay)
+// ---------------------------------------------------------------------------
+
+async function checkSceneAtResolution(browser, entry, viewport) {
+  const cfg = SCENE_CHECKS[entry.id];
+  const tag = `${viewport.width}x${viewport.height}`;
+  await runCheck(`${entry.id} | renders at ${tag}`, async () => {
+    const opened = await openPage(browser, `${BASE}${entry.url}?mock=1`, { viewport });
+    try {
+      await opened.page.waitForTimeout(RES_SETTLE_MS);
+      const loc = opened.page.locator(cfg.selector).first();
+      await loc.waitFor({ state: "visible", timeout: 5000 });
+      await opened.page.screenshot({ path: path.join(VERIFY_DIR, `${entry.id}@${tag}.png`) });
+      assertNoErrors(opened.errors, `${entry.url} @ ${tag}`);
+      return `screenshot .verify/${entry.id}@${tag}.png`;
+    } finally {
+      await opened.context.close();
+    }
+  });
+}
+
+// The app-level mock feed (--mock) replays the canonical goal sequence on a
+// ~20s cycle with live-capture timings, so the full sequence is observable:
+// goal flash -> goal banner -> replay card -> stinger wipe -> kickoff count.
+// A 100ms in-page sampler records first-seen times (some states, like the
+// stinger, are too brief to catch reliably from the driver side) and the
+// driver loop screenshots whichever states are currently on screen.
+const GOAL_SEQ_STATES = [
+  { key: "flash", selector: ".goal-flash.show", label: "goal flash" },
+  { key: "banner", selector: ".goal-banner.show", label: "goal banner" },
+  { key: "card", selector: ".replay-card.show", label: "replay card" },
+  { key: "stinger", selector: ".stinger.run", label: "stinger wipe" },
+  { key: "kickoff", selector: ".kickoff-count.show", label: "kickoff countdown" },
+];
+const GOAL_SEQ_TIMEOUT_MS = 70000; // two mock goal cycles + slack
+
+async function checkGoalSequence(browser, entry, viewport) {
+  const tag = `${viewport.width}x${viewport.height}`;
+  await runCheck(`${entry.id} | full goal sequence @ ${tag}`, async () => {
+    const opened = await openPage(browser, `${BASE}${entry.url}?mock=1`, {
+      viewport,
+      initScript: `(() => {
+        const SEL = ${JSON.stringify(GOAL_SEQ_STATES.map(({ key, selector }) => ({ key, selector })))};
+        window.__rvSeq = {};
+        setInterval(() => {
+          for (const s of SEL) {
+            if (!(s.key in window.__rvSeq) && document.querySelector(s.selector)) {
+              window.__rvSeq[s.key] = Math.round(performance.now());
+            }
+          }
+        }, 100);
+      })()`,
+    });
+    try {
+      const shot = new Set();
+      const deadline = Date.now() + GOAL_SEQ_TIMEOUT_MS;
+      for (;;) {
+        const now = await opened.page.evaluate((states) => {
+          const active = [];
+          for (const s of states) if (document.querySelector(s.selector)) active.push(s.key);
+          return { seen: window.__rvSeq || {}, active };
+        }, GOAL_SEQ_STATES.map(({ key, selector }) => ({ key, selector })));
+        for (const key of now.active) {
+          if (!shot.has(key)) {
+            shot.add(key);
+            await opened.page.screenshot({
+              path: path.join(VERIFY_DIR, `goalseq-${key}@${tag}.png`),
+            });
+          }
+        }
+        const missing = GOAL_SEQ_STATES.filter((s) => !(s.key in now.seen));
+        if (missing.length === 0) break;
+        if (Date.now() > deadline) {
+          throw new Error(
+            `goal-sequence states never appeared within ${GOAL_SEQ_TIMEOUT_MS}ms: ` +
+              missing.map((s) => `${s.label} (${s.selector})`).join(", ")
+          );
+        }
+        await sleep(200);
+      }
+      assertNoErrors(opened.errors, `${entry.url} goal sequence @ ${tag}`);
+      const seen = await opened.page.evaluate(() => window.__rvSeq);
+      const order = Object.entries(seen).sort((a, b) => a[1] - b[1]).map(([k]) => k);
+      return `all 5 states observed (${order.join(" -> ")}), ${shot.size} screenshots`;
+    } finally {
+      await opened.context.close();
     }
   });
 }
@@ -508,7 +622,29 @@ async function main() {
     for (const o of overlays) {
       if (!SCENE_CHECKS[o.id]) continue; // already failed the coverage check
       await checkScene(browser, o);
+      for (const res of EXTRA_RESOLUTIONS) {
+        await checkSceneAtResolution(browser, o, res);
+      }
     }
+
+    // Goal-sequence proof: 1080p always; every resolution under --full
+    // (mandatory after any gameplay layout change).
+    const gameplay = overlays.find((o) => o.id === "rivalry-gameplay");
+    if (gameplay) {
+      const seqResolutions = FULL_MODE
+        ? [BASE_VIEWPORT, ...EXTRA_RESOLUTIONS]
+        : [BASE_VIEWPORT];
+      for (const res of seqResolutions) {
+        await checkGoalSequence(browser, gameplay, res);
+      }
+      if (!FULL_MODE) {
+        recordSkip(
+          "rivalry-gameplay | goal sequence at extra resolutions",
+          "run with --full after gameplay layout changes"
+        );
+      }
+    }
+
     await checkControlPanel(browser, overlays.length);
     await checkSetupPage(browser);
   } catch (e) {
