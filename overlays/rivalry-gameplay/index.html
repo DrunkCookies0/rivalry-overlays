@@ -738,6 +738,7 @@
   </div>
 
   </div>
+  <script src="../shared/rivalry-geometry.js"></script>
   <script src="../sdk/rivalry-fit.js"></script>
   <script>
 const GAME_WS = "ws://localhost:49124";
@@ -2108,6 +2109,9 @@ applyControl();
 connectGame();
 connectControl();
 </script>
-  <script>RivalryFit('.rv-stage');</script>
+  <!-- The persistent chrome frames every scene; the whole tuned layout scales
+       uniformly into its interior window (one transform, zero reflow, timing
+       engine untouched). Geometry lives in shared/rivalry-geometry.js. -->
+  <script>RivalryFit('.rv-stage', { safeArea: true });</script>
 </body>
 </html>

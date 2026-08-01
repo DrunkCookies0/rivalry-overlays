@@ -15,6 +15,14 @@
  *   "cover"             — fill the viewport; non-16:9 crops the design edges. No bars.
  * Pick per source with a URL query: append ?fit=cover to the Browser Source URL.
  * On a true 16:9 viewport contain == cover == an exact, gap-free fill.
+ *
+ * Safe-area mode (the persistent chrome):
+ *   RivalryFit('.rv-stage', { safeArea: true });
+ * scales the whole stage into the chrome's interior window instead of the full
+ * canvas, using window.RivalryGeometry (load ../shared/rivalry-geometry.js
+ * first). One uniform transform, no reflow, so a hand-tuned layout survives
+ * untouched. If the geometry script is missing, falls back to full-canvas fit
+ * rather than breaking the scene.
  * ===========================================================================*/
 
 (function (global) {
@@ -36,6 +44,20 @@
     }
     if (mode !== "cover") mode = "contain";
 
+    // Safe-area mode: the stage maps onto the chrome's interior sub-rect of
+    // the reference canvas instead of the whole canvas.
+    var rect = null;
+    if (opts.safeArea) {
+      var g = global.RivalryGeometry;
+      if (g && g.SAFE_AREA && g.CANVAS) {
+        rect = {
+          x: g.SAFE_AREA.x, y: g.SAFE_AREA.y,
+          w: g.SAFE_AREA.width, h: g.SAFE_AREA.height,
+          cw: g.CANVAS.width, ch: g.CANVAS.height,
+        };
+      }
+    }
+
     // The page must fill the Browser Source viewport (not sit in a fixed 1920px
     // box), so the stage has room to scale into.
     var de = doc.documentElement;
@@ -53,7 +75,19 @@
       var vw = global.innerWidth || W;
       var vh = global.innerHeight || H;
       var s = mode === "cover" ? Math.max(vw / W, vh / H) : Math.min(vw / W, vh / H);
-      stage.style.transform = "translate(-50%, -50%) scale(" + s + ")";
+      if (!rect) {
+        stage.style.transform = "translate(-50%, -50%) scale(" + s + ")";
+        return;
+      }
+      // The canvas is centered in the viewport at scale s; place the stage so
+      // its center lands on the safe-area's center, scaled to fit inside it.
+      // k stays uniform (min of both ratios) so a non-16:9 rect could never
+      // stretch the design.
+      var k = Math.min(rect.w / rect.cw, rect.h / rect.ch);
+      var ox = (rect.x + rect.w / 2 - rect.cw / 2) * s;
+      var oy = (rect.y + rect.h / 2 - rect.ch / 2) * s;
+      stage.style.transform =
+        "translate(-50%, -50%) translate(" + ox + "px, " + oy + "px) scale(" + s * k + ")";
     }
 
     apply();
