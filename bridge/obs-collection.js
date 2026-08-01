@@ -37,6 +37,13 @@ const { SAFE_AREA } = require("./broadcast-geometry");
 const CHROME_SCENE_TYPE = "chrome";
 const CHROME_SOURCE_NAME = "RIVALRY Chrome (frame)";
 
+// Dark-launched scene types: signed and servable (so they stay testable and
+// the render gate covers them) but deliberately NOT built into the producer's
+// OBS collection yet. standings is coded to Ask 1 of ASKS-FOR-CYNICAL.md and
+// waits on the league shipping the endpoint; flip by removing it here and
+// adding an OBS_SCENE_NAMES entry.
+const DARK_SCENE_TYPES = new Set(["standings"]);
+
 // Canonical manifest `scene` -> OBS scene name map. This is THE source of
 // truth (moved here from main.js) so the obs-websocket live setup and this
 // importable file can never disagree about scene names. Key order doubles as
@@ -226,7 +233,7 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTI
   const chromeEntry = overlays.find((o) => o.scene === CHROME_SCENE_TYPE) || null;
 
   const ordered = overlays
-    .filter((o) => o.scene !== CHROME_SCENE_TYPE)
+    .filter((o) => o.scene !== CHROME_SCENE_TYPE && !DARK_SCENE_TYPES.has(o.scene))
     .map((o, i) => {
       const k = keyOrder.indexOf(o.scene);
       return { o, i, rank: k === -1 ? keyOrder.length : k };
@@ -302,4 +309,5 @@ module.exports = {
   OBS_COLLECTION_NAME,
   CHROME_SCENE_TYPE,
   CHROME_SOURCE_NAME,
+  DARK_SCENE_TYPES,
 };

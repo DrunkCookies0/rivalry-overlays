@@ -136,6 +136,15 @@
     </div>
     <div id="leagueMatches" style="margin-top:10px;"></div>
     <div id="leagueActive" class="muted-note" style="margin-top:6px;"></div>
+    <!-- Dark-launched: appears only when the league actually serves standings
+         (Ask 1 of ASKS-FOR-CYNICAL.md; live today it 404s and stays hidden).
+         Mock mode serves the fixture, which is how this stays testable. -->
+    <div id="standingsBlock" style="display:none;margin-top:12px;">
+      <div class="row" style="gap:8px;align-items:center;">
+        <button class="mini" id="standingsLoad" type="button">Load standings</button>
+        <div id="standingsStatus" class="muted-note" style="flex:1;">The league is publishing standings. Load them to feed the Standings scene and the ticker.</div>
+      </div>
+    </div>
     <div class="muted-note" style="margin-top:8px;">
       Everything stays editable after filling. Best-of and seeds aren't in the league data, set those by hand.
     </div>
@@ -602,10 +611,40 @@ function payload(){
       schedule: gatherSchedule(),
       chrome: gatherChrome(),
       ticker: gatherTicker(),
-      lowerThird: state.lowerThird
+      lowerThird: state.lowerThird,
+      // Only present once loaded from the league (dark until the API ships).
+      ...(state.standings ? { standings: state.standings } : {})
     }
   };
 }
+
+// ---- Standings (dark-launched) ---------------------------------------------
+// Probe once the league card is live: the block only appears if the endpoint
+// answers, so no producer ever sees a button that cannot work.
+async function probeStandings(){
+  try {
+    const r = await (await fetch("/league/standings")).json();
+    $("standingsBlock").style.display = r.ok ? "" : "none";
+  } catch { /* app unreachable; the card already says so */ }
+}
+$("standingsLoad").addEventListener("click", async () => {
+  const el = $("standingsStatus");
+  el.textContent = "loading standings...";
+  try {
+    const r = await (await fetch("/league/standings?circuit=" + encodeURIComponent(leagueFilter.circuit || ""))).json();
+    if (!r.ok) { el.textContent = leagueErrorText(r.error); return; }
+    const d = r.data || {};
+    // Strip logo URLs before the push: they expire like match logos and must
+    // never land in the retained control state (no roster-logo proxy yet).
+    state.standings = {
+      circuit: d.circuit || {},
+      updatedAt: d.updatedAt || "",
+      rows: (d.rows || []).map(row => ({ ...row, logoUrl: "" })),
+    };
+    el.textContent = "Loaded " + state.standings.rows.length + " rows (" + ((d.circuit && d.circuit.name) || "circuit") + "). Pushed to the Standings scene.";
+    push();
+  } catch { el.textContent = "App not reachable."; }
+});
 
 // ---- Lower third caller -----------------------------------------------------
 // Show stamps shownAt and pushes; the panel also clears visible when the timer
@@ -893,6 +932,7 @@ function hydrateControlForm(p){
     }
   }
   if (p.ticker && Array.isArray(p.ticker.manualLines)) setVal("tickerLines", p.ticker.manualLines.join("\n"));
+  if (p.standings) state.standings = p.standings;
   if (p.lowerThird){
     // Mirror the call state so a reopened panel doesn't clobber a live lower
     // third on its next push. Timers are not resurrected; the scene ages it
@@ -956,9 +996,9 @@ const SCENE_LABELS = {
   "chrome": "Chrome (always-on frame)",
   "starting-soon": "Starting Soon", "caster": "Casters", "match-preview": "Match Preview",
   "gameplay": "Gameplay", "postgame": "Post-Game Results", "up-next": "Up Next",
-  "brb": "Be Right Back",
+  "brb": "Be Right Back", "standings": "Standings (waiting on league API)",
 };
-const SCENE_ORDER = ["chrome", "starting-soon", "caster", "match-preview", "gameplay", "postgame", "up-next", "brb"];
+const SCENE_ORDER = ["chrome", "starting-soon", "caster", "match-preview", "gameplay", "postgame", "up-next", "brb", "standings"];
 
 async function renderScenes(){
   const host = $("sceneList");
@@ -1071,6 +1111,9 @@ async function refreshLeagueStatus(){
   el.textContent = "checking...";
   try {
     const s = await (await fetch("/league/status")).json();
+    // Probe BEFORE the mock early-return: mock mode serves the standings
+    // fixture and is exactly how the dark-launched path gets exercised.
+    if (s.ok || s.mock) probeStandings();
     if (s.mock) { el.textContent = "Using built-in sample matches (mock mode)."; return; }
     if (!s.configured) { el.textContent = "No key saved. Paste your league API key above."; return; }
     el.textContent = s.ok ? ("Key OK " + (s.keyMask || "")) : leagueErrorText(s.error);

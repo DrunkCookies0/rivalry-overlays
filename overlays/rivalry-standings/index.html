@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RIVALRY — Standings</title>
+<!--
+  DARK-LAUNCHED (2026-08-01): built against Ask 1 in ASKS-FOR-CYNICAL.md
+  before the standings endpoint exists. The scene is signed and testable (mock
+  fixture end to end) but deliberately kept OUT of the OBS scene collection
+  and the scene deck (DARK_SCENE_TYPES in bridge/obs-collection.js) until the
+  league API actually serves standings. Flip: remove the type from
+  DARK_SCENE_TYPES and add an OBS_SCENE_NAMES entry.
+
+  Consumes the additive `standings` control field (see overlays/CONTRACT.md):
+  rows arrive in the server's official order and are NEVER re-sorted here, so
+  the broadcast cannot disagree with the site about positions.
+-->
+<link rel="stylesheet" href="../shared/rivalry-theme.css" />
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+.scene-root[data-scene="standings"]{position:absolute;inset:0;overflow:hidden;font-family:var(--rv-font-body);color:var(--rv-ink);background:var(--rv-jet-black);}
+.st-bg{position:absolute;inset:0;background:radial-gradient(120% 100% at 16% 0%,var(--rv-surface-2) 0%,var(--rv-yale-blue) 34%,var(--rv-jet-black) 80%,#091820 100%);}
+.st-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(47,125,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(47,125,255,.05) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(120% 100% at 30% 30%,#000 55%,transparent 100%);mask-image:radial-gradient(120% 100% at 30% 30%,#000 55%,transparent 100%);}
+.st-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 100px,rgba(241,238,238,.03) 100px 102px);animation:stDrift 21s linear infinite;}
+@keyframes stDrift{from{transform:translateX(0);}to{transform:translateX(102px);}}
+.st-glow{position:absolute;right:-6%;top:8%;width:680px;height:680px;border-radius:50%;background:radial-gradient(circle,rgba(241,196,15,.18),transparent 64%);filter:blur(8px);}
+
+/* Frame insets respect the chrome safe area (rails 64, ticker 72) plus
+   breathing room; see overlays/shared/rivalry-geometry.js. */
+.st-frame{position:absolute;left:112px;right:112px;top:44px;bottom:110px;display:flex;flex-direction:column;}
+.st-top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;}
+.st-kick{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:26px;letter-spacing:.34em;text-transform:uppercase;color:var(--rv-muted);margin-bottom:2px;display:block;}
+.st-title{margin:0;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:96px;line-height:.88;text-transform:uppercase;color:var(--rv-white-smoke);text-shadow:0 10px 28px rgba(0,0,0,.65);animation:stIn .7s var(--rv-ease-bounce) both;}
+.st-title em{font-style:italic;color:var(--rv-gold);text-shadow:0 0 30px rgba(241,196,15,.5),0 10px 28px rgba(0,0,0,.65);}
+@keyframes stIn{from{opacity:0;transform:translateX(-40px) skewX(-8deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
+.st-underbar{display:block;margin-top:12px;width:340px;height:7px;background:linear-gradient(90deg,var(--rv-blue),var(--rv-teal) 60%,var(--rv-gold));transform:skewX(-12deg);transform-origin:left;box-shadow:0 0 20px rgba(47,125,255,.5);animation:stWipe .8s .2s var(--rv-ease-wipe) both;}
+@keyframes stWipe{from{transform:skewX(-12deg) scaleX(0);}to{transform:skewX(-12deg) scaleX(1);}}
+.st-brand{display:flex;flex-direction:column;gap:3px;text-align:right;padding-bottom:8px;}
+.st-league{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:24px;letter-spacing:.14em;text-transform:uppercase;}
+.st-circuit{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.20em;text-transform:uppercase;color:var(--rv-gold);}
+
+.st-list{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:12px;}
+.st-row{flex:0 1 84px;min-height:56px;display:flex;align-items:center;gap:24px;padding:0 34px;background:linear-gradient(100deg,var(--rv-surface-1),var(--rv-jet-black));box-shadow:0 10px 28px rgba(0,0,0,.45);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));border-left:8px solid var(--rv-blue);animation:stRow .55s var(--rv-ease-wipe) both;}
+.st-row.p1{border-left-color:var(--rv-gold);}
+.st-row.p2{border-left-color:var(--rv-teal);}
+@keyframes stRow{from{opacity:0;transform:translateX(-36px) skewX(-3deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
+.st-pos{font-family:var(--rv-font-stat);font-weight:700;font-size:38px;color:rgba(241,196,15,.6);min-width:58px;}
+.st-name{flex:1 1 auto;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:42px;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--rv-white-smoke);text-shadow:0 4px 14px rgba(0,0,0,.7);}
+.st-rec{font-family:var(--rv-font-stat);font-weight:700;font-size:34px;min-width:130px;text-align:right;color:var(--rv-white-smoke);}
+.st-games{font-family:var(--rv-font-stat);font-size:20px;min-width:120px;text-align:right;color:var(--rv-muted);}
+.st-streak{font-family:var(--rv-font-stat);font-weight:700;font-size:20px;min-width:64px;text-align:right;}
+.st-streak.w{color:var(--rv-green);} .st-streak.l{color:var(--rv-red);}
+.st-pts{font-family:var(--rv-font-stat);font-weight:700;font-size:30px;min-width:90px;text-align:right;color:var(--rv-gold);}
+
+.st-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
+.st-empty .e1{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:34px;letter-spacing:.08em;text-transform:uppercase;color:var(--rv-muted);}
+.st-empty .e2{font-family:var(--rv-font-stat);font-size:16px;letter-spacing:.14em;color:rgba(138,160,182,.7);}
+.st-updated{font-family:var(--rv-font-stat);font-size:13px;letter-spacing:.16em;color:rgba(138,160,182,.7);text-align:right;margin-top:12px;}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="standings">
+      <div class="st-bg"></div>
+      <div class="st-grid"></div>
+      <div class="st-lines"></div>
+      <div class="st-glow"></div>
+      <div class="st-frame">
+        <header class="st-top">
+          <div>
+            <span class="st-kick" id="stKick">CIRCUIT</span>
+            <h1 class="st-title">STAND<em>INGS</em></h1>
+            <span class="st-underbar"></span>
+          </div>
+          <div class="st-brand">
+            <span class="st-league" id="stLeague">RIVALRY</span>
+            <span class="st-circuit" id="stCircuit"></span>
+          </div>
+        </header>
+        <section class="st-list" id="stList"></section>
+        <div class="st-updated" id="stUpdated"></div>
+      </div>
+    </div>
+  </div>
+  <script src="../shared/rivalry-geometry.js"></script>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    var MAX_ROWS = 8;
+    var $ = function (id) { return document.getElementById(id); };
+
+    function el(tag, cls, text) {
+      var d = document.createElement(tag);
+      if (cls) d.className = cls;
+      if (text !== undefined && text !== null) d.textContent = String(text);
+      return d;
+    }
+
+    function render(c) {
+      var brand = (c.brand && c.brand.leagueName) || "RIVALRY";
+      $("stLeague").textContent = brand.toUpperCase();
+      var s = c.standings;
+      var list = $("stList");
+      list.innerHTML = "";
+      var rows = s && Array.isArray(s.rows) ? s.rows : [];
+      var circuitLine = s && s.circuit
+        ? [s.circuit.season, s.circuit.nameShort || s.circuit.name, s.circuit.tier].filter(Boolean).join(" • ")
+        : "";
+      $("stCircuit").textContent = (circuitLine || c.eventTitle || "").toUpperCase();
+      $("stKick").textContent = rows.length ? "CIRCUIT" : "";
+      if (!rows.length) {
+        var empty = el("div", "st-empty");
+        empty.appendChild(el("div", "e1", "Waiting for league standings"));
+        empty.appendChild(el("div", "e2", "THIS BOARD FILLS ITSELF ONCE THE LEAGUE PUBLISHES STANDINGS"));
+        list.appendChild(empty);
+        $("stUpdated").textContent = "";
+        return;
+      }
+      rows.slice(0, MAX_ROWS).forEach(function (r, i) {
+        // Server order IS the official order; position renders as sent.
+        var row = el("div", "st-row" + (r.position === 1 ? " p1" : r.position === 2 ? " p2" : ""));
+        row.style.animationDelay = (0.2 + i * 0.07) + "s";
+        row.appendChild(el("span", "st-pos", r.position !== null && r.position !== undefined ? String(r.position).padStart(2, "0") : "--"));
+        row.appendChild(el("span", "st-name", r.name || "TBD"));
+        row.appendChild(el("span", "st-rec", r.record || ""));
+        row.appendChild(el("span", "st-games", r.gamesRecord ? "(" + r.gamesRecord + ")" : ""));
+        var streak = el("span", "st-streak", r.streak || "");
+        if (/^W/i.test(r.streak || "")) streak.classList.add("w");
+        if (/^L/i.test(r.streak || "")) streak.classList.add("l");
+        row.appendChild(streak);
+        row.appendChild(el("span", "st-pts", r.points !== null && r.points !== undefined ? r.points + " PTS" : ""));
+        list.appendChild(row);
+      });
+      $("stUpdated").textContent = s.updatedAt
+        ? "UPDATED " + new Date(s.updatedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).toUpperCase()
+        : "";
+    }
+
+    var ov = RivalryOverlay.connect({ game: false });
+    ov.onControl(render);
+    RivalryFit(".rv-stage");
+  })();
+  </script>
+</body>
+</html>

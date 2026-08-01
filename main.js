@@ -525,7 +525,7 @@ function refreshTrayMenu() {
 // re-running is safe and just no-ops if scenes / sources already exist.
 // Scene names live in obs-collection.js so the websocket path and the
 // importable scene-collection file can never disagree.
-const { OBS_SCENE_NAMES, OBS_COLLECTION_NAME, CHROME_SCENE_TYPE, CHROME_SOURCE_NAME } = require("./bridge/obs-collection");
+const { OBS_SCENE_NAMES, OBS_COLLECTION_NAME, CHROME_SCENE_TYPE, CHROME_SOURCE_NAME, DARK_SCENE_TYPES } = require("./bridge/obs-collection");
 const { SAFE_AREA } = require("./bridge/broadcast-geometry");
 async function setupObsScenes() {
   if (!obsController || !obsController.status.connected) return { ok: false, error: "OBS not connected" };
@@ -541,7 +541,7 @@ async function setupObsScenes() {
   // to the pre-chrome layout (full-canvas capture, no frame).
   const chromeEntry = available.find((o) => o.scene === CHROME_SCENE_TYPE) || null;
   const list = available
-    .filter((o) => o.scene !== CHROME_SCENE_TYPE)
+    .filter((o) => o.scene !== CHROME_SCENE_TYPE && !DARK_SCENE_TYPES.has(o.scene))
     .sort((a, b) => {
       const ra = sceneRank.indexOf(a.scene), rb = sceneRank.indexOf(b.scene);
       return (ra === -1 ? sceneRank.length : ra) - (rb === -1 ? sceneRank.length : rb);

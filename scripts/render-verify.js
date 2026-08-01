@@ -87,6 +87,7 @@ const SCENE_CHECKS = {
     sdkBadge: false, // shipped overlay: own socket code, no SDK, no badge
   },
   "rivalry-chrome": { selector: ".ticker", description: "bottom ticker bar" },
+  "rivalry-standings": { selector: ".st-list", description: "standings list (dark-launched scene)" },
   "rivalry-match-preview": { selector: ".mp-name", description: "team name node" },
   "rivalry-starting-soon": { selector: ".ss-name", description: "team name node" },
   "rivalry-up-next": { selector: ".un-list", description: "up-next match list" },

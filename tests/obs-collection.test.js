@@ -276,6 +276,19 @@ test("with the chrome present, the game capture scales into the safe area", () =
   assert.equal(brb.settings.items.length, 2);
 });
 
+test("dark-launched scene types never reach the producer's collection", () => {
+  const { DARK_SCENE_TYPES } = require("../bridge/obs-collection");
+  assert.ok(DARK_SCENE_TYPES.has("standings"), "standings is dark until the league API ships");
+  const overlays = [
+    ...fixtureWithChrome(),
+    entry({ folder: "rivalry-standings", name: "Standings", scene: "standings" }),
+  ];
+  const col = buildSceneCollection({ overlays, baseUrl: BASE });
+  assert.equal(scenesOf(col).length, fixture().length, "standings must not add a scene");
+  assert.ok(!scenesOf(col).some((s) => /standings/i.test(s.name)));
+  assert.ok(!browsersOf(col).some((b) => /standings/i.test(b.name)), "no orphan standings source either");
+});
+
 test("without a chrome overlay the collection keeps the pre-chrome shape", () => {
   const col = build();
   const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");

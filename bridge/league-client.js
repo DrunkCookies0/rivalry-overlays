@@ -152,6 +152,61 @@ function normalizeMatch(raw) {
   };
 }
 
+// Pure. Normalizes the standings response requested in ASKS-FOR-CYNICAL.md
+// (Ask 1). BUILT AHEAD OF THE API: no standings route exists live as of
+// 2026-08-01; this codes to the requested shape so the feature lights up the
+// day it ships, and this function is the single place to adjust if the real
+// shape lands differently. `position` is the official ordering; rows are
+// passed through in server order and NEVER re-sorted here, so the broadcast
+// can never disagree with the site about who is above whom.
+function normalizeStandings(raw) {
+  const src = raw && typeof raw === "object" ? raw : {};
+  const circuit = src.circuit && typeof src.circuit === "object" ? src.circuit : {};
+  const rows = Array.isArray(src.standings) ? src.standings : [];
+  const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  // Same season-prefix dedup as normalizeMatch's circuitShort: circuit names
+  // embed the season ("Summer 2026 - 3v3 East"), and composing season + name
+  // verbatim would print the season twice on the board header.
+  const season = str(circuit.season);
+  const name = str(circuit.name);
+  let nameShort = name;
+  if (season && name.toLowerCase().startsWith(season.toLowerCase())) {
+    nameShort = name.slice(season.length).replace(/^\s*[|\-–—:]\s*/, "").trim() || name;
+  }
+  return {
+    circuit: {
+      id: str(circuit.id),
+      name,
+      nameShort,
+      tier: str(circuit.tier),
+      season,
+    },
+    updatedAt: str(src.updatedAt),
+    rows: rows.map((r) => {
+      const row = r && typeof r === "object" ? r : {};
+      const wins = num(row.wins) ?? 0;
+      const losses = num(row.losses) ?? 0;
+      const gw = num(row.gamesWon);
+      const gl = num(row.gamesLost);
+      return {
+        position: num(row.position),
+        rosterId: str(row.rosterId),
+        name: str(row.name),
+        // Expires like match logos; consumers must not persist it. The panel
+        // deliberately drops it until a roster-logo proxy exists.
+        logoUrl: str(row.logoUrl),
+        wins,
+        losses,
+        record: `${wins}-${losses}`,
+        gamesRecord: gw !== null && gl !== null ? `${gw}-${gl}` : "",
+        points: num(row.points),
+        matchesPlayed: num(row.matchesPlayed),
+        streak: str(row.streak),
+      };
+    }),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Client factory
 // ---------------------------------------------------------------------------
@@ -413,7 +468,22 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
     return result;
   }
 
-  return { validateKey, listMatches, getMatch, getLogo };
+  // Ask 1 (ASKS-FOR-CYNICAL.md), coded AHEAD of the API: no standings route
+  // exists live as of 2026-08-01, so both forms 404 in production today and
+  // callers treat that as "not live yet". Mock mode serves the fixture, which
+  // is how the scene and panel path stay testable until Cynical ships. Tries
+  // the circuit-scoped route when an id is known, else the query form (both
+  // were offered in the ask; whichever lands, this is the one call site).
+  async function getStandings({ circuitId, circuit } = {}) {
+    const s = settings();
+    if (isMock(s)) return readFixtureJson("standings.json");
+    if (circuitId) {
+      return apiGet(`/api/v1/circuits/${encodeURIComponent(circuitId)}/standings`);
+    }
+    return apiGet("/api/v1/standings", { circuit });
+  }
+
+  return { validateKey, listMatches, getMatch, getLogo, getStandings };
 }
 
-module.exports = { createLeagueClient, normalizeMatch };
+module.exports = { createLeagueClient, normalizeMatch, normalizeStandings };

@@ -1,0 +1,17 @@
+{
+  "circuit": {
+    "id": "fixture-circuit-3v3-east",
+    "name": "Summer 2026 - 3v3 East",
+    "tier": "Tier 1",
+    "season": "Summer 2026"
+  },
+  "updatedAt": "2026-07-30T19:00:00.000Z",
+  "standings": [
+    { "position": 1, "rosterId": "fx-frost", "name": "FROST", "logoUrl": "", "wins": 4, "losses": 1, "gamesWon": 12, "gamesLost": 5, "points": 12, "matchesPlayed": 5, "streak": "W3" },
+    { "position": 2, "rosterId": "fx-ember", "name": "EMBER", "logoUrl": "", "wins": 3, "losses": 2, "gamesWon": 11, "gamesLost": 8, "points": 9, "matchesPlayed": 5, "streak": "W1" },
+    { "position": 3, "rosterId": "fx-nova", "name": "NOVA", "logoUrl": "", "wins": 3, "losses": 2, "gamesWon": 10, "gamesLost": 9, "points": 9, "matchesPlayed": 5, "streak": "L1" },
+    { "position": 4, "rosterId": "fx-eclipse", "name": "ECLIPSE", "logoUrl": "", "wins": 2, "losses": 3, "gamesWon": 9, "gamesLost": 10, "points": 6, "matchesPlayed": 5, "streak": "W1" },
+    { "position": 5, "rosterId": "fx-guardians", "name": "GUARDIANS", "logoUrl": "", "wins": 2, "losses": 3, "gamesWon": 8, "gamesLost": 11, "points": 6, "matchesPlayed": 5, "streak": "L2" },
+    { "position": 6, "rosterId": "fx-sentinels", "name": "SENTINELS", "logoUrl": "", "wins": 1, "losses": 4, "gamesWon": 6, "gamesLost": 13, "points": 3, "matchesPlayed": 5, "streak": "L3" }
+  ]
+}

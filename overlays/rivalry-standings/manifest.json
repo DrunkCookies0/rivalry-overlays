@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-standings",
+  "name": "Standings",
+  "author": "RIVALRY",
+  "version": "1.0.0",
+  "scene": "standings",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Circuit standings board (Kinetic Bold). Dark-launched: built to Ask 1 of ASKS-FOR-CYNICAL.md ahead of the league API; kept out of the OBS collection until the endpoint is live.",
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "adae954a32313242a699b49b3a08f6974466868759a07b56042040eb216a6c58",
+    "signature": "a3gyC9u+5HgKSJrT8jkT8HPAvtPH9B/EVus/k0ubg3e0fZhakhPb+L1++DXXM7qgNPGAD1xhN4N7+jaeDSUwAw==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-08-01T12:59:19.443Z"
+  }
+}

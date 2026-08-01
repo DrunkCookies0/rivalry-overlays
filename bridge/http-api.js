@@ -305,6 +305,22 @@ function createApiRouter(ctx) {
       });
       return true;
     }
+    // Ask 1 standings, coded ahead of the API (see league-client.getStandings).
+    // Live today this returns the upstream 404 as {ok:false,error:"http-404"},
+    // which the panel reads as "not live yet" and keeps the whole standings
+    // surface hidden. Mock mode serves the fixture so the path stays testable.
+    if (urlPath === "/league/standings") {
+      const q = leagueQuery(req);
+      client.getStandings({
+        circuitId: q.get("circuitId") || "",
+        circuit: q.get("circuit") || "",
+      }).then((r) => {
+        if (!r.ok) return sendJson(res, 502, r);
+        const { normalizeStandings } = require("./league-client");
+        sendJson(res, 200, { ok: true, data: normalizeStandings(r.data) });
+      });
+      return true;
+    }
     if (urlPath === "/league/logo") {
       const q = leagueQuery(req);
       const matchId = q.get("matchId");
