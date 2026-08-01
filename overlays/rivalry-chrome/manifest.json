@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-chrome",
+  "name": "Chrome (persistent frame)",
+  "author": "RIVALRY",
+  "version": "1.0.0",
+  "scene": "chrome",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Always-on broadcast frame: side rails, bottom ticker, lower thirds and the branded wipe. Added once in OBS, layered above every scene.",
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "523f3af7756fad4e0204b94bcacc2c6718cc5f0cfc207f545eecd8892f7284fb",
+    "signature": "3R3xqS6MUYub6brzPnb9Rh7RZcDttVoBuE62HoaDDj0iipnZPrFAeKDIGTLceabfHWu1uSTrRogzWDFTK/p7Dw==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-08-01T00:59:55.572Z"
+  }
+}

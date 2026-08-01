@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RIVALRY Chrome</title>
+<!--
+  The persistent broadcast frame: left/right rails, bottom ticker, producer
+  lower thirds, and the branded wipe. Added ONCE in OBS as a browser source
+  layered above every scene; the interior window it leaves open is the safe
+  area every other scene (and the game capture) fits inside.
+
+  Geometry comes from ../shared/rivalry-geometry.js (single source, guarded by
+  tests). Data rides the control bus as the additive v1 fields documented in
+  overlays/CONTRACT.md: chrome, ticker, lowerThird, schedule. The wipe fires on
+  the transient "chrome-wipe" bus message (never retained, so a reloaded scene
+  can never replay an old wipe).
+
+  Visual treatments: tA solid slab / tB kinetic seam / tC glass edge, matching
+  the decision prototype (overlays/_prototype-chrome.html). DEFAULT_TREATMENT
+  is the picked one; ?treatment=tA|tB|tC overrides per browser source for
+  side-by-side review.
+-->
+<link rel="stylesheet" href="../shared/rivalry-theme.css">
+<style>
+  html,body{margin:0;height:100%;background:transparent;overflow:hidden;}
+  .rv-stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:transparent;
+    font-family:var(--rv-font-body,Roboto,sans-serif);}
+
+  /* Geometry: JS stamps --rail/--ticker from RivalryGeometry before first paint. */
+  .rv-stage{--rail:64px;--ticker:72px;}
+  .rail{position:absolute;top:0;bottom:var(--ticker);width:var(--rail);z-index:40;
+    display:flex;flex-direction:column;align-items:center;}
+  .rail.left{left:0;}
+  .rail.right{right:0;}
+  .ticker{position:absolute;left:0;right:0;bottom:0;height:var(--ticker);z-index:41;
+    display:flex;align-items:center;}
+
+  /* Treatment A: solid slab */
+  .tA .rail{background:var(--rv-jet-black,#132e3b);}
+  .tA .rail.left{border-right:3px solid var(--rv-gold,#f1c40f);}
+  .tA .rail.right{border-left:3px solid var(--rv-gold,#f1c40f);}
+  .tA .ticker{background:var(--rv-jet-black,#132e3b);border-top:3px solid var(--rv-gold,#f1c40f);}
+  .tA .tile,.tA .sc-logo{outline:1px solid rgba(241,196,15,.35);}
+
+  /* Treatment B: kinetic seam (default) */
+  .tB .rail{background:linear-gradient(180deg,#132e3b 0%,#20496f 140%);}
+  .tB .rail.left{box-shadow:inset -3px 0 0 var(--rv-gold,#f1c40f);}
+  .tB .rail.right{box-shadow:inset 3px 0 0 var(--rv-gold,#f1c40f);}
+  .tB .ticker{background:linear-gradient(90deg,#132e3b 0%,#1a3d4d 55%,#20496f 100%);
+    box-shadow:inset 0 3px 0 var(--rv-gold,#f1c40f);}
+  .tB .rail::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg,transparent 0%,rgba(241,196,15,.07) 50%,transparent 100%);
+    background-size:100% 300%;animation:sheen 9s linear infinite;}
+  @keyframes sheen{0%{background-position:0 300%;}100%{background-position:0 -300%;}}
+  .tB .tile,.tB .sc-logo{clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);}
+  .tB .badge{clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%);padding-right:30px;}
+
+  /* Treatment C: glass edge */
+  .tC .rail{background:rgba(19,46,59,.82);backdrop-filter:blur(6px);}
+  .tC .rail.left{border-right:1px solid rgba(241,238,238,.28);}
+  .tC .rail.right{border-left:1px solid rgba(241,238,238,.28);}
+  .tC .ticker{background:rgba(19,46,59,.88);backdrop-filter:blur(6px);
+    border-top:1px solid rgba(241,238,238,.28);}
+  .tC .tile,.tC .sc-logo{outline:1px solid rgba(241,238,238,.25);border-radius:6px;}
+
+  /* Rail contents */
+  .rail .logo{width:48px;height:48px;margin-top:8px;flex:none;
+    background:url("../../assets/rivalry-logo.svg") center/contain no-repeat;}
+  .rail .wordmark{margin-top:14px;flex:none;
+    writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);
+    font-family:var(--rv-font-display,'Exo 2',sans-serif);font-style:italic;
+    font-weight:800;font-size:26px;letter-spacing:.35em;
+    color:var(--rv-white-smoke,#f1eeee);white-space:nowrap;}
+  .rail .eventmeta{margin-top:auto;margin-bottom:14px;flex:none;
+    writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:var(--rv-font-stat,'Space Mono',monospace);font-size:13px;
+    letter-spacing:.22em;color:rgba(241,238,238,.62);white-space:nowrap;
+    max-height:640px;overflow:hidden;}
+  .rail .follow{margin-top:10px;flex:none;
+    writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:var(--rv-font-stat,'Space Mono',monospace);font-size:12px;
+    letter-spacing:.3em;color:rgba(241,238,238,.55);}
+  .rail .tiles{display:flex;flex-direction:column;gap:12px;margin-top:16px;flex:none;}
+  .tile{width:46px;height:46px;display:flex;align-items:center;justify-content:center;
+    background:rgba(241,238,238,.06);color:var(--rv-white-smoke,#f1eeee);
+    font-family:var(--rv-font-display,'Exo 2',sans-serif);font-style:italic;
+    font-weight:800;font-size:18px;}
+  .tile svg{width:24px;height:24px;fill:currentColor;}
+
+  .showcase{margin-top:auto;margin-bottom:14px;flex:none;display:flex;
+    flex-direction:column;align-items:center;gap:8px;}
+  .showcase .sc-label{writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:var(--rv-font-stat,'Space Mono',monospace);font-size:11px;
+    letter-spacing:.28em;color:var(--rv-gold,#f1c40f);white-space:nowrap;}
+  .showcase .sc-logo{width:46px;height:46px;background:rgba(241,238,238,.08) center/contain no-repeat;
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--rv-font-display,'Exo 2',sans-serif);font-style:italic;
+    font-weight:800;font-size:18px;color:var(--rv-white-smoke,#f1eeee);}
+  /* FOLLOW block sits under the top tiles; when the showcase is present it
+     anchors the rail bottom, so both never fight for space. */
+
+  /* Ticker contents */
+  .badge{flex:none;height:100%;display:flex;align-items:center;gap:10px;
+    padding:0 18px;background:var(--rv-gold,#f1c40f);color:#132e3b;
+    font-family:var(--rv-font-display,'Exo 2',sans-serif);font-style:italic;
+    font-weight:800;font-size:20px;letter-spacing:.08em;}
+  .items{flex:1;overflow:hidden;position:relative;height:100%;}
+  .t-item{position:absolute;inset:0;display:flex;align-items:center;gap:14px;
+    padding:0 26px;opacity:0;transform:translateY(12px);
+    transition:opacity .45s var(--rv-ease-out,ease),transform .45s var(--rv-ease-out,ease);
+    font-size:21px;color:var(--rv-white-smoke,#f1eeee);white-space:nowrap;}
+  .t-item.on{opacity:1;transform:none;}
+  .t-item .k{font-family:var(--rv-font-stat,'Space Mono',monospace);font-size:14px;
+    letter-spacing:.2em;color:var(--rv-gold,#f1c40f);flex:none;}
+  .t-item .vs{color:rgba(241,238,238,.55);font-size:16px;}
+  .t-item .rec{font-family:var(--rv-font-stat,'Space Mono',monospace);
+    font-size:16px;color:var(--rv-teal,#1abc9c);}
+  .t-item .live-dot{width:10px;height:10px;border-radius:50%;flex:none;
+    background:var(--rv-red,#e74c3c);animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{50%{opacity:.35}}
+  .stream{flex:none;height:100%;display:flex;align-items:center;gap:10px;
+    padding:0 22px;font-family:var(--rv-font-stat,'Space Mono',monospace);
+    font-size:12px;letter-spacing:.18em;color:rgba(241,238,238,.55);}
+
+  /* Lower third: inside the safe area, above the ticker */
+  .lower3{position:absolute;z-index:45;left:calc(var(--rail) + 42px);
+    bottom:calc(var(--ticker) + 34px);display:flex;align-items:stretch;
+    opacity:0;transform:translateX(-24px);pointer-events:none;
+    transition:opacity .4s var(--rv-ease-out,ease),transform .4s var(--rv-ease-out,ease);}
+  .lower3.on{opacity:1;transform:none;}
+  .lower3 .bar{width:8px;background:var(--rv-gold,#f1c40f);flex:none;}
+  .lower3.kind-announce .bar{background:var(--rv-teal,#1abc9c);}
+  .lower3 .body{background:rgba(19,46,59,.94);padding:14px 30px 14px 22px;
+    clip-path:polygon(0 0,100% 0,calc(100% - 18px) 100%,0 100%);}
+  .lower3 .l3-title{font-family:var(--rv-font-display,'Exo 2',sans-serif);
+    font-style:italic;font-weight:800;font-size:30px;letter-spacing:.04em;
+    color:var(--rv-white-smoke,#f1eeee);}
+  .lower3 .l3-sub{font-family:var(--rv-font-stat,'Space Mono',monospace);
+    font-size:15px;letter-spacing:.16em;color:var(--rv-gold,#f1c40f);margin-top:2px;}
+
+  /* Wipe: covers the whole canvas, driven by the transient chrome-wipe event */
+  .wipe{position:absolute;inset:0;z-index:60;display:none;pointer-events:none;}
+  .wipe.run{display:block;}
+  .wipe .p{position:absolute;top:0;bottom:0;width:120%;left:-130%;}
+  .wipe .p1{background:var(--rv-gold,#f1c40f);}
+  .wipe .p2{background:var(--rv-jet-black,#132e3b);}
+  .wipe.run .p1{animation:wSweep 1s cubic-bezier(.6,0,.2,1) forwards;}
+  .wipe.run .p2{animation:wSweep 1s cubic-bezier(.6,0,.2,1) .12s forwards;}
+  .wipe .wlogo{position:absolute;left:50%;top:50%;width:220px;height:220px;
+    transform:translate(-50%,-50%) scale(.6);opacity:0;
+    background:url("../../assets/rivalry-logo.svg") center/contain no-repeat;}
+  .wipe.run .wlogo{animation:wLogo 1.12s cubic-bezier(.3,1.4,.4,1) .3s forwards;}
+  @keyframes wSweep{0%{transform:translateX(0) skewX(-12deg);}100%{transform:translateX(215%) skewX(-12deg);}}
+  @keyframes wLogo{0%{opacity:0;transform:translate(-50%,-50%) scale(.6);}
+    30%{opacity:1;transform:translate(-50%,-50%) scale(1);}
+    70%{opacity:1;transform:translate(-50%,-50%) scale(1);}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(1.15);}}
+</style>
+</head>
+<body>
+<div class="rv-stage tB" id="stage">
+  <div class="rail left">
+    <div class="logo"></div>
+    <div class="wordmark" id="leagueName">RIVALRY</div>
+    <div class="eventmeta" id="eventMeta"></div>
+  </div>
+
+  <div class="rail right">
+    <div class="follow" id="followLabel" style="display:none">FOLLOW</div>
+    <div class="tiles" id="tiles"></div>
+    <div class="showcase" id="showcase" style="display:none">
+      <div class="sc-label" id="scLabel"></div>
+      <div class="sc-logo" id="scLogo"></div>
+    </div>
+  </div>
+
+  <div class="ticker" id="ticker">
+    <div class="badge" id="tickerBadge">RIVALRY</div>
+    <div class="items" id="tickerItems"></div>
+    <div class="stream" id="streamLine" style="display:none"></div>
+  </div>
+
+  <div class="lower3" id="lower3">
+    <div class="bar"></div>
+    <div class="body">
+      <div class="l3-title" id="l3Title"></div>
+      <div class="l3-sub" id="l3Sub"></div>
+    </div>
+  </div>
+
+  <div class="wipe" id="wipe">
+    <div class="p p2"></div>
+    <div class="p p1"></div>
+    <div class="wlogo"></div>
+  </div>
+</div>
+
+<script src="../shared/rivalry-geometry.js"></script>
+<script src="../sdk/rivalry-fit.js"></script>
+<script src="../sdk/rivalry-overlay-sdk.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var stage = $("stage");
+
+  // Picked in the chrome-direction review; ?treatment= overrides for
+  // side-by-side comparison in OBS without editing the scene.
+  var DEFAULT_TREATMENT = "tB";
+  var treatment = DEFAULT_TREATMENT;
+  try {
+    var q = new URLSearchParams(location.search).get("treatment");
+    if (q === "tA" || q === "tB" || q === "tC") treatment = q;
+  } catch (e) { /* file:// */ }
+  stage.classList.remove("tA", "tB", "tC");
+  stage.classList.add(treatment);
+
+  // Geometry from the shared constant, stamped before first paint so the CSS
+  // never carries a second copy of the numbers.
+  var G = window.RivalryGeometry;
+  if (G) {
+    stage.style.setProperty("--rail", G.RAIL_WIDTH + "px");
+    stage.style.setProperty("--ticker", G.TICKER_HEIGHT + "px");
+  }
+
+  RivalryFit(".rv-stage");
+
+  /* ---- socials: known networks get their mark, unknown get a letter tile */
+  var ICONS = {
+    discord: '<svg viewBox="0 0 24 24"><path d="M19.3 5.3A16.9 16.9 0 0 0 15.2 4l-.2.4a15.6 15.6 0 0 1 3.8 1.9A12.7 12.7 0 0 0 5.2 6.3a15.6 15.6 0 0 1 3.8-1.9L8.8 4a16.9 16.9 0 0 0-4.1 1.3A17.6 17.6 0 0 0 1.6 17a17 17 0 0 0 5.2 2.6l.4-.6a10.7 10.7 0 0 1-1.7-.8l.4-.3a12.2 12.2 0 0 0 12.2 0l.4.3c-.5.3-1.1.6-1.7.8l.4.6A17 17 0 0 0 22.4 17a17.6 17.6 0 0 0-3.1-11.7ZM8.7 14.8c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg>',
+    x: '<svg viewBox="0 0 24 24"><path d="M17.5 3h3.1l-6.8 7.8L21.8 21h-6.3l-4.9-6.4L5 21H1.9l7.3-8.3L2.2 3h6.4l4.4 5.9L17.5 3Zm-1.1 16h1.7L7.7 4.7H5.9L16.4 19Z"/></svg>',
+    twitter: '<svg viewBox="0 0 24 24"><path d="M17.5 3h3.1l-6.8 7.8L21.8 21h-6.3l-4.9-6.4L5 21H1.9l7.3-8.3L2.2 3h6.4l4.4 5.9L17.5 3Zm-1.1 16h1.7L7.7 4.7H5.9L16.4 19Z"/></svg>',
+    twitch: '<svg viewBox="0 0 24 24"><path d="M4.3 2 2.5 6.4v14.2h4.9V23h2.7l2.4-2.4h3.7l5-5V2H4.3Zm15.1 12.7-2.9 2.9h-4.5l-2.4 2.4v-2.4H5.9V3.8h13.5v10.9ZM16.7 7v5.3h-1.8V7h1.8Zm-4.9 0v5.3H10V7h1.8Z"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24"><path d="M23 7.6a2.9 2.9 0 0 0-2-2C19.2 5 12 5 12 5s-7.2 0-9 .5a2.9 2.9 0 0 0-2 2A30.6 30.6 0 0 0 .5 12c0 1.5.2 3 .5 4.4a2.9 2.9 0 0 0 2 2c1.8.6 9 .6 9 .6s7.2 0 9-.5a2.9 2.9 0 0 0 2-2c.3-1.5.5-3 .5-4.5s-.2-3-.5-4.4ZM9.7 15.6V8.4l6 3.6-6 3.6Z"/></svg>',
+  };
+
+  var TICKER_CYCLE_MS = 6000;
+  var tickerIdx = 0;
+  var tickerTimer = null;
+
+  function el(tag, cls, text) {
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    if (text !== undefined) d.textContent = text;
+    return d;
+  }
+
+  function renderSocials(socials) {
+    var tiles = $("tiles");
+    tiles.innerHTML = "";
+    var list = Array.isArray(socials) ? socials.filter(function (s) { return s && (s.network || s.handle); }) : [];
+    $("followLabel").style.display = list.length ? "" : "none";
+    list.slice(0, 4).forEach(function (s) {
+      var t = el("div", "tile");
+      var key = String(s.network || "").toLowerCase();
+      if (ICONS[key]) t.innerHTML = ICONS[key];
+      else t.textContent = (s.network || s.handle || "?").slice(0, 1).toUpperCase();
+      t.title = s.handle || s.network || "";
+      tiles.appendChild(t);
+    });
+  }
+
+  function renderShowcase(sc) {
+    var host = $("showcase");
+    if (!sc || (!sc.name && !sc.logo)) { host.style.display = "none"; return; }
+    host.style.display = "";
+    $("scLabel").textContent = (sc.label || "SHOWCASE").toUpperCase();
+    var logo = $("scLogo");
+    if (sc.logo) {
+      logo.textContent = "";
+      logo.style.backgroundImage = "url('" + String(sc.logo).replace(/'/g, "%27") + "')";
+    } else {
+      logo.style.backgroundImage = "";
+      logo.textContent = (sc.name || "?").slice(0, 2).toUpperCase();
+    }
+    logo.title = sc.name || "";
+  }
+
+  /* ---- ticker: three sources, one item list --------------------------------
+     1. the schedule (live series + what is next), derived automatically
+     2. team records for the loaded series
+     3. the producer's manual lines plus typed items (unknown types skipped,
+        so future item kinds are a no-op here instead of a break)           */
+  function buildTickerItems(c) {
+    var items = [];
+    var sched = c.schedule || {};
+    var series = Array.isArray(sched.series) ? sched.series : [];
+    var active = typeof sched.activeIndex === "number" ? sched.activeIndex : -1;
+
+    var nameA = c.teamA && c.teamA.name, nameB = c.teamB && c.teamB.name;
+    if (active >= 0 && series[active] && nameA && nameB) {
+      var s = c.series || { a: 0, b: 0 };
+      items.push({ kind: "live", a: nameA, b: nameB, score: s.a + "-" + s.b, bestOf: c.bestOf });
+    }
+    series.forEach(function (e, i) {
+      if (i <= active) return;
+      var a = e.teamA && e.teamA.name, b = e.teamB && e.teamB.name;
+      if (!a && !b) return;
+      items.push({
+        kind: i === active + 1 ? "next" : "later",
+        a: a || "TBD", b: b || "TBD",
+        time: e.startTimeDisplay || "",
+      });
+    });
+    if (c.teamA && c.teamA.record && c.teamB && c.teamB.record && nameA && nameB) {
+      items.push({ kind: "records", a: nameA, ra: c.teamA.record, b: nameB, rb: c.teamB.record });
+    }
+    var t = c.ticker || {};
+    (Array.isArray(t.manualLines) ? t.manualLines : []).forEach(function (line) {
+      if (line && line.trim()) items.push({ kind: "text", text: line.trim() });
+    });
+    (Array.isArray(t.items) ? t.items : []).forEach(function (it) {
+      if (it && it.type === "text" && it.text) items.push({ kind: "text", text: it.text });
+      // unknown item types: deliberately skipped, additive contract
+    });
+    if (!items.length) {
+      items.push({ kind: "text", text: (c.eventTitle || (c.brand && c.brand.leagueName) || "RIVALRY") });
+    }
+    return items;
+  }
+
+  function renderTickerItem(host, it) {
+    var d = el("div", "t-item");
+    if (it.kind === "live") {
+      d.appendChild(el("span", "live-dot"));
+      d.appendChild(el("span", "k", "LIVE NOW"));
+      d.appendChild(document.createTextNode(it.a));
+      d.appendChild(el("span", "vs", "vs"));
+      d.appendChild(document.createTextNode(it.b));
+      d.appendChild(el("span", "k", it.score + (it.bestOf ? "  BO" + it.bestOf : "")));
+    } else if (it.kind === "next" || it.kind === "later") {
+      d.appendChild(el("span", "k", it.kind === "next" ? "UP NEXT" : "TONIGHT"));
+      d.appendChild(document.createTextNode(it.a));
+      d.appendChild(el("span", "vs", "vs"));
+      d.appendChild(document.createTextNode(it.b));
+      if (it.time) d.appendChild(el("span", "k", it.time));
+    } else if (it.kind === "records") {
+      d.appendChild(el("span", "k", "RECORDS"));
+      d.appendChild(document.createTextNode(it.a + " "));
+      d.appendChild(el("span", "rec", it.ra));
+      d.appendChild(el("span", "vs", "•"));
+      d.appendChild(document.createTextNode(it.b + " "));
+      d.appendChild(el("span", "rec", it.rb));
+    } else {
+      d.appendChild(document.createTextNode(it.text || ""));
+    }
+    host.appendChild(d);
+    return d;
+  }
+
+  function renderTicker(c) {
+    var host = $("tickerItems");
+    host.innerHTML = "";
+    buildTickerItems(c).forEach(function (it) { renderTickerItem(host, it); });
+    if (tickerIdx >= host.children.length) tickerIdx = 0;
+    cycleTicker(true);
+    if (!tickerTimer) tickerTimer = setInterval(cycleTicker, TICKER_CYCLE_MS);
+  }
+
+  function cycleTicker(hold) {
+    var kids = $("tickerItems").children;
+    if (!kids.length) return;
+    if (!hold) tickerIdx = (tickerIdx + 1) % kids.length;
+    for (var i = 0; i < kids.length; i++) kids[i].classList.toggle("on", i === tickerIdx);
+  }
+
+  /* ---- lower third ---------------------------------------------------------
+     Retained-state safe via age, not flags: the panel stamps shownAt (epoch
+     ms, same machine so no clock skew) when the producer calls it. A timed
+     lower third shows only for its REMAINING time, so the bus replaying
+     retained state to a fresh page can never resurrect one that already ran
+     out. A held one (durationSec 0) survives a browser-source refresh, which
+     is what a producer wants mid-segment, but ages out after HOLD_REPLAY_MAX
+     so yesterday's hold never haunts tonight. */
+  var HOLD_REPLAY_MAX_S = 300;
+  var l3Timer = null;
+  var l3LastShownAt = 0;
+  function renderLowerThird(lt) {
+    var host = $("lower3");
+    if (!lt || !lt.visible || !lt.shownAt) {
+      l3LastShownAt = 0;
+      clearTimeout(l3Timer);
+      host.classList.remove("on");
+      return;
+    }
+    var ageS = (Date.now() - Number(lt.shownAt)) / 1000;
+    var hold = Number(lt.durationSec) || 0;
+    var expired = hold > 0 ? ageS >= hold : ageS >= HOLD_REPLAY_MAX_S;
+    if (expired) {
+      clearTimeout(l3Timer);
+      host.classList.remove("on");
+      return;
+    }
+    if (lt.shownAt === l3LastShownAt) return; // merge repeat of the same call
+    l3LastShownAt = lt.shownAt;
+    $("l3Title").textContent = lt.title || "";
+    $("l3Sub").textContent = lt.subtitle || "";
+    host.className = "lower3 on kind-" + (lt.kind || "caster");
+    clearTimeout(l3Timer);
+    if (hold > 0) {
+      var remainingMs = Math.max(0, hold - ageS) * 1000;
+      l3Timer = setTimeout(function () { host.classList.remove("on"); }, remainingMs);
+    }
+  }
+
+  /* ---- wipe ---- */
+  function runWipe() {
+    var w = $("wipe");
+    w.classList.remove("run");
+    void w.offsetWidth;
+    w.classList.add("run");
+    setTimeout(function () { w.classList.remove("run"); }, 1600);
+  }
+
+  /* ---- render from control state ---- */
+  function render(c) {
+    var ch = c.chrome || {};
+    var league = ch.leagueName || (c.brand && c.brand.leagueName) || "RIVALRY";
+    $("leagueName").textContent = league.toUpperCase();
+    $("tickerBadge").textContent = league.toUpperCase();
+
+    var ev = c.schedule && c.schedule.event ? c.schedule.event : {};
+    var meta = [ch.seasonName || ev.season, ch.circuitName || ev.circuit, ev.tier]
+      .filter(Boolean).join(" • ");
+    $("eventMeta").textContent = meta.toUpperCase();
+
+    var stream = ch.streamLine || "";
+    $("streamLine").textContent = stream.toUpperCase();
+    $("streamLine").style.display = stream ? "" : "none";
+
+    renderSocials(ch.socials);
+    renderShowcase(ch.showcase);
+    renderTicker(c);
+    renderLowerThird(c.lowerThird);
+  }
+
+  var ov = RivalryOverlay.connect({ game: false });
+  ov.onControl(render);
+  ov.onBus("chrome-wipe", runWipe);
+})();
+</script>
+</body>
+</html>

@@ -127,6 +127,18 @@
     try { fn(this.control); } catch (e) {}
     return this;
   };
+  // Additive (v1): subscribe to OTHER control-bus message types (for example
+  // "chrome-wipe"). These are transient events, never retained or replayed,
+  // so unlike onControl there is no immediate fire-with-current-state.
+  Overlay.prototype.onBus = function (type, fn) {
+    (this._busHandlers = this._busHandlers || {})[type] =
+      (this._busHandlers[type] || []).concat(fn);
+    return this;
+  };
+  Overlay.prototype._emitBus = function (type, payload) {
+    var arr = (this._busHandlers && this._busHandlers[type]) || [];
+    for (var i = 0; i < arr.length; i++) { try { arr[i](payload); } catch (e) { console.error(e); } }
+  };
   Overlay.prototype.onConnection = function (fn) {
     this._connHandlers.push(fn);
     try { fn(this._status); } catch (e) {}
@@ -279,7 +291,11 @@
     }
     if (opts.control !== false) {
       this._control = makeSocket("control", endpoints.control,
-        function (msg) { if (msg && msg.type === "control") self._emitControl(msg.payload); },
+        function (msg) {
+          if (!msg || !msg.type) return;
+          if (msg.type === "control") self._emitControl(msg.payload);
+          else self._emitBus(msg.type, msg.payload);
+        },
         function (st) { self._setStatus("control", st); });
     }
 
