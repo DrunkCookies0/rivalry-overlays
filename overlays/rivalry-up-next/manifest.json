@@ -13,9 +13,9 @@
   "description": "Up Next scene (Kinetic Bold).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "5ac29ae9a8b988efc5deec45391b9732058140dd12fc225a58c00438a0f16c98",
-    "signature": "Ws5j/ZNi8xoP8SxvLia7XiVKu2YmO8MSkr+/msd+8nTINIuJ6iXzFS2wZA4VfkkcJNCvzqeD1pWj338mlf7SAA==",
+    "contentHash": "9ee408a2917913de80aeaff0e251e2918eb8e8dba9cb66f5f708fae36ea2d93c",
+    "signature": "V9zaTuwFTK7f26MoJBSia24VilLvXGNZnUITZsa6QwBlLMPMxPUlkLZwxXrf5HpK/23tIXOn2XVcrG0A+Y2WBA==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-07-06T17:51:41.864Z"
+    "signedAt": "2026-08-01T12:53:13.700Z"
   }
 }

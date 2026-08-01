@@ -13,9 +13,9 @@
   "description": "Starting Soon scene (Kinetic Bold).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "88f07369fe9c419fa4d6aa58ae4b5ca39682be737629c52e39fa5e6a0ca60f29",
-    "signature": "hJXjKj2dEYmStKRr7Qo/revoPXO9gWQ/zvmvm7cNc2jq8nBWbCsum1+Cy77itDx7vwtlPQBdhCL1GPeCdkaRAg==",
+    "contentHash": "e37b7599d6bc9ff5802eab465891ea1fb343cc94290043105544319d24850f3c",
+    "signature": "lgmeLeC8ogElDFfTcX+qkZPEy92PyyeXGSz8MUIkmCKHVHY8S84aK4dNYjEWFwVY2wyz8P+RgY97eEqtH0dJAg==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-07-06T17:51:40.511Z"
+    "signedAt": "2026-08-01T12:53:09.278Z"
   }
 }

@@ -14,9 +14,9 @@
   "description": "Post-match results board (box score + MVP), latched from the live feed.",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "7a480bcdda58029e94b49bc27aaf68324c99c88b21bbdb0133d3894800be10c4",
-    "signature": "t4TZbUpLFk/3N4+WUjy0lJZpKYDI4HbgLZalZwwdx8ah19U/WbgVE1lQIVzxd90SXV7Q2AaDvdeQLAIoQH6mCQ==",
+    "contentHash": "5dc1dc4400c749d4a1c5d39c95cddfaaee5385ea11d32b888e89cee00c3fc18c",
+    "signature": "SsKg+MLXQjaAbkm8/85ROIJGeO0+JdivJmoBF+BTEaDEbL40niKq1WPepZb7DSmW9liqe7VaOnc8RGsuFCIYDw==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-07-06T17:51:39.062Z"
+    "signedAt": "2026-08-01T12:53:12.632Z"
   }
 }

@@ -13,9 +13,9 @@
   "description": "Be Right Back scene (Kinetic Bold).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "408a02b6187f8481e54b71d1bf780b3fff80873bd94aa3adb8695219dc3655c4",
-    "signature": "ACxxtKaTbWCMah7n6/HBq1OOenSNfN7dqVJl2bGFv7rR2Hpsr5GB3MWDfj0rzHVw3T8P14BwVc5GSMsL06XaCw==",
+    "contentHash": "3e8279183c9066e7e5c1a824685f9deee24801521e8af99ef6a153326995b20d",
+    "signature": "qbMljUhn1DAuKc4Bira5S9qwsBRLKdUgGVpjr951GKamZfsmSeHRzFWWoP16fIsdGRfL7ZDzZ1f0hzD6fDqXDg==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-07-06T17:51:33.485Z"
+    "signedAt": "2026-08-01T12:53:10.431Z"
   }
 }

@@ -13,9 +13,9 @@
   "description": "Casters scene (Kinetic Bold).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "8294fdfd19c036312eadb12d035c8a286e993465be3a609fd06aa456240ea1a9",
-    "signature": "uIHzLoTdJFsJKCEi5vACIqjVCRaZGVBzNa8kwRdpTRMr3fO5gV4GRMEXhHYX/39aLXYvpuncSX0VBdsjN8bZCw==",
+    "contentHash": "ca96e98c81b724a4de81087c18c93804d0f299b8fed0f4f56052a96780143fbb",
+    "signature": "WnjmrLF/fPcgOAZpqn/dzyY1jpWSe3Hh/hXZpFX21JlGzfbB2q6AgzHOXMGIM7FvzOqy464UpSZIDRXQuRplCw==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-07-25T17:55:55.318Z"
+    "signedAt": "2026-08-01T12:53:14.709Z"
   }
 }
