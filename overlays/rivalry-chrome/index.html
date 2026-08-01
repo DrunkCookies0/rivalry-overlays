@@ -15,10 +15,10 @@
   the transient "chrome-wipe" bus message (never retained, so a reloaded scene
   can never replay an old wipe).
 
-  Visual treatments: tA solid slab / tB kinetic seam / tC glass edge, matching
-  the decision prototype (overlays/_prototype-chrome.html). DEFAULT_TREATMENT
-  is the picked one; ?treatment=tA|tB|tC overrides per browser source for
-  side-by-side review.
+  Visual direction picked 2026-08-01 from the decision prototype
+  (overlays/_prototype-chrome.html): kinetic seam surfaces, molded into one
+  continuous frame (the glass-edge quality), rails 64 / ticker 72, standard
+  ticker density. The treatment switch was removed once the pick was made.
 -->
 <link rel="stylesheet" href="../shared/rivalry-theme.css">
 <style>
@@ -35,33 +35,33 @@
   .ticker{position:absolute;left:0;right:0;bottom:0;height:var(--ticker);z-index:41;
     display:flex;align-items:center;}
 
-  /* Treatment A: solid slab */
-  .tA .rail{background:var(--rv-jet-black,#132e3b);}
-  .tA .rail.left{border-right:3px solid var(--rv-gold,#f1c40f);}
-  .tA .rail.right{border-left:3px solid var(--rv-gold,#f1c40f);}
-  .tA .ticker{background:var(--rv-jet-black,#132e3b);border-top:3px solid var(--rv-gold,#f1c40f);}
-  .tA .tile,.tA .sc-logo{outline:1px solid rgba(241,196,15,.35);}
-
-  /* Treatment B: kinetic seam (default) */
-  .tB .rail{background:linear-gradient(180deg,#132e3b 0%,#20496f 140%);}
-  .tB .rail.left{box-shadow:inset -3px 0 0 var(--rv-gold,#f1c40f);}
-  .tB .rail.right{box-shadow:inset 3px 0 0 var(--rv-gold,#f1c40f);}
-  .tB .ticker{background:linear-gradient(90deg,#132e3b 0%,#1a3d4d 55%,#20496f 100%);
-    box-shadow:inset 0 3px 0 var(--rv-gold,#f1c40f);}
-  .tB .rail::after{content:"";position:absolute;inset:0;pointer-events:none;
+  /* The picked treatment (2026-08-01): kinetic seam, molded. The three bars
+     are SLICES of one shared 1920x1080 gradient (a vertical ramp is constant
+     across x, so the ticker slice continues the rails' color exactly where
+     they meet: the frame reads as one piece, not three slabs). */
+  .rail,.ticker{
+    background-image:linear-gradient(180deg,#132e3b 0%,#1a3d4d 60%,#20496f 125%);
+    background-size:1920px 1080px;background-repeat:no-repeat;}
+  .rail.left{background-position:0 0;}
+  .rail.right{background-position:calc(var(--rail) - 1920px) 0;}
+  .ticker{background-position:0 calc(var(--ticker) - 1080px);}
+  .rail::after{content:"";position:absolute;inset:0;pointer-events:none;
     background:linear-gradient(180deg,transparent 0%,rgba(241,196,15,.07) 50%,transparent 100%);
     background-size:100% 300%;animation:sheen 9s linear infinite;}
   @keyframes sheen{0%{background-position:0 300%;}100%{background-position:0 -300%;}}
-  .tB .tile,.tB .sc-logo{clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);}
-  .tB .badge{clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%);padding-right:30px;}
+  .tile,.sc-logo{clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);}
+  .badge{clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%);padding-right:30px;}
 
-  /* Treatment C: glass edge */
-  .tC .rail{background:rgba(19,46,59,.82);backdrop-filter:blur(6px);}
-  .tC .rail.left{border-right:1px solid rgba(241,238,238,.28);}
-  .tC .rail.right{border-left:1px solid rgba(241,238,238,.28);}
-  .tC .ticker{background:rgba(19,46,59,.88);backdrop-filter:blur(6px);
-    border-top:1px solid rgba(241,238,238,.28);}
-  .tC .tile,.tC .sc-logo{outline:1px solid rgba(241,238,238,.25);border-radius:6px;}
+  /* One molded gold seam around the interior window. The borders sit on the
+     bars' inner 3px (not over the game), and the two bottom corners MITER,
+     which is exactly the "molds together" quality of the glass-edge option
+     brought onto the kinetic look. */
+  .frame-seam{position:absolute;z-index:42;pointer-events:none;
+    left:calc(var(--rail) - 3px);right:calc(var(--rail) - 3px);
+    top:0;bottom:calc(var(--ticker) - 3px);
+    border-left:3px solid var(--rv-gold,#f1c40f);
+    border-right:3px solid var(--rv-gold,#f1c40f);
+    border-bottom:3px solid var(--rv-gold,#f1c40f);}
 
   /* Rail contents */
   .rail .logo{width:48px;height:48px;margin-top:8px;flex:none;
@@ -158,7 +158,8 @@
 </style>
 </head>
 <body>
-<div class="rv-stage tB" id="stage">
+<div class="rv-stage" id="stage">
+  <div class="frame-seam"></div>
   <div class="rail left">
     <div class="logo"></div>
     <div class="wordmark" id="leagueName">RIVALRY</div>
@@ -203,17 +204,6 @@
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var stage = $("stage");
-
-  // Picked in the chrome-direction review; ?treatment= overrides for
-  // side-by-side comparison in OBS without editing the scene.
-  var DEFAULT_TREATMENT = "tB";
-  var treatment = DEFAULT_TREATMENT;
-  try {
-    var q = new URLSearchParams(location.search).get("treatment");
-    if (q === "tA" || q === "tB" || q === "tC") treatment = q;
-  } catch (e) { /* file:// */ }
-  stage.classList.remove("tA", "tB", "tC");
-  stage.classList.add(treatment);
 
   // Geometry from the shared constant, stamped before first paint so the CSS
   // never carries a second copy of the numbers.
