@@ -1,5 +1,9 @@
 # RIVALRY Casterverse - Design Spec
 
+> Scope note: this spec covers the gameplay overlay only. The other scenes and
+> the chrome frame live in `overlays/`, with shared design tokens in
+> `overlays/shared/rivalry-theme.css`.
+
 Reference for designers making custom assets for the broadcast overlay.
 All positions are relative to a **1920 x 1080** canvas (the size OBS
 sets the Browser Source to). Designer-friendly summary, not a CSS dump.
@@ -18,7 +22,7 @@ sets the Browser Source to). Designer-friendly summary, not a CSS dump.
 
 ## Color palette
 
-The overlay reads colors from CSS variables in [`overlay/overlay.html`](overlay/overlay.html#L10). Swap these for full re-skin.
+The overlay reads colors from CSS variables in [`overlays/rivalry-gameplay/index.html`](overlays/rivalry-gameplay/index.html). Swap these for full re-skin.
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -178,7 +182,7 @@ Drop replacements into `assets/` with the same filename. The app picks them up a
 
 To add a new asset (e.g. a goal sound effect, particle PNG, video sting):
 1. Drop the file into `assets/`
-2. Reference it from `overlay/overlay.html` (we'll wire it up — let me know what + when)
+2. Reference it from `overlays/rivalry-gameplay/index.html` (we'll wire it up, let me know what and when)
 3. Rebuild the installer
 
 ---
@@ -207,4 +211,4 @@ The overlay's banner + stinger still play during this time, layered on top of wh
 | Boost meter rails | continuous during match | width-only animation per change | per-frame | every `UpdateState` |
 | Scorebar / event title / subbar | always visible during match | none | none | bridge connected |
 
-If your designer wants to suggest changes to any of these timings, that's a code change — let me know what you'd want and I'll wire it up.
+If your designer wants to suggest changes to any of these timings, that's a code change - let me know what you'd want and I'll wire it up.

@@ -1,146 +1,149 @@
-# Clean-Machine QA Checklist
+# Producer Install Checklist
 
-Cold-start QA for the installer. Run this on a machine (or sandbox) that has **never** seen the app, before every release candidate. The point is to catch everything a first-time producer would hit that a dev machine hides.
+This is the checklist the producer runs on their own machine the first time they install RIVALRY Casterverse. It proves the whole chain works on a machine Alex has never touched, before the first real broadcast depends on it.
 
----
+- Who runs it: the producer, alone, on their own Windows machine.
+- What it needs: the installer, your two keys (access key and league API key), OBS, and Rocket League. Nothing else. No repo, no npm, no developer tools.
+- How long: well under an hour, including one exhibition match.
+- If any step's "Expected" does not happen and the "If not" line does not fix it: run the Export diagnostics step at the bottom, send the file to Alex, and stop there. Nothing later in the list will go better than the step that just failed.
 
-## Prep
-
-Pick one environment:
-
-**Option A: Windows Sandbox (fastest, resets on close)**
-
-1. Enable it: Start, "Turn Windows features on or off", check **Windows Sandbox**, reboot.
-2. Launch Windows Sandbox.
-3. Drag the beta installer (`RIVALRY-Casterverse-Beta-Setup-*.exe`) into the sandbox window.
-4. Install OBS inside the sandbox (download from obsproject.com, needs OBS 30+).
-5. Note: Rocket League cannot realistically run in the sandbox, so RL-dependent steps are skipped there. Do a full pass on Option B before shipping.
-
-**Option B: spare PC or VM with a GPU**
-
-1. Fresh Windows user profile that has never run the app.
-2. OBS 30+ installed.
-3. Rocket League installed (required for the full pass).
-
-**Which steps need Rocket League?** Wizard step 1 going green, the gameplay-feed check, and the post-game latch. Everything else (install, OBS import, control panel, persistence, logo upload, league degrade, update check, quit/relaunch) works without RL. Steps that need RL are marked **[RL]** below.
+Keep PRODUCER-SETUP.md open next to this; it explains each screen in more detail. This file is just the script.
 
 ---
 
-## The five-minute drill (run this one first)
+## Before you start (Alex side)
 
-The whole point of the product: hand someone the installer, they are streaming in
-five minutes. Time it with a stopwatch, on a profile that has never run the app.
-If a step needs explaining out loud, that step is the bug.
+Done by Alex on the dev machine before anything ships to the producer:
 
-Before starting, from the repo: `npm run key:issue -- --name "Drill"` and keep
-the key on the clipboard. You also need a league API key.
+- [ ] Issue the producer's personal access key: `npm run key:issue -- --name "<producer name>"`
+- [ ] Send the producer: the installer, their access key (starts with `RCV1.`), their league API key (starts with `rv_`), PRODUCER-SETUP.md, and this checklist.
 
-| # | Do this | Expect | Time |
-|---|---------|--------|------|
-| 1 | Run `RIVALRY-Casterverse-Setup-<version>.exe` | Installs with no wizard, no UAC, app opens on its own | |
-| 2 | The window is on **Enter your access key** | Wizard is gated — no scene list, no steps visible yet | |
-| 3 | Paste the key, click **ACTIVATE** | "Activated for Drill", wizard appears | |
-| 4 | Step 1, Rocket League **[RL]** | Green once RL has been launched once and restarted | |
-| 5 | Step 2, click **SET UP OBS FOR ME** | 5 ticks go green; OBS starts if closed; 7 scenes built. **No password is ever requested** | |
-| 6 | Step 3, copy the dock URL into OBS (Docks, Custom Browser Docks) | Control panel appears inside OBS | |
-| 7 | Click **FINISH SETUP** | Lands on the control panel | |
-| 8 | Switch to **Match (league)**, paste the league API key, **Save key** | "Key OK ••••xxxx" | |
-| 9 | Click **Find matches** | Real matches, circuit chips, records | |
-| 10 | Click **Use now** on one | Team names, logos, records and rosters fill in | |
-| 11 | In OBS, switch to **RIVALRY - Starting Soon** | Both teams, their logos and records, on air | |
-
-**Stop the clock at step 11.** Anything past five minutes is a finding, not a
-pass.
-
-### Things that have actually gone wrong here
-
-- **Stale copies of the app running.** The single-instance lock means a second
-  launch quietly hands off to the one already running, so you can test a build
-  that isn't the one you just made. Check with
-  `tasklist /FI "IMAGENAME eq RIVALRY Casterverse.exe"` and kill all of them
-  before a run.
-- **Not a real first run.** Delete `%AppData%\RIVALRY Casterverse\` (or at least
-  `license.json`, `league-settings.json`, `obs-settings.json`,
-  `control-state.json`, `.setup-complete`) or the wizard is skipped and the
-  activation gate never shows.
-- **OBS stuck behind a dialog.** After an unclean shutdown OBS opens a "Crash
-  Detected" prompt and never opens its websocket, so step 5 times out. Answer
-  the dialog and retry — the app deliberately doesn't clear OBS's crash marker.
-- **Placeholder text on air.** Blank fields must render blank. If a scene shows
-  "NA", "12-3" or any other sample value that the panel doesn't contain, that is
-  a bug (see `rivalry-bind.js`).
-
-### Access keys
-
-| Check | Expect |
-|---|---|
-| Launch with no key entered | Every overlay URL serves an "activation required" card, not a black frame |
-| Enter a nonsense key | Refused with a readable reason, nothing stored |
-| `npm run key:revoke -- --name "Drill"`, push, relaunch the app | Overlays go back to the activation card, naming who the key belonged to |
-| `npm run key:revoke -- --name "Drill" --undo`, push, relaunch | Works again |
-| Pull the network cable, relaunch | Still works — the revocation check fails open by design |
+Everything below is the producer's script.
 
 ---
 
-## Checklist
+## The checklist
 
-### Install
+Work top to bottom. Tick each box only when the "Expected" line actually happened.
 
-- [ ] SmartScreen warning appears on running the installer (expected, unsigned).
-- [ ] "More info" then "Run anyway" proceeds without further blocks.
-- [ ] Installer completes per-user (no admin/UAC elevation prompt).
-- [ ] App launches after install; no freeze, no error dialog.
-- [ ] Tray icon is present and its menu opens.
+### 1. Install
 
-### Setup wizard
+- [ ] Double-click `RIVALRY-Casterverse-Setup-<version>.exe`. Windows shows a blue **"Windows protected your PC"** screen. Click **More info**, then **Run anyway**. This warning is expected and safe (the installer is unsigned).
 
-- [ ] Wizard opens automatically on first launch.
-- [ ] Step 1, RL never launched on this machine: shows the "Rocket League folder not found" state (not a crash or blank).
-- [ ] **[RL]** Launch Rocket League once, close it, retry in the wizard: the folder is found and the config file is written.
-- [ ] **[RL]** Wizard shows the live "waiting for Rocket League" state.
-- [ ] **[RL]** Restart Rocket League: the step goes green on its own.
-- [ ] Step 2: scene collection download works from the wizard.
-- [ ] Step 3: control panel URL shown; wizard can be completed.
-- [ ] Tray icon, "Setup guide" reopens the wizard after completion.
+  **Expected:** the installer runs with no further prompts, and the app opens on its own with a RIVALRY icon in the system tray.
 
-### OBS import
+  **If not:** if the blue screen has no "More info" link, or the app never opens, take a photo of the screen and call Alex.
 
-- [ ] OBS: Scene Collection menu, Import, pick the downloaded file: import succeeds.
-- [ ] All 7 scenes are present, in broadcast order: Starting Soon, Casters, Match Preview, Gameplay (Live), Post-Game Results, Up Next, Be Right Back.
-- [ ] Each scene has its browser source, pointed at `http://localhost:49080/overlays/...`, 1920x1080.
-- [ ] Presentation scenes (Starting Soon, BRB) render, not blank.
-- [ ] **[RL]** Start a match or freeplay and spectate/play: the Gameplay scene shows live data. There is no mock on a clean machine (no npm), so this check needs real RL. Note: the gameplay scene shows live data only during a match; blank outside one is correct.
+### 2. Activate
 
-### Control panel dock
+- [ ] The app shows **"Enter your access key"**. Paste your `RCV1.` key (copy and paste, do not retype) and click **ACTIVATE**.
 
-- [ ] OBS: Docks, Custom Browser Docks, add `http://localhost:49080/`: the panel loads in the dock.
-- [ ] Type team names, push: a presentation scene (Starting Soon or Match Preview) updates live.
-- [ ] Refresh the scene's browser source: the typed values are still shown (not reset to defaults).
-- [ ] Quit the app from the tray, relaunch it: every value typed in the panel is still there.
+  **Expected:** a green **"Activated for"** message with your name, and the 3-step setup wizard appears.
 
-### Logos
+  **If not:** read the refusal message exactly as written, then call Alex with it. Do not keep retrying variations of the key.
 
-- [ ] Upload a logo file via the picker: it renders on a scene after push.
-- [ ] Drag-drop a logo file onto the panel: same result.
-- [ ] Paste a direct image URL: it renders after push.
+### 3. Wizard step 1: Rocket League
 
-### League Match mode
+- [ ] Look at the status box on the Rocket League step.
+  - If it shows **RESTART ROCKET LEAGUE**: quit Rocket League completely (all the way out of the game, not just to the main menu) and launch it again. The wizard notices on its own.
+  - If it says **"Rocket League folder not found"**: launch Rocket League once, quit it, then click **Retry**.
 
-- [ ] Switch the Scenes card toggle to Match with no API key entered: clean degrade (an "enter your API key" or "not live yet" style message), no error dialog, no console spam.
-- [ ] Switch back to Manual: everything still works.
+  **Expected:** the step turns green ("Rocket League feed is live", or "Connected to Rocket League" if you are not in a match, both count).
 
-### App health
+  **If not:** click **Retry** once more with Rocket League fully closed. Still not green: Export diagnostics (step 13) and send to Alex.
 
-- [ ] Tray auto-update row shows a sane status (up to date, or checking), not an error.
-- [ ] If possible: start another process on port 49080 and relaunch the app; the port-conflict dialog appears and names the port. (Optional, skip if awkward to stage.)
-- [ ] Quit from the tray: process fully exits (check Task Manager, no stray RIVALRY process).
-- [ ] Relaunch: app comes up clean, wizard does NOT reopen, panel values persist.
+### 4. Wizard step 2: OBS
+
+- [ ] Make sure OBS is installed, then click **SET UP OBS FOR ME**. Type no passwords; it never asks for one.
+
+  **Expected:** the five checklist items tick green one by one (find OBS, switch on its connection, start OBS, connect, build the scenes). OBS ends up with a scene collection named **RIVALRY Casterverse** containing every scene, each with the chrome frame layered on top and the game capture already scaled inside the chrome's interior window.
+
+  **If not:** the checklist names the item that failed. Click **SET UP OBS FOR ME** once more (a freshly started OBS sometimes needs a second try, especially if it opened a "Crash Detected" dialog you had to answer). Still failing: open **"Do it manually instead"** in the same wizard step, click **DOWNLOAD SCENE COLLECTION**, then in OBS: **Scene Collection** menu, **Import**, pick the downloaded file, switch to **RIVALRY Casterverse**. If the imported collection is missing scenes or the chrome, Export diagnostics and send to Alex.
+
+### 5. Control panel dock
+
+- [ ] In OBS: **View** menu, **Docks**, **Custom Browser Docks**. Add a row named **RIVALRY** with the address `http://localhost:49080/` and click **Apply**. Then click **FINISH SETUP** in the wizard.
+
+  **Expected:** the control panel appears inside OBS as a dock, with the Match/Manual toggle at the top and the team cards below.
+
+  **If not:** open `http://localhost:49080/` in a normal browser tab instead. If it loads there but not in the dock, re-check the address in the dock row for typos. If it loads nowhere, the app is not running (no tray icon): start it and retry.
+
+### 6. League key and find matches
+
+- [ ] In the control panel, confirm the toggle is on **Match (league)** (the default). In the **Find your match** card, paste your league API key (starts with `rv_`), click **Save key**, then click **Find matches**.
+
+  **Expected:** status reads **"Key OK"** plus a masked key, and the real league schedule appears with circuit and "when" filter chips.
+
+  **If not:** the status line tells you what is wrong. What each message means:
+  - **"That's your Casterverse access key. This box wants the league API key (starts with rv_)."** You pasted the `RCV1.` key. Paste the `rv_` one instead.
+  - **"No key saved. Paste your league API key above."** The save did not take. Paste the key and click **Save key** again.
+  - **"Key rejected by the league site. Check it and save again."** The `rv_` key itself is wrong. Re-copy it from where Alex sent it, save again. Still rejected: call Alex, the key may need reissuing.
+  - **"Can't reach the league site. Check your internet connection."** Your machine is offline or the league site is down. Check that a normal website loads. If the internet is fine, the league site is the problem: call Alex, and note that Manual mode still lets you broadcast.
+  - **"No matches found."** The key works but the search returned nothing. Try clicking **Find matches** with an empty search box, or the **All** chip. A between-seasons schedule can genuinely be empty; confirm with Alex what you should be seeing.
+
+### 7. Build a 2-series schedule
+
+- [ ] In the **Broadcast schedule** card, fill Season, Circuit, and Tier. Then, from the match list, click **Add to queue** on two different matches.
+
+  **Expected:** both series appear in the Broadcast schedule card in order, and the **Up Next** card fills itself from the schedule.
+
+  **If not:** if Add to queue does nothing, refresh the dock (right-click the dock, reload, or restart OBS) and try again. Still nothing: Export diagnostics and send to Alex.
+
+### 8. Load series 1
+
+- [ ] Click **Load next series**.
+
+  **Expected:** the Team A and Team B cards fill with the first series' names, logos, and records, the series score resets to 0-0, and the change shows up everywhere: switch OBS to **RIVALRY - Starting Soon** and to **RIVALRY - Match Preview** and both show the loaded teams.
+
+  **If not:** click **PUSH TO OVERLAY** and re-check the scenes. If a scene still shows old or blank teams, right-click that scene's browser source in OBS and refresh it. Still wrong: Export diagnostics and send to Alex.
+
+### 9. Play one match
+
+- [ ] Set **Best of** and seeds by hand (the league does not send those). Switch OBS to the **Live** scene. Start an exhibition or private match in Rocket League (playing or spectating, either works) and watch the overlay through at least one goal.
+
+  **Expected:** at kickoff, a kickoff countdown appears on the overlay. When a goal is scored: the goal flash fires, the goal banner shows the scorer, and the replay card appears over the replay. The scorebug score and clock track the game the whole way.
+
+  **If not:** if the overlay shows nothing at all during the match, wizard step 1 probably never went green: tray icon, **Setup guide**, re-check step 1 (Rocket League must have been restarted once after install). If the scorebug works but a goal graphic misbehaves, note exactly what you saw (or clip it) and send it to Alex with the diagnostics file. Boost meters showing `--` for players is normal unless you are the one spectating.
+
+### 10. Post-game box score
+
+- [ ] Finish the match (play it out or forfeit). Switch OBS to the **Post-Game** scene.
+
+  **Expected:** the box score is there, frozen from the moment the match ended, with player stats and the final score.
+
+  **If not:** if the scene is blank or shows a stale match, refresh the scene's browser source. Still wrong: Export diagnostics and send to Alex, noting how the match ended (played out vs forfeit).
+
+### 11. Advance to series 2
+
+- [ ] Click **Load next series** again.
+
+  **Expected:** the team cards flip to the second series' teams, the series score resets to 0-0, and Up Next updates.
+
+  **If not:** same recovery as step 8: PUSH TO OVERLAY, refresh the affected browser source, then diagnostics if still wrong.
+
+### 12. Restart the app
+
+- [ ] Right-click the tray icon, **Quit**. Confirm the tray icon is gone, then start RIVALRY Casterverse again from the Start menu.
+
+  **Expected:** the app comes back with no wizard and no activation screen, and everything is exactly as you left it: the schedule, both series, which series was on air, team names, logos, casters, all of it. The overlays in OBS reconnect on their own.
+
+  **If not:** if the wizard or the activation screen reappears, or any typed value is gone, that is exactly the kind of bug this checklist exists to catch. Export diagnostics and send to Alex before touching anything else.
+
+### 13. Export diagnostics
+
+- [ ] Right-click the tray icon and click **Export diagnostics** (it is also in the control panel).
+
+  **Expected:** a file named `casterverse-diagnostics.json` is saved. It contains no secrets; the league key inside is masked.
+
+  **If not:** if the export itself fails, grab the log file at `%APPDATA%\RIVALRY Casterverse\logs\casterverse.log` and send that to Alex instead, along with a note that the export failed.
+
+Send the diagnostics file to Alex even on a clean pass, with a one-line "all green". It gives him a baseline snapshot of your machine.
 
 ---
 
 ## Result log
 
-| Date | Build version | Machine | Pass/fail | Notes |
+| Date | Machine | Build | Result | Notes |
 |---|---|---|---|---|
 | | | | | |
 | | | | | |

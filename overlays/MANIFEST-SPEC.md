@@ -1,4 +1,4 @@
-# Overlay Manifest Spec — v1
+# Overlay Manifest Spec - v1
 
 Every overlay is a **folder** containing a `manifest.json` plus its assets
 (`index.html`, CSS, JS, images). The folder name should be a kebab-case id that
@@ -28,7 +28,7 @@ overlays/
   "needs": ["control"],               // which buses it consumes: "game" and/or "control"
   "contract": "1.x",                  // data contract version it targets (see CONTRACT.md)
   "description": "Pre-stream holding scene.",
-  "approval": null                    // filled in by signing — see below. null = unsigned
+  "approval": null                    // filled in by signing - see below. null = unsigned
 }
 ```
 
@@ -46,9 +46,9 @@ scene so a producer can pick one per slot.
 | `up-next` | Schedule / upcoming matches | `["control"]` |
 | `gameplay` | Live in-match overlay (scorebug, boost, stat pops) | `["game", "control"]` |
 | `postgame` | Post-match results / stats (replaces in-game screen) | `["game", "control"]` |
-| `bracket` | Playoff bracket | `["control"]` |
+| `bracket` | Playoff bracket (type reserved; no shipped scene in v1.0, returns for playoffs) | `["control"]` |
 
-Most scenes are **control-only** — they never touch live RL telemetry. Only
+Most scenes are **control-only** - they never touch live RL telemetry. Only
 `gameplay` and `postgame` need the game feed.
 
 ## The `approval` block (curated/signed gate)
@@ -72,10 +72,13 @@ writes a block like:
   preview-only until re-signed. You cannot edit an overlay after approval and
   keep the approval.
 - **Unsigned / tampered overlays** still load in **dev mode** with a
-  `PREVIEW — NOT APPROVED` badge, so designers get a full local loop. The
+  `PREVIEW - NOT APPROVED` badge, so designers get a full local loop. The
   packaged production app refuses to serve them.
 - The signing key is held only by Alex. See [README.md](README.md) for the
   review → sign → ship flow.
+- A second gate exists on top of signing: the packaged app also requires
+  access-key activation before serving any scene, independent of overlay
+  signing.
 
 Verify what the app will decide, any time:
 

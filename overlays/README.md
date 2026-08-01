@@ -1,5 +1,9 @@
 # RIVALRY Overlays: authoring kit
 
+> **INTERNAL AND FUTURE.** This kit builds RIVALRY's own scenes. It is not
+> currently open to outside designers; the workflow below is kept for when
+> that changes.
+
 This directory is the home for **multiple overlays** (in-house and community) and
 the shared tooling to build them. The goal: let designers build their own
 overlays for the RIVALRY broadcast system, while keeping a hard gate so nothing
@@ -53,7 +57,7 @@ designer copies _template/  ─►  builds against SDK + mock  ─►  hands fol
 
 - A **signed** overlay loads in the packaged app.
 - An **unsigned or edited** overlay loads only in dev/preview, with a
-  `PREVIEW — NOT APPROVED` badge, and is refused in production.
+  `PREVIEW - NOT APPROVED` badge, and is refused in production.
 
 ### One-time setup (Alex)
 
@@ -80,7 +84,8 @@ npm run overlay:verify -- overlays/<id>     # check what the app will decide (an
 
 ## Scenes the system targets
 
-`starting-soon`, `brb`, `caster`, `gameplay`, `postgame`, `bracket`
+`starting-soon`, `brb`, `caster`, `match-preview`, `up-next`, `gameplay`,
+`postgame`, `chrome`
 (see [MANIFEST-SPEC.md](MANIFEST-SPEC.md)). Most are control-bus-only and far
 simpler than the live `gameplay` overlay.
 

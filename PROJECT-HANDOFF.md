@@ -77,7 +77,15 @@ A useful community reference: https://github.com/zomlit/rocket-league-stats-api
 
 ## 4. File-by-file
 
-Project root (push these as the repo root of `DrunkCookies0/rivalry-broadcaster`):
+Project root (the repo root of `DrunkCookies0/rivalry-overlays`):
+
+> **Update:** the app is now multi-scene. The current scenes live in
+> `overlays/`, one signed folder per scene (7 scenes plus the chrome frame),
+> with a shared SDK (`overlays/sdk/`), a designer template
+> (`overlays/_template/`), an Ed25519 signing gate enforced at serve time, and
+> a first-run setup wizard at `control/setup.html`. The `overlay/overlay.html`
+> described below is a legacy fallback kept so pre-migration OBS sources keep
+> working; new work happens in `overlays/`.
 
 - `package.json` - dependencies (`ws`, dev `electron`, `electron-builder`), npm scripts, and
   the electron-builder Windows/NSIS config (installer name, icon, files list).
@@ -118,8 +126,7 @@ Project root (push these as the repo root of `DrunkCookies0/rivalry-broadcaster`
   stinger), `rivalry-wordmark.svg` (used in the control panel header).
 - `build/icon.ico` - app + installer icon (RV monogram on the navy tile).
 - `README.md` - end-user + build + dock instructions.
-- `AUTO-UPDATE-HANDOFF.md` - separate handoff for wiring up GitHub auto-update + CI
-  (electron-updater). Not yet implemented; see Roadmap.
+- `AUTO-UPDATE-HANDOFF.md` - deleted. Auto-update + CI shipped; see RELEASE-HANDOFF.md.
 
 Ports (defined in `bridge/rl-bridge.js` and `main.js`): 49123 RL TCP, 49124 game WS,
 49777 control WS, 49080 http server.
@@ -160,24 +167,27 @@ The app must be running for both.
 - Bottom stat feed bar for the focused player (Goals/Shots/Assists/Saves/Demos). Done.
   Demos are tallied from `StatfeedEvent` since they are not in `UpdateState`.
 - Radial boost gauge for the focused player (bottom right). Done.
-- Goal sequence (event-driven), all themeable. RL's canonical event names are
-  `ReplayPlaybackStart` / `ReplayWillEnd` / `ReplayPlaybackEnd` (pre-v0.5.2 code listened
-  for `GoalReplayStart` / `GoalReplayEnd` which never fired in real matches — fixed).
+- Goal sequence (event-driven), all themeable. RL's real replay event names are
+  `GoalReplayStart` / `GoalReplayWillEnd` / `GoalReplayEnd`, proven by live capture
+  on 2026-06-14. An earlier version of this paragraph claimed the opposite (that
+  `ReplayPlayback*` were the canonical names); that was wrong. The `ReplayPlayback*`
+  names never fire in real matches, and the overlay was wired to those dead names
+  through v0.6.1 (fixed in v0.6.2).
   - `GoalScored` -> scoreboard GOAL flash over the scoring team's name + custom banner
     sweeps across center with avatar, name, optional subtitle + badge slots (placeholder
     test data until league API). Banner text is a template (`{SCORER} SCORED!` default).
-  - `ReplayPlaybackStart` -> banner hides; replay card timer left alive so the card
+  - `GoalReplayStart` -> banner hides; replay card timer left alive so the card
     appears mid-replay with goal stats + MPH + assister attribution.
-  - `ReplayWillEnd` (~3s pre-warning) -> replay card hides early.
-  - `ReplayPlaybackEnd` -> stinger wipe fires to mask the cut back to live.
+  - `GoalReplayWillEnd` (~3s pre-warning) -> replay card hides early.
+  - `GoalReplayEnd` -> stinger wipe fires to mask the cut back to live.
   - `CountdownBegin` -> stinger backstop fires if needed; 3-2-1-GO! center countdown starts.
   - `RoundStarted` -> GO! lands on ball drop.
-  Bot/freeplay matches don't emit `ReplayPlayback*` — fallback timers in `onGoalScored`
+  Bot/freeplay matches don't emit the replay events, so fallback timers in `onGoalScored`
   drive the same sequence and get cancelled when (and if) real events arrive. Goal banner
   + replay card + stat pop visuals all dedup against RL's double-fire of `GoalScored`.
   Done.
 - Match-state indicators:
-  - OVERTIME state strip (red pulse below the pip row) — hybrid OT detector handles RL
+  - OVERTIME state strip (red pulse below the pip row) - hybrid OT detector handles RL
     matches that never set `Game.IsOT` (bot/private/freeplay) via clock-direction hysteresis.
   - KICKOFF state strip (gold) during pre-round countdown.
   - 3-2-1-GO! center-screen kickoff countdown with three delay regimes (first / fresh /
@@ -221,7 +231,7 @@ to do that is to log the raw frames once (the bridge already frames every messag
    locations (`data.Target`, `Game.Target`, `Spectated`, `Spectator.PlayerName`, etc.).
    This drives the stat feed bar and the radial boost gauge. Confirm the real field and
    simplify. If it is wrong, the stat bar/gauge may show the wrong or no player.
-3. Overtime / clock: confirmed via live captures (v0.5.1 + v0.5.2) — `Game.IsOT` is never
+3. Overtime / clock: confirmed via live captures (v0.5.1 + v0.5.2) - `Game.IsOT` is never
    set in bot/private/freeplay matches (43k+ frames, zero hits). `onUpdateState()` now uses
    a hybrid detector: explicit `IsOT` fast path + a clock-direction hysteresis fallback
    (clockHitZero breadcrumb + N consecutive ascending frames). Threshold `OT_ASCEND_HYSTERESIS`
@@ -241,14 +251,13 @@ to do that is to log the raw frames once (the bridge already frames every messag
 
 ## 9. Roadmap / next steps
 
-- Auto-update + CI: implement per `AUTO-UPDATE-HANDOFF.md` (electron-updater + GitHub
-  Releases + a Windows build workflow on `DrunkCookies0/rivalry-broadcaster`). This is the
-  recommended next task.
+- Auto-update + CI: DONE (electron-updater + GitHub Releases + Windows build workflows on
+  `DrunkCookies0/rivalry-overlays`; beta channel via `pr-build.yml`, prod via `release.yml`).
 - Verify the inferred fields in section 8 against a real match and tighten the parsers.
-- End-of-game results / podium screen driven by `MatchEnded` + `PodiumStart` (final score,
-  series state, MVP). RLCS shows this between games.
-- Replay upload to match pages: the collector already writes a metadata sidecar per replay;
-  build the uploader that posts the `.replay` + metadata to the league's match pages.
+- End-of-game results / podium screen: SHIPPED as the post-game scene
+  (`overlays/rivalry-postgame/`), driven by `MatchEnded` + `PodiumStart` with box score + MVP.
+- Replay upload to match pages: DROPPED (no reliable RL auto-save; revisit only if Psyonix
+  restores it).
 - Optional custom stinger video: support dropping in a `.webm`/`.mov` stinger that overrides
   the built-in CSS wipe.
 - Optional hybrid hosting: serve the overlay/control from a website so UI tweaks
@@ -259,7 +268,10 @@ to do that is to log the raw frames once (the bridge already frames every messag
 
 ## 10. Repo setup checklist
 
-1. Wipe and repurpose `https://github.com/DrunkCookies0/rivalry-broadcaster`.
+> **Historical.** This checklist was completed long ago; the repo is live at
+> `https://github.com/DrunkCookies0/rivalry-overlays`. Kept for the record.
+
+1. Wipe and repurpose `https://github.com/DrunkCookies0/rivalry-overlays`.
 2. Push the CONTENTS of the `rivalry-overlay` folder as the repo root (so `package.json` and
    `main.js` are at the top level).
 3. Add a `.gitignore` (`node_modules/`, `dist/`, `*.log`).
@@ -271,15 +283,17 @@ to do that is to log the raw frames once (the bridge already frames every messag
 
 ## 11. v0.5.x current state (as of v0.5.3)
 
+> **Historical.** Snapshot of the v0.5.x line; the app is on 0.6.x heading to 1.0.0.
+
 The 0.5.x line is a resilience + match-state polish series driven by live-capture audits
 of bot matches. Highlights of what each patch did:
 
-- **v0.5.0** — Goal experience polish (scoreboard GOAL flash, banner subtitle/badges, stat
+- **v0.5.0** - Goal experience polish (scoreboard GOAL flash, banner subtitle/badges, stat
   pops, replay card with assist + MPH, OVERTIME/KICKOFF state strips, 3-2-1-GO! countdown,
   final-10s big number, MatchEnded handler for golden-goal cleanup).
-- **v0.5.1** — Goal speed unit fix (GoalSpeed is KPH, not UU/s — was displaying ~2 MPH);
+- **v0.5.1** - Goal speed unit fix (GoalSpeed is KPH, not UU/s - was displaying ~2 MPH);
   README feature list expanded.
-- **v0.5.2** — Resilience patch from live-capture audit. Critical fixes:
+- **v0.5.2** - Resilience patch from live-capture audit. Critical fixes:
   - Real RL replay event names (`ReplayPlayback*`, not the never-emitted `GoalReplay*`)
   - `GoalScored` 100ms per-scorer dedup that preserves `GoalSpeed`
   - `StatfeedEvent` Demolition 1000ms dedup
@@ -290,7 +304,7 @@ of bot matches. Highlights of what each patch did:
   - `hideReplayCard` scrubs `has-assist` + assister text
   - `resetMatch` wipes cross-match bleed state
   - Bridge mock + main.js OBS auto-switch updated to canonical RL event names.
-- **v0.5.3** — OT detection hybrid (this patch). RL's `Game.IsOT` is never set in bot/
+- **v0.5.3** - OT detection hybrid (this patch). RL's `Game.IsOT` is never set in bot/
   private/freeplay matches, so OVERTIME state strip + clock `+` prefix + `.ot` class were
   unreachable in Alex's primary testing environment. Detector now uses explicit `IsOT`
   fast path + `clockHitZero` breadcrumb + N-frame ascend hysteresis. Final-10s counter
@@ -312,16 +326,16 @@ of bot matches. Highlights of what each patch did:
 
 - Kickoff lead-in re-tuning vs human matches (current values tuned against bots; see the
   `kickoff-timing-bot-vs-human` memory for diagnostic shortcut and constant references).
-- OT-specific kickoff regime — no real human OT data yet, would violate `dont-call-guesses-fixes`.
+- OT-specific kickoff regime - no real human OT data yet, would violate `dont-call-guesses-fixes`.
 - Bridge-level dedup + synthesis for double-fire goals, demolitions, and `OvertimeBegin`.
 
 **Memories that are load-bearing for this work:**
 
-- `ot-detection-hybrid` — hybrid OT detector design, hysteresis tuning notes
-- `rl-event-quirks` — canonical event names, double-fire patterns, empty-scorer phantoms
-- `live-capture-workflow` — capture stack, ffmpeg recipes, alignment procedure
-- `kickoff-timing-bot-vs-human` — kickoff delay constants, bot-vs-human caveat
-- `dont-call-guesses-fixes` — don't ship timer-value tweaks without verification
-- `overlay-baby-steps` — small focused patches over big refactors
+- `ot-detection-hybrid` - hybrid OT detector design, hysteresis tuning notes
+- `rl-event-quirks` - canonical event names, double-fire patterns, empty-scorer phantoms
+- `live-capture-workflow` - capture stack, ffmpeg recipes, alignment procedure
+- `kickoff-timing-bot-vs-human` - kickoff delay constants, bot-vs-human caveat
+- `dont-call-guesses-fixes` - don't ship timer-value tweaks without verification
+- `overlay-baby-steps` - small focused patches over big refactors
 
 If you're picking this up in a fresh session, read those memories first.

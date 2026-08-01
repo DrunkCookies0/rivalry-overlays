@@ -1,5 +1,9 @@
 # RIVALRY Casterverse - Path to Perfect
 
+> Strategy notes from June 2026, partly superseded: v1.0 is private-and-direct
+> distribution, the league API is wired, and post-game plus manual mode shipped.
+> Kept for the BARL analysis.
+
 ## Context
 
 Goal: make RIVALRY the best-in-class Rocket League broadcast overlay on the official Stats API, local-first, monetized as an open client plus a paid league service.
@@ -80,7 +84,7 @@ BARL is a thin local Electron shell whose entire UI is a Firebase-hosted SPA, in
 
 ## Critical files
 
-- `overlay/overlay.html` - timing constants (kickoff delays, STINGER_LEAD), OT detector, goal-sequence handlers, WS reconnect, renderBoost, stat-pop map.
+- `overlays/rivalry-gameplay/index.html` - timing constants (kickoff delays, STINGER_LEAD), OT detector, goal-sequence handlers, WS reconnect, renderBoost, stat-pop map.
 - `bridge/rl-bridge.js` - TCP framing, synthetic event derivation, dual WS servers, ini writer (PacketSendRate).
 - `main.js` - OBS auto-switch, control bus, electron-updater.
 - Control panel (for P2-8/9 theme + manual-override + preview).

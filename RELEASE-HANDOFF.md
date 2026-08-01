@@ -11,19 +11,19 @@ a tag, what was installed locally, and the open decisions still on the table.
 | Thing                                 | State                                                                |
 | ------------------------------------- | -------------------------------------------------------------------- |
 | Repo                                  | github.com/DrunkCookies0/rivalry-overlays (default branch: `main`)   |
-| `main` HEAD                           | `34b6fb2` (squash merge of PR #1: the actual app + docs)             |
-| `package.json` version                | `1.0.0` (unbumped, never tagged)                                     |
-| Git tags                              | NONE                                                                 |
-| GitHub Releases                       | NONE                                                                 |
-| CI release workflow runs              | NEVER fired                                                          |
-| Installer published anywhere          | NO                                                                   |
-| Auto-updater in code                  | Wired, but inert until a Release exists with `latest.yml`            |
+| Current version                       | `0.6.x` on `feat/overlay-system`, heading to `1.0.0`                 |
+| Git tags                              | 37+ exist                                                            |
+| GitHub Releases                       | Beta prereleases exist, published by `pr-build.yml`                  |
+| CI workflow runs                      | Has fired many times (beta channel)                                  |
+| Installer published                   | Beta installers ship continuously; no production (`v*` tag) release yet |
+| Auto-updater in code                  | Wired; matters for production once a `v*` Release exists with `latest.yml` |
 | Code signing                          | NOT configured (SmartScreen will warn on first run)                  |
 | Local dev tooling                     | Playwright + Chromium (see section 6)                                |
 
-Bottom line: nothing has shipped yet. The first thing pushed up as `v1.0.0` will
-be the actual first release. The auto-updater code already in `main.js` only
-matters AFTER the first installer is published.
+Bottom line: beta installers ship continuously from `pr-build.yml` (every PR to
+`main` and every push to `feat/**`). Production has not shipped; the first `v*`
+tag will be the first production release, and that is when the auto-updater in
+`main.js` starts mattering for installed copies.
 
 ---
 
@@ -120,10 +120,10 @@ npm run mock                # launches Electron with fake match data
 ```
 
 Then in OBS or a browser:
-- Open `http://localhost:49080/overlay/overlay.html` -> scorebar, boost,
-  statfeed, goal banner should render and update.
-- Open `http://localhost:49080/control/control.html` -> set team names/logos,
-  watch them push to the overlay.
+- Open `http://localhost:49080/overlays/rivalry-gameplay/index.html` -> scorebar,
+  boost, statfeed, goal banner should render and update.
+- Open `http://localhost:49080/` (redirects to the control panel) -> set team
+  names/logos, watch them push to the overlay.
 - Check the tray: control panel opens, both "Copy URL" items work, "Open
   replays folder" works (or fails cleanly if no replays yet), "Check for
   updates" is a no-op in dev (expected, see section 2), "Start with Windows"
@@ -174,9 +174,12 @@ End-users never see this. The MCP is dev-time only, not the shipped app.
 Producers can now connect RIVALRY Casterverse to OBS via obs-websocket from
 the control panel ("OBS INTEGRATION" card). Once enabled and connected:
 
-- **"Create OBS scene"** button creates a `RIVALRY - Live` scene with the
-  overlay URL pre-wired as a 1920x1080 Browser Source. Idempotent (safe to
-  re-run; existing scenes/sources are left alone).
+- **"Build RIVALRY scene collection"** (also surfaced in the setup wizard as
+  **SET UP OBS FOR ME**) builds the full scene collection over obs-websocket
+  with no password typing: all scenes pre-wired as 1920x1080 Browser Sources,
+  the chrome layered on top, and the game capture pre-scaled into the chrome's
+  interior window. Idempotent (safe to re-run; existing scenes/sources are
+  left alone).
 - **Auto-switch toggle** (OFF by default) maps three triggers to scene names:
   - `GoalReplayStart` -> "Replay scene"
   - `GoalReplayEnd` / `CountdownBegin` / `RoundStarted` -> "Live scene"
@@ -195,8 +198,9 @@ Implementation:
 - [`main.js`](main.js) - wires controller lifecycle, settings load/save,
   tray status row, "Set up OBS scenes" action, auto-scene-switch handler.
 
-The match-end heuristic (Winner field) is unverified against real RL data.
-Test against a real match before relying on it for a live broadcast.
+The match-end concern is resolved: match end is driven by the real
+`MatchEnded` / `PodiumStart` events, verified against live captures. The old
+Winner-field heuristic worry no longer applies.
 
 ---
 
@@ -241,7 +245,7 @@ Two co-existing installs on the same machine:
 Build configs live in [electron-builder.prod.js](electron-builder.prod.js) (prod) and
 [electron-builder.beta.js](electron-builder.beta.js) (beta).
 
-### One-time note: the RIVALRY Casterverse rename (v0.6.12)
+### One-time note: the RIVALRY Casterverse rename (historical; landed in 153f8ff)
 
 The app was renamed from "RIVALRY Overlay" to **RIVALRY Casterverse**, which
 changes the Windows `appId`. Windows treats a new appId as a different program,
@@ -293,7 +297,7 @@ npm run dist:beta     # beta installer -> dist-beta\
 ## 6.8 Handing out (and taking back) access keys
 
 The packaged app serves overlay scenes only to someone holding a valid access
-key. Everything is driven from this repo — there is no service to run.
+key. Everything is driven from this repo - there is no service to run.
 
 ```bash
 npm run key:issue -- --name "Moldybanana"          # mint one, send them the line it prints
@@ -301,7 +305,7 @@ npm run key:issue -- --name "Yami" --tier producer # tiers: caster | producer | 
 npm run key:list                                   # who holds what, and what is revoked
 npm run key:revoke -- --name "Moldybanana"         # withdraw access
 npm run key:revoke -- --name "Moldybanana" --undo  # give it back
-npm run key:verify -- RCV1....                     # "is this key still good?" — same answer the app gives
+npm run key:verify -- RCV1....                     # "is this key still good?" - same answer the app gives
 ```
 
 **Keys do not expire** unless you pass `--expires 2026-12-31`. Withdrawal is by
@@ -310,13 +314,13 @@ revocation, not by expiry date.
 ### How revocation reaches installs
 
 `key:revoke` rewrites `config/casterverse-revoked.json`, a **signed** list of
-withdrawn key ids. Publishing it is a `git push` — installs fetch it from the
+withdrawn key ids. Publishing it is a `git push` - installs fetch it from the
 repo's raw URL on launch and every 6 hours.
 
 Because the list is signed with the same private key as the access keys, it
 cannot be forged or edited by whoever hosts it. That means it can live anywhere:
 the repo (default, free, nothing to run), a static file on a self-hosted box, an
-object store. To move it, change `REVOCATION_URL` in [main.js](main.js) — or set
+object store. To move it, change `REVOCATION_URL` in [main.js](main.js) - or set
 `RIVALRY_REVOCATION_URL` for a one-off test. **You do not need to run a server**;
 a service would add an outage mode to a broadcast tool for no benefit.
 
@@ -325,7 +329,7 @@ Design notes worth not undoing:
 - **Fails open.** If the list can't be fetched, the last known-good one stands.
   This runs on machines that are mid-broadcast; a DNS blip must never black out
   someone's overlays. The cost is that a revoked holder who stays offline keeps
-  working — accepted, and they'd lose live league data anyway.
+  working - accepted, and they'd lose live league data anyway.
 - **No rollback.** A fetched list is only adopted if it is at least as new as
   the one already trusted, so an old (genuinely signed) list can't be replayed to
   un-revoke someone.
@@ -333,7 +337,7 @@ Design notes worth not undoing:
   one successfully fetched (cached in userData), and a fresh fetch.
 
 `keys/issued-keys.json` is the record of who holds which key id. It is
-gitignored (real names) and it is what `key:list` and `key:revoke` read — back it
+gitignored (real names) and it is what `key:list` and `key:revoke` read - back it
 up alongside the private key. See also section 8.
 
 ---
@@ -372,7 +376,3 @@ up alongside the private key. See also section 8.
   fetched the old `latest.yml` may get into a confused state.)
 - **Playwright CLI is not on PATH.** Always `python -m playwright`, never
   bare `playwright`.
-- **`AUTO-UPDATE-HANDOFF.md` references repo `rivalry-broadcaster`.** That
-  was an earlier working name; the real repo is `rivalry-overlays`. The
-  shipped `package.json` is correct (`owner: DrunkCookies0`,
-  `repo: rivalry-overlays`). Don't trust the old handoff on that one point.

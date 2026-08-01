@@ -1,4 +1,10 @@
-# RIVALRY Casterverse <-> League API: requested endpoints
+# LEAGUE-API-SPEC (historical request doc, 2026-06-17)
+
+> **Historical.** This was the ask sent to the backend before the endpoints
+> existed. The live API disagrees with several shapes here. The authoritative
+> account of what is live is the header of
+> [bridge/league-client.js](bridge/league-client.js), plus
+> [ASKS-FOR-CYNICAL.md](ASKS-FOR-CYNICAL.md) for what is still missing.
 
 Spec for the overlay app's integration with the league backend (`rivalry-dev/rivalry-web`). Written against the backend models as of 2026-06-17. Most of this is "expose existing data via key-gated endpoints," not new data modeling, except where called out.
 
@@ -132,9 +138,9 @@ The post-game results scene (box score: goals / assists / saves / shots / demos 
 | P1 | Resolved logo URLs | Done via image service (~15m expiry -> re-fetch on reload) |
 | P2 | `title` + `badges` on player | Not modeled yet; operator-entered for now |
 | P2 | Per-player linked accounts | Cynical will expose; optional soft binding aid only |
-| P3 | `GET /matches/:id/stats` | Future — post-game scene uses LIVE feed; this adds richer replay stats later |
+| P3 | `GET /matches/:id/stats` | Future - post-game scene uses LIVE feed; this adds richer replay stats later |
 | ~~P2~~ | ~~`GET /teams/:id`~~ | Dropped (roster suffices; non-RV uses manual mode) |
-| ~~P3~~ | ~~`POST /matches/:id/replays`~~ | Deferred — no reliable replay auto-capture; revisit if Psyonix restores |
+| ~~P3~~ | ~~`POST /matches/:id/replays`~~ | Deferred - no reliable replay auto-capture; revisit if Psyonix restores |
 
 ---
 
@@ -149,6 +155,6 @@ The post-game results scene (box score: goals / assists / saves / shots / demos 
 7. **Teams standalone** - dropped (roster suffices).
 
 ### Decisions (Alex, 2026-06-17)
-- **Non-RV match support: YES, via manual mode.** Baseline scenes are general-purpose — non-RV = manual control-panel entry, RV = API auto-fill. Not RV-locked.
+- **Non-RV match support: YES, via manual mode.** Baseline scenes are general-purpose - non-RV = manual control-panel entry, RV = API auto-fill. Not RV-locked.
 - **Integrity / alt-detection: DROPPED.** Not viable overlay-side; not pursuing server-side either.
 - **Replay auto-capture: DROPPED for now.** No reliable RL auto-save; future feature only if Psyonix adds it. Post-game stats come from the live feed instead, so the post-game scene is not blocked.

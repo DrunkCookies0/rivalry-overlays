@@ -253,7 +253,7 @@
     global.document.head.appendChild(style);
     var el = global.document.createElement("div");
     el.id = "rivalry-preview-badge";
-    el.textContent = "PREVIEW — NOT APPROVED";
+    el.textContent = "PREVIEW - NOT APPROVED";
     global.document.body.appendChild(el);
   };
 
