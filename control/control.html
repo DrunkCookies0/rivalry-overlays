@@ -20,8 +20,9 @@
   .card{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:16px;}
   .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;color:var(--muted);}
   label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;}
-  input[type=text],input[type=number]{width:100%;padding:8px 10px;border-radius:6px;
+  input[type=text],input[type=number],textarea,select{width:100%;padding:8px 10px;border-radius:6px;
     border:1px solid rgba(255,255,255,.1);background:#0b0f14;color:var(--ink);font-size:14px;}
+  textarea{font-family:inherit;resize:vertical;}
   input[type=color]{width:48px;height:32px;border:none;background:none;}
   .row{display:flex;align-items:center;gap:10px;}
   .series{display:flex;align-items:center;gap:8px;margin-top:6px;}
@@ -157,6 +158,48 @@
     <div class="muted-note" style="margin-top:8px;">
       Loading a series fills the team fields below, resets the series score to 0-0, and updates Up Next, Starting Soon
       and the ticker in one go. The schedule is saved with everything else, so it survives restarting the app.
+    </div>
+  </div>
+
+  <div class="card full" id="chromeCard" style="margin-bottom:18px;">
+    <h2>Chrome &amp; ticker <span class="muted-note">(the always-on frame: set once per event)</span></h2>
+    <div class="row" style="gap:10px;">
+      <div style="flex:2"><label>Stream line (ticker, bottom right)</label><input type="text" id="chStream" placeholder="STREAM • TWITCH.TV/RIVALRY" /></div>
+      <div style="flex:1"><label>Showcase label</label><input type="text" id="chScLabel" placeholder="FRANCHISE" /></div>
+      <div style="flex:1"><label>Showcase name</label><input type="text" id="chScName" placeholder="FROST" /></div>
+      <div style="flex:2"><label>Showcase logo URL <span class="muted-note">(optional)</span></label><input type="text" id="chScLogo" placeholder="https://... or /user-assets/..." /></div>
+    </div>
+    <div class="row" style="gap:10px;">
+      <div style="flex:1"><label>Social 1 network</label><input type="text" id="chSocNet0" placeholder="discord" /></div>
+      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle0" placeholder="discord.gg/rivalry" /></div>
+      <div style="flex:1"><label>Social 2 network</label><input type="text" id="chSocNet1" placeholder="x" /></div>
+      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle1" placeholder="@rivalrygg" /></div>
+      <div style="flex:1"><label>Social 3 network</label><input type="text" id="chSocNet2" placeholder="twitch" /></div>
+      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle2" placeholder="twitch.tv/rivalry" /></div>
+    </div>
+    <label>Ticker lines <span class="muted-note">— one per line; these always run, even with no schedule and no league</span></label>
+    <textarea id="tickerLines" rows="2" placeholder="SIGN-UPS FOR FALL CIRCUIT OPEN AUGUST 15"></textarea>
+    <div class="muted-note" style="margin-top:6px;">
+      The ticker also cycles the live series, what's up next from the schedule, and team records automatically.
+    </div>
+  </div>
+
+  <div class="card full" id="lowerThirdCard" style="margin-bottom:18px;">
+    <h2>Lower third <span class="muted-note">(producer-called; shows over every scene via the chrome)</span></h2>
+    <div class="row" style="gap:10px;align-items:flex-end;">
+      <div style="flex:2"><label>Title</label><input type="text" id="l3Title" placeholder='ALEX "COOKIES" TOLL' /></div>
+      <div style="flex:2"><label>Subtitle</label><input type="text" id="l3Sub" placeholder="PLAY-BY-PLAY" /></div>
+      <div style="flex:1"><label>Style</label>
+        <select id="l3Kind">
+          <option value="caster">Caster</option>
+          <option value="announce">Announcement</option>
+          <option value="sponsor">Sponsor</option>
+        </select>
+      </div>
+      <div style="flex:1"><label>Seconds (0 = hold)</label><input type="number" id="l3Duration" value="8" min="0" max="600" /></div>
+      <button class="mini" id="l3Show" type="button" style="background:var(--rivalry);color:#fff;">Show</button>
+      <button class="mini" id="l3Hide" type="button">Hide</button>
+      <div id="l3Status" class="muted-note" style="align-self:center;flex:1;"></div>
     </div>
   </div>
 
@@ -424,7 +467,12 @@
 const CONTROL_WS = "ws://localhost:49777";
 let ws = null, connected = false;
 const $ = (id) => document.getElementById(id);
-const state = { series:{a:0,b:0}, queue:[], queueActive:null };
+const state = {
+  series:{a:0,b:0}, queue:[], queueActive:null,
+  // Lower-third call state. shownAt is stamped at Show time; the chrome scene
+  // shows only the REMAINING time, so retained replay can't resurrect it.
+  lowerThird: { visible:false, kind:"caster", title:"", subtitle:"", durationSec:8, shownAt:0 },
+};
 
 // Fetch + render the build label (e.g. "v0.2.0-beta (a3b9c1d)") in the
 // header so a producer can tell installed builds apart at a glance.
@@ -511,6 +559,27 @@ function gatherSchedule(){
     })),
   };
 }
+function gatherChrome(){
+  const socials = [];
+  for (let i = 0; i < 3; i++){
+    const net = $("chSocNet"+i).value.trim(), handle = $("chSocHandle"+i).value.trim();
+    if (net || handle) socials.push({ network: net, handle });
+  }
+  return {
+    streamLine: $("chStream").value.trim(),
+    socials,
+    showcase: {
+      label: $("chScLabel").value.trim(),
+      name: $("chScName").value.trim(),
+      logo: $("chScLogo").value.trim(),
+    },
+  };
+}
+function gatherTicker(){
+  return {
+    manualLines: $("tickerLines").value.split("\n").map(s => s.trim()).filter(Boolean),
+  };
+}
 function payload(){
   return {
     type: "control",
@@ -530,10 +599,48 @@ function payload(){
       // Which series is on air. Without this the "on air" marker was lost on
       // every app restart while the queue itself survived.
       queueActive: state.queueActive,
-      schedule: gatherSchedule()
+      schedule: gatherSchedule(),
+      chrome: gatherChrome(),
+      ticker: gatherTicker(),
+      lowerThird: state.lowerThird
     }
   };
 }
+
+// ---- Lower third caller -----------------------------------------------------
+// Show stamps shownAt and pushes; the panel also clears visible when the timer
+// runs out (belt and braces with the scene's own age check) so the retained
+// payload goes back to hidden.
+let l3PanelTimer = null;
+function l3UpdateStatus(){
+  const lt = state.lowerThird;
+  if (!lt.visible) { $("l3Status").textContent = ""; return; }
+  $("l3Status").textContent = lt.durationSec > 0
+    ? "On air, auto-hides after " + lt.durationSec + "s."
+    : "On air, holding until Hide.";
+}
+$("l3Show").addEventListener("click", () => {
+  const dur = Math.max(0, parseInt($("l3Duration").value, 10) || 0);
+  state.lowerThird = {
+    visible: true,
+    kind: $("l3Kind").value,
+    title: $("l3Title").value.trim(),
+    subtitle: $("l3Sub").value.trim(),
+    durationSec: dur,
+    shownAt: Date.now(),
+  };
+  push(); l3UpdateStatus();
+  clearTimeout(l3PanelTimer);
+  if (dur > 0) l3PanelTimer = setTimeout(() => {
+    state.lowerThird = { ...state.lowerThird, visible: false };
+    push(); l3UpdateStatus();
+  }, dur * 1000);
+});
+$("l3Hide").addEventListener("click", () => {
+  clearTimeout(l3PanelTimer);
+  state.lowerThird = { ...state.lowerThird, visible: false };
+  push(); l3UpdateStatus();
+});
 
 // ---- Match queue ------------------------------------------------------------
 // The night's series, lined up in advance. Entries can come from a league match
@@ -664,8 +771,10 @@ $("bestOf").addEventListener("input", () => {
 // push on any field change
 ["nameA","logoA","tagA","nameB","logoB","tagB","bestOf","eventTitle",
  "seedA","recordA","seedB","recordB","round","startTime",
- "evSeason","evCircuit","evTier"]
+ "evSeason","evCircuit","evTier",
+ "chStream","chScLabel","chScName","chScLogo","tickerLines"]
   .forEach(id => $(id).addEventListener("input", push));
+for (let i = 0; i < 3; i++) ["chSocNet","chSocHandle"].forEach(p => $(p+i).addEventListener("input", push));
 for (let i = 0; i < 3; i++) ["casterName","casterRole","casterHandle","casterStream"].forEach(p => $(p+i).addEventListener("input", push));
 for (let i = 0; i < 4; i++) ["nextA","nextB","nextTime","nextRound"].forEach(p => $(p+i).addEventListener("input", push));
 for (let i = 0; i < 6; i++) ["pName","pTitle","pBadges"].forEach(p => $(p+i).addEventListener("input", push));
@@ -772,6 +881,27 @@ function hydrateControlForm(p){
     setVal("evCircuit", p.schedule.event.circuit);
     setVal("evTier", p.schedule.event.tier);
   }
+  if (p.chrome){
+    setVal("chStream", p.chrome.streamLine);
+    const soc = Array.isArray(p.chrome.socials) ? p.chrome.socials : [];
+    for (let i = 0; i < 3; i++){ const s = soc[i] || {};
+      setVal("chSocNet"+i, s.network); setVal("chSocHandle"+i, s.handle); }
+    if (p.chrome.showcase){
+      setVal("chScLabel", p.chrome.showcase.label);
+      setVal("chScName", p.chrome.showcase.name);
+      setVal("chScLogo", p.chrome.showcase.logo);
+    }
+  }
+  if (p.ticker && Array.isArray(p.ticker.manualLines)) setVal("tickerLines", p.ticker.manualLines.join("\n"));
+  if (p.lowerThird){
+    // Mirror the call state so a reopened panel doesn't clobber a live lower
+    // third on its next push. Timers are not resurrected; the scene ages it
+    // out on its own and Hide always works.
+    state.lowerThird = p.lowerThird;
+    setVal("l3Title", p.lowerThird.title); setVal("l3Sub", p.lowerThird.subtitle);
+    if (p.lowerThird.kind && $("l3Kind") !== document.activeElement) $("l3Kind").value = p.lowerThird.kind;
+    l3UpdateStatus();
+  }
   renderQueue();
   updateLogoPreview("A"); updateLogoPreview("B");
 }
@@ -823,11 +953,12 @@ connect = function(){
 // browser preview (served from the app, so it gets live data). Approved vs
 // preview reflects the signed-overlay gate.
 const SCENE_LABELS = {
+  "chrome": "Chrome (always-on frame)",
   "starting-soon": "Starting Soon", "caster": "Casters", "match-preview": "Match Preview",
   "gameplay": "Gameplay", "postgame": "Post-Game Results", "up-next": "Up Next",
   "brb": "Be Right Back",
 };
-const SCENE_ORDER = ["starting-soon", "caster", "match-preview", "gameplay", "postgame", "up-next", "brb"];
+const SCENE_ORDER = ["chrome", "starting-soon", "caster", "match-preview", "gameplay", "postgame", "up-next", "brb"];
 
 async function renderScenes(){
   const host = $("sceneList");

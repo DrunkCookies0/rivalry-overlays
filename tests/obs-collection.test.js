@@ -12,7 +12,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { buildSceneCollection, OBS_SCENE_NAMES } = require("../bridge/obs-collection");
+const { buildSceneCollection, OBS_SCENE_NAMES, CHROME_SCENE_TYPE, CHROME_SOURCE_NAME } = require("../bridge/obs-collection");
+const { SAFE_AREA } = require("../bridge/broadcast-geometry");
 
 const BASE = "http://localhost:8477";
 
@@ -221,10 +222,64 @@ test("duplicate overlay names get suffixed source names that scene items still r
   }
 });
 
-test("OBS_SCENE_NAMES covers the 7 active broadcast scenes, Starting Soon first, no bracket", () => {
+test("OBS_SCENE_NAMES covers the 7 switchable broadcast scenes, Starting Soon first, no bracket", () => {
   const keys = Object.keys(OBS_SCENE_NAMES);
   assert.equal(keys.length, 7);
   assert.equal(keys[0], "starting-soon");
   assert.equal(OBS_SCENE_NAMES["gameplay"], "RIVALRY - Live");
   assert.ok(!("bracket" in OBS_SCENE_NAMES), "bracket is removed until playoffs");
+  // The chrome is deliberately NOT in the map: it is a layered source in every
+  // scene, never a scene of its own.
+  assert.ok(!(CHROME_SCENE_TYPE in OBS_SCENE_NAMES), "chrome must not become a switchable scene");
+});
+
+// ---------------------------------------------------------------------------
+// The chrome: one shared source pinned on top of every scene
+// ---------------------------------------------------------------------------
+
+function fixtureWithChrome() {
+  return [
+    ...fixture(),
+    entry({ folder: "rivalry-chrome", name: "Chrome (persistent frame)", scene: "chrome" }),
+  ];
+}
+
+test("chrome never becomes a scene; every scene gets it as the TOP item", () => {
+  const col = buildSceneCollection({ overlays: fixtureWithChrome(), baseUrl: BASE });
+  const scenes = scenesOf(col);
+  assert.equal(scenes.length, fixture().length, "chrome must not add a scene");
+  assert.ok(!scenes.some((s) => /chrome/i.test(s.name)), "no chrome-named scene");
+  const chromeSrc = browsersOf(col).find((b) => b.name === CHROME_SOURCE_NAME);
+  assert.ok(chromeSrc, "one shared chrome browser source");
+  for (const scene of scenes) {
+    const top = scene.settings.items[0]; // index 0 renders in front
+    assert.equal(top.source_uuid, chromeSrc.uuid, `chrome not on top of "${scene.name}"`);
+    assert.equal(top.locked, true);
+    assert.equal(top.bounds_type, 0, "chrome is authored at canvas size, no bounds scaling");
+  }
+  // Exactly one chrome SOURCE exists even though every scene references it.
+  assert.equal(browsersOf(col).filter((b) => b.name === CHROME_SOURCE_NAME).length, 1);
+});
+
+test("with the chrome present, the game capture scales into the safe area", () => {
+  const col = buildSceneCollection({ overlays: fixtureWithChrome(), baseUrl: BASE });
+  const byUuid = new Map(col.sources.filter((s) => s.id !== "scene").map((s) => [s.uuid, s]));
+  const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");
+  assert.equal(live.settings.items.length, 3, "chrome + overlay + capture");
+  const capItem = live.settings.items[2];
+  assert.equal(byUuid.get(capItem.source_uuid).id, "game_capture");
+  assert.equal(capItem.bounds_type, 2);
+  assert.deepEqual(capItem.bounds, { x: SAFE_AREA.width, y: SAFE_AREA.height });
+  assert.deepEqual(capItem.pos, { x: SAFE_AREA.x, y: SAFE_AREA.y });
+  // Non-gameplay scenes: chrome + overlay only.
+  const brb = scenesOf(col).find((s) => s.name === "RIVALRY - BRB");
+  assert.equal(brb.settings.items.length, 2);
+});
+
+test("without a chrome overlay the collection keeps the pre-chrome shape", () => {
+  const col = build();
+  const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");
+  assert.equal(live.settings.items.length, 2, "overlay + capture, no chrome");
+  assert.deepEqual(live.settings.items[1].bounds, { x: 1920, y: 1080 }, "capture fills the canvas");
+  assert.ok(!browsersOf(col).some((b) => b.name === CHROME_SOURCE_NAME));
 });

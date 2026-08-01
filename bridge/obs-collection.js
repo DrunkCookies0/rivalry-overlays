@@ -28,6 +28,14 @@
 "use strict";
 
 const crypto = require("crypto");
+const { SAFE_AREA } = require("./broadcast-geometry");
+
+// The chrome overlay (persistent frame) is NOT a scene of its own: it is one
+// browser source layered on TOP of every scene. Identified by manifest scene
+// type. When it is present, the game capture scales into its interior safe
+// area instead of the full canvas.
+const CHROME_SCENE_TYPE = "chrome";
+const CHROME_SOURCE_NAME = "RIVALRY Chrome (frame)";
 
 // Canonical manifest `scene` -> OBS scene name map. This is THE source of
 // truth (moved here from main.js) so the obs-websocket live setup and this
@@ -120,12 +128,14 @@ function makeGameCapture(sourceName) {
   };
 }
 
-// One full-canvas scene item. `fill:true` scales a source of unknown native
-// size (game/video capture) to the 1920x1080 canvas via bounds; overlays
-// (already authored at 1920x1080) use no bounds. Capture sources stay unlocked
+// One scene item. `fill:true` scales a source of unknown native size
+// (game/video capture) via bounds; overlays (already authored at 1920x1080)
+// use no bounds. `rect` narrows a fill to a sub-rectangle of the canvas (the
+// chrome safe area) instead of the full frame. Capture sources stay unlocked
 // so the operator can nudge/reconfigure; overlays are locked to hold 1:1.
 function makeSceneItem(source, id, opts = {}) {
   const fill = !!opts.fill;
+  const rect = opts.rect || { x: 0, y: 0, width: 1920, height: 1080 };
   return {
     name: source.name,
     source_uuid: source.uuid,
@@ -143,14 +153,14 @@ function makeSceneItem(source, id, opts = {}) {
     crop_bottom: 0,
     id,
     group_item_backup: false,
-    pos: { x: 0, y: 0 },
+    pos: { x: fill ? rect.x : 0, y: fill ? rect.y : 0 },
     // *_rel are OBS 31's canvas-relative coordinates. For a full-frame item at
     // 0,0 with top-left align, top-left in 16:9 relative space is (-16/9, -1).
     // OBS recomputes these on load, so approximate values are fine.
     pos_rel: { x: -1.7777777910232544, y: -1 },
     scale: { x: 1, y: 1 },
     scale_rel: { x: 1, y: 1 },
-    bounds: fill ? { x: 1920, y: 1080 } : { x: 0, y: 0 },
+    bounds: fill ? { x: rect.width, y: rect.height } : { x: 0, y: 0 },
     bounds_rel: { x: 0, y: 0 },
     scale_filter: "disable",
     blend_method: "default",
@@ -161,12 +171,22 @@ function makeSceneItem(source, id, opts = {}) {
   };
 }
 
-// Scene wrapping the overlay browser source (top, locked), optionally over an
-// underlay capture source (bottom, e.g. the gameplay game capture). Array order
-// is front-to-back: index 0 renders on top.
-function makeScene(sceneName, browserSource, underlaySource) {
-  const items = [makeSceneItem(browserSource, 1, { locked: true })];
-  if (underlaySource) items.push(makeSceneItem(underlaySource, 2, { fill: true, locked: false }));
+// Scene stack, front-to-back (index 0 renders on top):
+//   chrome frame (when present) > overlay browser source > capture underlay.
+// The capture underlay scales into the chrome safe area when the chrome is in
+// the stack, full canvas otherwise (chrome-less fallback keeps working).
+function makeScene(sceneName, browserSource, underlaySource, chromeSource) {
+  const items = [];
+  let id = 1;
+  if (chromeSource) items.push(makeSceneItem(chromeSource, id++, { locked: true }));
+  items.push(makeSceneItem(browserSource, id++, { locked: true }));
+  if (underlaySource) {
+    items.push(makeSceneItem(underlaySource, id++, {
+      fill: true,
+      locked: false,
+      rect: chromeSource ? SAFE_AREA : undefined,
+    }));
+  }
   return {
     prev_ver: OBS_PREV_VER,
     name: sceneName,
@@ -199,7 +219,14 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTI
   const keyOrder = Object.keys(OBS_SCENE_NAMES);
   const base = String(baseUrl).replace(/\/+$/, ""); // entry urls start with "/"
 
+  // The chrome overlay never becomes a scene: it is ONE shared browser source
+  // pinned on top of every scene (OBS sources are global; each scene item just
+  // references it). Missing/unapproved chrome degrades to the pre-chrome
+  // layout: full-canvas capture, no frame, everything still works.
+  const chromeEntry = overlays.find((o) => o.scene === CHROME_SCENE_TYPE) || null;
+
   const ordered = overlays
+    .filter((o) => o.scene !== CHROME_SCENE_TYPE)
     .map((o, i) => {
       const k = keyOrder.indexOf(o.scene);
       return { o, i, rank: k === -1 ? keyOrder.length : k };
@@ -211,6 +238,15 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTI
   const takenSourceNames = new Set();
   const mediaSources = []; // browser overlays + any capture underlays
   const sceneSources = [];
+
+  let chromeSource = null;
+  if (chromeEntry) {
+    chromeSource = makeBrowserSource(
+      uniqueName(CHROME_SOURCE_NAME, takenSourceNames),
+      base + chromeEntry.url
+    );
+    mediaSources.push(chromeSource);
+  }
 
   for (const o of ordered) {
     const sceneName = uniqueName(OBS_SCENE_NAMES[o.scene] || ("RIVALRY - " + o.name), takenSceneNames);
@@ -224,7 +260,7 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTI
       underlay = makeGameCapture(uniqueName("Rocket League (Game Capture)", takenSourceNames));
       mediaSources.push(underlay);
     }
-    sceneSources.push(makeScene(sceneName, src, underlay));
+    sceneSources.push(makeScene(sceneName, src, underlay, chromeSource));
   }
 
   const firstScene = sceneSources.length ? sceneSources[0].name : "";
@@ -260,4 +296,10 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTI
   };
 }
 
-module.exports = { buildSceneCollection, OBS_SCENE_NAMES, OBS_COLLECTION_NAME };
+module.exports = {
+  buildSceneCollection,
+  OBS_SCENE_NAMES,
+  OBS_COLLECTION_NAME,
+  CHROME_SCENE_TYPE,
+  CHROME_SOURCE_NAME,
+};

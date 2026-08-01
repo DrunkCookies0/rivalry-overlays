@@ -86,6 +86,7 @@ const SCENE_CHECKS = {
     description: "scorebar container",
     sdkBadge: false, // shipped overlay: own socket code, no SDK, no badge
   },
+  "rivalry-chrome": { selector: ".ticker", description: "bottom ticker bar" },
   "rivalry-match-preview": { selector: ".mp-name", description: "team name node" },
   "rivalry-starting-soon": { selector: ".ss-name", description: "team name node" },
   "rivalry-up-next": { selector: ".un-list", description: "up-next match list" },

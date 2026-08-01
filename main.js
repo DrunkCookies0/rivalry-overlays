@@ -525,7 +525,8 @@ function refreshTrayMenu() {
 // re-running is safe and just no-ops if scenes / sources already exist.
 // Scene names live in obs-collection.js so the websocket path and the
 // importable scene-collection file can never disagree.
-const { OBS_SCENE_NAMES, OBS_COLLECTION_NAME } = require("./bridge/obs-collection");
+const { OBS_SCENE_NAMES, OBS_COLLECTION_NAME, CHROME_SCENE_TYPE, CHROME_SOURCE_NAME } = require("./bridge/obs-collection");
+const { SAFE_AREA } = require("./bridge/broadcast-geometry");
 async function setupObsScenes() {
   if (!obsController || !obsController.status.connected) return { ok: false, error: "OBS not connected" };
   const base = `http://localhost:${HTTP_PORT}`;
@@ -534,8 +535,13 @@ async function setupObsScenes() {
   // Order by OBS_SCENE_NAMES key order (gameplay first) so scenes land in the
   // same broadcast order as the importable collection, not registry-scan order.
   const sceneRank = Object.keys(OBS_SCENE_NAMES);
-  const list = (overlayReg.list || [])
-    .filter((o) => (gateActive() ? o.approved : true))
+  const available = (overlayReg.list || []).filter((o) => (gateActive() ? o.approved : true));
+  // The chrome is not a scene: one shared source pinned on top of every scene,
+  // exactly like the importable collection builds it. Absent chrome degrades
+  // to the pre-chrome layout (full-canvas capture, no frame).
+  const chromeEntry = available.find((o) => o.scene === CHROME_SCENE_TYPE) || null;
+  const list = available
+    .filter((o) => o.scene !== CHROME_SCENE_TYPE)
     .sort((a, b) => {
       const ra = sceneRank.indexOf(a.scene), rb = sceneRank.indexOf(b.scene);
       return (ra === -1 ? sceneRank.length : ra) - (rb === -1 ? sceneRank.length : rb);
@@ -558,8 +564,20 @@ async function setupObsScenes() {
         await obsController.createSceneWithBrowserSource(s);
         // The gameplay scene also gets a game capture pre-placed under the
         // scorebug, so the operator just confirms it is grabbing Rocket League.
+        // With the chrome present it scales into the safe area, not full frame.
         if (s.scene === "gameplay") {
-          await obsController.ensureGameCapture({ sceneName: s.sceneName, sourceName: "Rocket League (Game Capture)" });
+          await obsController.ensureGameCapture({
+            sceneName: s.sceneName,
+            sourceName: "Rocket League (Game Capture)",
+            rect: chromeEntry ? SAFE_AREA : undefined,
+          });
+        }
+        if (chromeEntry) {
+          await obsController.ensureSourceOnTop({
+            sceneName: s.sceneName,
+            sourceName: CHROME_SOURCE_NAME,
+            url: base + chromeEntry.url,
+          });
         }
         sceneCount++;
       } catch (e) { console.error("[rivalry] scene setup failed:", e.message); }
@@ -928,10 +946,29 @@ async function handleObsAction(payload) {
     return;
   }
   // Producer "scene deck": switch OBS to a named scene on demand (safer than
-  // full auto-switching — the producer drives the cut).
+  // full auto-switching — the producer drives the cut). With the chrome
+  // present, the branded wipe covers the frame first and the switch lands
+  // under it; game-event auto-switches (onGameEventForObs) deliberately skip
+  // the wipe because their timing is part of the goal sequence.
   if (action === "switch" && payload.scene) {
-    try { await obsController.switchScene(payload.scene); } catch (e) { /* unknown scene -> no-op */ }
+    try {
+      if (chromeAvailable() && bridgeHandle && bridgeHandle.broadcastControl) {
+        bridgeHandle.broadcastControl({ type: "chrome-wipe", payload: {} });
+        // The wipe panel fully covers the canvas ~450ms into its 1s sweep.
+        await new Promise((r) => setTimeout(r, 450));
+      }
+      await obsController.switchScene(payload.scene);
+    } catch (e) { /* unknown scene -> no-op */ }
   }
+}
+
+// The wipe only makes sense when the chrome overlay is actually servable
+// (present and, under the gate, approved) — otherwise a deck switch would
+// just get slower for nothing.
+function chromeAvailable() {
+  return (overlayReg.list || []).some(
+    (o) => o.scene === CHROME_SCENE_TYPE && (gateActive() ? o.approved : true)
+  );
 }
 
 async function handleObsQuery({ query }, sourceWs) {

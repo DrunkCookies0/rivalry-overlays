@@ -174,11 +174,12 @@ function createOBSController() {
   }
 
   // Pre-place a game-capture source at the BOTTOM of a scene (under the overlay)
-  // set to grab any fullscreen game, scaled to fill the canvas. Idempotent: if a
-  // source with this name already exists it is left alone. Lets the gameplay
-  // scene ship with RL capture ready instead of the operator hand-adding it.
-  async function ensureGameCapture({ sceneName, sourceName }) {
+  // set to grab any fullscreen game. `rect` scales it into a sub-rectangle of
+  // the canvas (the chrome safe area); omitted, it fills the full canvas.
+  // Idempotent: if a source with this name already exists it is left alone.
+  async function ensureGameCapture({ sceneName, sourceName, rect }) {
     if (!connected) throw new Error("OBS not connected");
+    const r = rect || { x: 0, y: 0, width: 1920, height: 1080 };
     const inputs = (await obs.call("GetInputList", {})).inputs.map((i) => i.inputName);
     if (inputs.includes(sourceName)) return { created: false };
     const created = await obs.call("CreateInput", {
@@ -194,14 +195,46 @@ function createOBSController() {
       sceneItemId: created.sceneItemId,
       sceneItemTransform: {
         boundsType: "OBS_BOUNDS_SCALE_INNER",
-        boundsWidth: 1920,
-        boundsHeight: 1080,
-        positionX: 0,
-        positionY: 0,
+        boundsWidth: r.width,
+        boundsHeight: r.height,
+        positionX: r.x,
+        positionY: r.y,
         alignment: 5,
       },
     });
     return { created: true };
+  }
+
+  // Pin one shared input (the chrome frame) on TOP of a scene. OBS inputs are
+  // global: the first call creates the input, later calls just add a scene
+  // item referencing it. Idempotent per scene: if the scene already contains
+  // an item for this source, only its z-order is reasserted.
+  async function ensureSourceOnTop({ sceneName, sourceName, url, width = 1920, height = 1080 }) {
+    if (!connected) throw new Error("OBS not connected");
+    const items = (await obs.call("GetSceneItemList", { sceneName })).sceneItems;
+    let itemId = null;
+    const existing = items.find((i) => i.sourceName === sourceName);
+    if (existing) {
+      itemId = existing.sceneItemId;
+    } else {
+      const inputs = (await obs.call("GetInputList", {})).inputs.map((i) => i.inputName);
+      if (inputs.includes(sourceName)) {
+        itemId = (await obs.call("CreateSceneItem", { sceneName, sourceName })).sceneItemId;
+      } else {
+        itemId = (await obs.call("CreateInput", {
+          sceneName,
+          inputName: sourceName,
+          inputKind: "browser_source",
+          // Keep in lockstep with makeBrowserSource in bridge/obs-collection.js.
+          inputSettings: { url, width, height, fps: 60, fps_custom: true, shutdown: false, reroute_audio: false },
+        })).sceneItemId;
+      }
+    }
+    // Highest index renders in front; re-fetch the count since we may have
+    // just added an item.
+    const count = (await obs.call("GetSceneItemList", { sceneName })).sceneItems.length;
+    await obs.call("SetSceneItemIndex", { sceneName, sceneItemId: itemId, sceneItemIndex: Math.max(0, count - 1) });
+    return { itemId };
   }
 
   return {
@@ -217,6 +250,7 @@ function createOBSController() {
     switchScene,
     createSceneWithBrowserSource,
     ensureGameCapture,
+    ensureSourceOnTop,
     get status() {
       return { connected, enabled: !!(settings && settings.enabled), error: lastError };
     },
