@@ -43,6 +43,7 @@ const { createApiRouter } = require("./bridge/http-api");
 const leagueSettingsStore = require("./bridge/league-settings");
 const { createLeagueClient } = require("./bridge/league-client");
 const { migrateUserData } = require("./bridge/userdata-migrate");
+const { createMatchLock } = require("./bridge/match-lock");
 const license = require("./bridge/license");
 const licenseStore = require("./bridge/license-store");
 const { createRevocationStore } = require("./bridge/revocation");
@@ -153,6 +154,34 @@ function broadcastLicenseStatus(rejected) {
   });
 }
 
+// --- Match lock: the product is match-first ----------------------------------
+// The packaged app serves overlay scenes only while a real league match is
+// locked (loaded from the backend and cached to disk — see bridge/match-lock).
+// Same enforcement locus as the access key: packaged builds only, so dev runs,
+// mock mode and the render-verify harness keep their full loop.
+let matchLock = null;
+function matchGateBlocks() {
+  return app.isPackaged && !(matchLock && matchLock.isLocked());
+}
+
+// Shown in the OBS browser source instead of a scene when no league match is
+// loaded. Polls the lock and reloads itself the moment one lands, so the
+// producer never has to hand-refresh every OBS source after loading a match.
+function matchNoticeHtml() {
+  return `<!doctype html><meta charset="utf-8"><title>No match loaded</title>
+<style>html,body{margin:0;height:100%;background:#0b1219;color:#f1eeee;
+font-family:"Segoe UI",system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
+.c{max-width:640px;padding:40px;text-align:center}
+h1{font-size:26px;letter-spacing:.14em;margin:0 0 14px;text-transform:uppercase;font-style:italic}
+p{font-size:16px;line-height:1.6;color:#9fb0be;margin:0 0 10px}
+b{color:#30c0f6}</style>
+<div class="c"><h1>RIVALRY Casterverse</h1>
+<p>No league match is loaded, so overlay scenes are not being served.</p>
+<p>Open the control panel, <b>find your match</b>, and load it. This source will pick it up on its own.</p></div>
+<script>setInterval(async()=>{try{const r=await(await fetch("/league/lock",{cache:"no-store"})).json();
+if(r&&r.locked)location.reload();}catch{}},3000);</script>`;
+}
+
 // Shown in the OBS browser source instead of a scene when the app is not
 // activated. A black source with no explanation is the single worst thing to
 // hand a producer mid-setup, so this says what happened and what to do.
@@ -200,6 +229,14 @@ function startHttpServer(rootDir) {
     if (licenseBlocks() && (urlPath.startsWith("/overlays/") || urlPath.startsWith("/overlay/"))) {
       res.writeHead(200, { "Content-Type": MIME[".html"] });
       return res.end(activationNoticeHtml());
+    }
+
+    // Match gate, after activation: an activated install still serves no scene
+    // until a real league match is locked. The notice polls /league/lock and
+    // reloads itself, so OBS sources come alive the moment a match is loaded.
+    if (matchGateBlocks() && (urlPath.startsWith("/overlays/") || urlPath.startsWith("/overlay/"))) {
+      res.writeHead(200, { "Content-Type": MIME[".html"] });
+      return res.end(matchNoticeHtml());
     }
 
     // Signed-overlay gate: in the packaged app, deny unapproved scene folders and
@@ -525,7 +562,7 @@ function refreshTrayMenu() {
 // re-running is safe and just no-ops if scenes / sources already exist.
 // Scene names live in obs-collection.js so the websocket path and the
 // importable scene-collection file can never disagree.
-const { OBS_SCENE_NAMES, OBS_COLLECTION_NAME, CHROME_SCENE_TYPE, CHROME_SOURCE_NAME, DARK_SCENE_TYPES } = require("./bridge/obs-collection");
+const { OBS_SCENE_NAMES, OBS_COLLECTION_NAME, CHROME_SCENE_TYPE, CHROME_SOURCE_NAME, DARK_SCENE_TYPES, selectOverlaysForSet } = require("./bridge/obs-collection");
 const { SAFE_AREA } = require("./bridge/broadcast-geometry");
 async function setupObsScenes() {
   if (!obsController || !obsController.status.connected) return { ok: false, error: "OBS not connected" };
@@ -536,11 +573,15 @@ async function setupObsScenes() {
   // same broadcast order as the importable collection, not registry-scan order.
   const sceneRank = Object.keys(OBS_SCENE_NAMES);
   const available = (overlayReg.list || []).filter((o) => (gateActive() ? o.approved : true));
+  // One overlay per scene type, from the producer's preferred look (set) with
+  // the house set filling any scene type the preferred one doesn't cover —
+  // same selection the importable collection makes.
+  const chosen = selectOverlaysForSet(available, obsSettings && obsSettings.preferredSet);
   // The chrome is not a scene: one shared source pinned on top of every scene,
   // exactly like the importable collection builds it. Absent chrome degrades
   // to the pre-chrome layout (full-canvas capture, no frame).
-  const chromeEntry = available.find((o) => o.scene === CHROME_SCENE_TYPE) || null;
-  const list = available
+  const chromeEntry = chosen.find((o) => o.scene === CHROME_SCENE_TYPE) || null;
+  const list = chosen
     .filter((o) => o.scene !== CHROME_SCENE_TYPE && !DARK_SCENE_TYPES.has(o.scene))
     .sort((a, b) => {
       const ra = sceneRank.indexOf(a.scene), rb = sceneRank.indexOf(b.scene);
@@ -551,6 +592,7 @@ async function setupObsScenes() {
     sceneName: OBS_SCENE_NAMES[o.scene] || ("RIVALRY - " + o.name),
     sourceName: o.name + " Overlay",
     url: base + o.url,
+    opaque: !!o.opaque,
   }));
   try {
     // Build everything inside a dedicated collection (created if absent, else
@@ -572,7 +614,9 @@ async function setupObsScenes() {
             rect: chromeEntry ? SAFE_AREA : undefined,
           });
         }
-        if (chromeEntry) {
+        // Opaque scenes paint the full canvas themselves; pinning the chrome
+        // on top would composite the house frame over another look's art.
+        if (chromeEntry && !s.opaque) {
           await obsController.ensureSourceOnTop({
             sceneName: s.sceneName,
             sourceName: CHROME_SOURCE_NAME,
@@ -1147,6 +1191,11 @@ if (!app.requestSingleInstanceLock()) {
     leagueSettings = leagueSettingsStore.load(app.getPath("userData"));
     if (process.argv.includes("--league-mock")) leagueSettings = { ...leagueSettings, mock: true };
     leagueClient = createLeagueClient({ getSettings: () => leagueSettings });
+    // The match lock loads from disk here, BEFORE the HTTP server starts: a
+    // restart mid-show comes back already locked to the same match, serving
+    // scenes and cached logos with zero network involved.
+    matchLock = createMatchLock({ userDataDir: app.getPath("userData") });
+    if (matchLock.isLocked()) console.log("[rivalry] match lock restored:", matchLock.get().matchId);
     // Producer saves the league API key from the panel; persist + confirm with
     // a masked status broadcast (the key itself is never echoed anywhere).
     bridgeHandle.events.on("control", (msg) => {
@@ -1175,6 +1224,7 @@ if (!app.requestSingleInstanceLock()) {
       gateActive,
       getLeagueClient: () => leagueClient,
       getLeagueSettings: () => leagueSettings,
+      getMatchLock: () => matchLock,
       maskLeagueKey: leagueSettingsStore.mask,
       getLicenseStatus: () => ({ ...licenseState, required: licenseRequired(), keyMask: license.maskKey(licenseKeyState.key) }),
     });

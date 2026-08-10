@@ -94,6 +94,10 @@ const SCENE_CHECKS = {
   "rivalry-casters": { selector: ".cs-frame", description: "caster cam frame" },
   "rivalry-postgame": { selector: ".pg-boards", description: "team stat boards" },
   "rivalry-brb": { selector: ".brb-title", description: "BE RIGHT BACK title" },
+  // sc26 set (Moldybanana's Summer 2026 look, ported onto the kit)
+  "rivalry-sc26-starting-soon": { selector: '#team1-name[data-field="teamA.name"]', description: "left team name in the VS bar" },
+  "rivalry-sc26-casters": { selector: ".caster-name", description: "caster name plate from casters[]" },
+  "rivalry-sc26-brb": { selector: "#hero-time", description: "match start time in the VS block" },
 };
 
 // ---------------------------------------------------------------------------

@@ -81,6 +81,13 @@ function scanOverlays(overlaysDir, publicKeyPem) {
       scene: manifest.scene || "",
       needs: Array.isArray(manifest.needs) ? manifest.needs : [],
       version: manifest.version || "",
+      // Look/set membership: overlays ship in visual families ("kinetic-bold"
+      // is the house set; community sets like "sc26" add alternates). The OBS
+      // scene build picks ONE overlay per scene type from the preferred set.
+      set: manifest.set || "kinetic-bold",
+      // Opaque scenes paint the full canvas (their art IS the frame), so the
+      // chrome overlay is never pinned on top of them.
+      opaque: manifest.opaque === true,
       entry,
       approved,
       reason,

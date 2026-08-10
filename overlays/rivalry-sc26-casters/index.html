@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RIVALRY — Summer Circuit 2026 Casters</title>
+<style>
+/* =============================================================================
+ * Summer Circuit 2026 — Casters
+ * Visual design by Moldybanana. Ported onto the RIVALRY overlay kit.
+ * All colour, type, spacing, glow and animation values below are his, unchanged;
+ * the port edits are (a) scoping every rule under the scene-root, (b) a masked
+ * background layer with transparent cam holes so real camera sources sit
+ * BEHIND this overlay in OBS (the kit convention, see rivalry-casters — Moldy's
+ * OBS setup layered cams on top instead), (c) a .mini-shield-fill / .mini-mono
+ * pair replacing the two broken <img src="logos/…"> logos, and (d) frames built
+ * per caster from the control feed instead of two hardcoded slots.
+ *
+ * BACKGROUND NOTE: Moldy's Casters.html sets background-size/position on the
+ * canvas but the background-image line itself is missing (his Stream Paused and
+ * Starting Soon files have the identical block WITH the image, and this scene's
+ * folder ships the same "SC 2026 Background Overlay.png"). Restored here from
+ * the set's shared optimized art — the semi-transparent header/footer bars only
+ * read as bars over that art.
+ *
+ * OFFLINE NOTE: the Montserrat @import below is the ONE remote dependency in
+ * this scene. It matches existing practice in overlays/shared/rivalry-theme.css
+ * (which imports Exo 2 / Roboto / Space Mono the same way). Without a network
+ * the scene falls back to the local stack in --sc-font and still lays out; the
+ * italic-900 look degrades. Self-host the woff2 into assets/ to make it fully
+ * offline-safe.
+ * ===========================================================================*/
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,900;1,900&display=swap');
+
+/* Fill the OBS Browser Source viewport; rivalry-fit.js scales the 1920x1080
+   stage into it. Transparent so anything composited underneath shows through
+   (Moldy's original painted #0b1519 on <body>, which would block the cams). */
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+
+/* The fixed 1920x1080 design canvas. Declared locally rather than pulled from
+   shared/rivalry-theme.css on purpose: this is a deliberately different look
+   (cyan/lime, not Kinetic Bold blue/gold), so it must not inherit --rv-* tokens
+   or the theme's font imports. */
+.rv-stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+
+.scene-root[data-scene="caster"] {
+    --sc-cyan: #00f0ff;
+    --sc-lime: #c6f119;
+    --sc-ink: #0b1519;
+    --sc-font: 'Montserrat', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.scene-root[data-scene="caster"],
+.scene-root[data-scene="caster"] * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* 16:9 Canvas (Moldy's .canvas, now the scene-root). The background art lives
+   on .sc-bg below, NOT here: the JS punches transparent holes through .sc-bg at
+   each cam rect so cameras behind this overlay in OBS show through the frames,
+   while the painted chrome (bars, borders, lower thirds) stays on top. */
+.scene-root[data-scene="caster"] {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    font-family: var(--sc-font);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 0;
+}
+
+/* PORT ADDITION: the maskable background layer (was body background-color +
+   the canvas's cover/center art). Everything decorative that must NOT paint
+   across a caster's face lives on this ONE layer. */
+.scene-root[data-scene="caster"] .sc-bg {
+    position: absolute;
+    inset: 0;
+    background-image: url('assets/sc26-background.webp');
+    background-size: cover;
+    background-position: center;
+    background-color: var(--sc-ink);
+}
+
+/* GROUNDED HEADER - PROMINENT & SPALACED WITH GLOW */
+.scene-root[data-scene="caster"] .header-group {
+    background: rgba(8, 18, 21, 0.85);
+    padding: 16px 80px;
+    border-bottom: 3px solid #00f0ff;
+    text-align: center;
+    z-index: 2;
+    margin-bottom: 35px; /* Clean gap above webcams */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 240, 255, 0.25);
+}
+
+.scene-root[data-scene="caster"] .main-title {
+    font-size: 4.2rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: -2px;
+    color: #ffffff;
+    line-height: 1;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.scene-root[data-scene="caster"] .main-title span {
+    color: #c6f119;
+    text-shadow: 0 0 15px rgba(198, 241, 25, 0.6), 0 0 30px rgba(198, 241, 25, 0.3);
+}
+
+/* CASTER CONTAINERS WITH GLOW */
+.scene-root[data-scene="caster"] .casters-container {
+    display: flex;
+    justify-content: center;
+    gap: 50px;
+    width: 1760px;
+    z-index: 2;
+}
+
+.scene-root[data-scene="caster"] .caster-frame {
+    position: relative;
+    width: 680px;
+    height: 382px; /* standard 16:9 webcam ratio */
+    /* PORT CHANGE: was rgba(8,18,21,0.4). The interior must be fully
+       transparent — the cam source sits BEHIND this overlay in OBS and shows
+       through the punched hole; any tint here would darken the caster's face. */
+    background: transparent;
+    border-left: 4px solid #00f0ff;
+    border-right: 4px solid #00f0ff;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.8), 0 0 15px rgba(0, 240, 255, 0.3);
+}
+
+/* PORT ADDITION: three casters don't fit at 680px (3x680 + 2x50 > 1760), so
+   the frames step down to the same 16:9 at 553px. 1-2 casters use Moldy's
+   exact 680x382. */
+.scene-root[data-scene="caster"] .casters-container[data-count="3"] .caster-frame {
+    width: 553px;
+    height: 311px;
+}
+
+/* PORT ADDITION: preview-only placeholder label inside the (transparent) cam
+   hole, styled in Moldy's palette. Hidden once the slot has a named caster, or
+   for every slot via ?live=1 on the source URL — mirrors rivalry-casters. */
+.scene-root[data-scene="caster"] .cam-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    color: rgba(0, 240, 255, 0.25);
+}
+.scene-root[data-scene="caster"][data-live="1"] .cam-hint { display: none; }
+
+.scene-root[data-scene="caster"] .lower-third {
+    position: absolute;
+    bottom: -65px;
+    left: -4px;
+    width: calc(100% + 8px);
+    height: 65px;
+    background: linear-gradient(135deg, rgba(8, 18, 21, 0.95) 0%, rgba(13, 31, 35, 0.95) 100%);
+    border-bottom: 3px solid #00f0ff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.6), 0 0 12px rgba(0, 240, 255, 0.25);
+}
+
+.scene-root[data-scene="caster"] .lower-third::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    right: 0;
+    width: 12px;
+    height: 12px;
+    background: #c6f119;
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    box-shadow: 0 0 8px #c6f119;
+}
+
+.scene-root[data-scene="caster"] .caster-name {
+    color: #ffffff;
+    font-size: 1.6rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase; /* PORT ADDITION: replaces the .toUpperCase() in Moldy's sheet-fetch JS */
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+.scene-root[data-scene="caster"] .caster-social {
+    color: #00f0ff;
+    font-size: 1rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    background: rgba(0, 240, 255, 0.05);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+    text-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+}
+
+/* NEXT MATCH PREVIEW CARD WITH GLOW */
+.scene-root[data-scene="caster"] .next-match-container {
+    width: 1150px;
+    height: 110px;
+    background: linear-gradient(135deg, rgba(8, 25, 28, 0.95) 0%, rgba(13, 39, 44, 0.85) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    padding: 0 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    margin-top: 105px; /* Clears 65px lower-third overhang with 40px extra room */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 240, 255, 0.2);
+}
+
+.scene-root[data-scene="caster"] .next-match-container::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 12px;
+    height: 12px;
+    border-top: 2px solid #00f0ff;
+    border-left: 2px solid #00f0ff;
+    filter: drop-shadow(0 0 4px #00f0ff);
+}
+
+.scene-root[data-scene="caster"] .next-match-container::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 12px;
+    height: 12px;
+    border-bottom: 2px solid #00f0ff;
+    border-right: 2px solid #00f0ff;
+    filter: drop-shadow(0 0 4px #00f0ff);
+}
+
+.scene-root[data-scene="caster"] .next-label {
+    position: absolute;
+    top: -13px;
+    left: 25px;
+    background: #081215;
+    padding: 2px 12px;
+    font-size: 0.85rem;
+    font-weight: 900;
+    font-style: italic;
+    color: #00f0ff;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    border: 1px solid rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+    text-shadow: 0 0 6px rgba(0, 240, 255, 0.6);
+}
+
+/* EQUAL FLEX BASIS GUARDS CENTER ALIGNMENT FOR VS */
+.scene-root[data-scene="caster"] .mini-team {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.scene-root[data-scene="caster"] .mini-team.left-team {
+    justify-content: flex-start;
+}
+
+.scene-root[data-scene="caster"] .mini-team.right-team {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    text-align: right;
+}
+
+.scene-root[data-scene="caster"] .team-text-meta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+}
+
+.scene-root[data-scene="caster"] .mini-team.right-team .team-text-meta {
+    align-items: flex-end;
+}
+
+/* Scaled Logo Container */
+.scene-root[data-scene="caster"] .mini-shield {
+    width: 72px;
+    height: 72px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.8));
+}
+
+/* PORT CHANGE: replaces `.mini-shield img { max-width/max-height:100%;
+   object-fit:contain }`. RivalryBind has no data-src / <img> support, so the
+   logo is a data-bg div; the SDK sets background-size:contain on it, which is
+   the direct equivalent of Moldy's object-fit:contain. */
+.scene-root[data-scene="caster"] .mini-shield-fill {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* PORT ADDITION: monogram fallback, shown only while teamX.logo is empty.
+   Moldy's original had no fallback (it pointed at logos/home.png). Styled in
+   his palette so it reads as part of the design. */
+.scene-root[data-scene="caster"] .mini-mono {
+    font-size: 2.6rem;
+    font-weight: 900;
+    font-style: italic;
+    line-height: 1;
+    color: #00f0ff;
+    text-shadow: 0 0 14px rgba(0, 240, 255, 0.45);
+}
+
+/* Team Name */
+.scene-root[data-scene="caster"] .mini-team-name {
+    color: #ffffff;
+    font-size: 1.8rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: -0.5px;
+    line-height: 0.95;
+    white-space: normal;
+    word-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    width: 100%;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+/* TEAM RECORD WITH YELLOW/GOLD GLOW */
+.scene-root[data-scene="caster"] .team-record {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #c6f119;
+    letter-spacing: 1.5px;
+    line-height: 1;
+    text-transform: uppercase; /* PORT ADDITION: replaces the .toUpperCase() in Moldy's sheet-fetch JS */
+    text-shadow: 0 0 8px rgba(198, 241, 25, 0.6), 0 0 15px rgba(198, 241, 25, 0.3);
+}
+
+.scene-root[data-scene="caster"] .mini-vs {
+    font-size: 2.2rem;
+    font-weight: 900;
+    font-style: italic;
+    color: rgba(0, 240, 255, 0.8);
+    letter-spacing: -1px;
+    padding: 0 25px;
+    flex-shrink: 0;
+    text-align: center;
+    text-shadow: 0 0 12px rgba(0, 240, 255, 0.5);
+}
+
+/* GROUNDED FOOTER WITH GLOW */
+.scene-root[data-scene="caster"] .footer-bar {
+    background: rgba(8, 18, 21, 0.85);
+    padding: 12px 40px;
+    border-top: 3px solid #00f0ff;
+    z-index: 2;
+    margin-top: 35px; /* Distinct floating gap */
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 240, 255, 0.25);
+}
+
+.scene-root[data-scene="caster"] .social-tag {
+    font-size: 1.3rem;
+    color: #00f0ff;
+    text-transform: uppercase;
+    font-style: italic;
+    font-weight: 900;
+    letter-spacing: 3px;
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.4);
+}
+
+.scene-root[data-scene="caster"] .social-tag span {
+    color: #ffffff;
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="caster">
+
+      <div class="sc-bg" id="scBg"></div>
+
+      <!-- Main Title Header.
+           STATIC ON PURPOSE: the two-tone "SUMMER CIRCUIT 2026" is season art,
+           and `eventTitle` is a single contract string, so binding it would
+           collapse the white/lime split. Same call as the sc26 brb port. -->
+      <div class="header-group">
+        <div class="main-title">Summer Circuit <span>2026</span></div>
+      </div>
+
+      <!-- Caster Webcams & Lower Thirds.
+           Frames are built by the script from the control feed's casters[]
+           (Moldy's two hardcoded slots came from a second sheet tab): one frame
+           per named caster, 1-3 supported, blank slots never render. The
+           interiors are transparent holes — cam sources sit BEHIND in OBS. -->
+      <div class="casters-container" id="castersContainer"></div>
+
+      <!-- Integrated Next Match Bar -->
+      <div class="next-match-container">
+        <div class="next-label">Next Up</div>
+
+        <div class="mini-team left-team">
+          <div class="mini-shield">
+            <div class="mini-shield-fill" data-bg="teamA.logo">
+              <span class="mini-mono" data-mono="teamA.name">?</span>
+            </div>
+          </div>
+          <div class="team-text-meta">
+            <div class="mini-team-name" data-field="teamA.name">LOADING...</div>
+            <!-- data-slot replicates Moldy's `display:none` when the record
+                 column is blank -->
+            <div class="team-record" data-field="teamA.record" data-slot="teamA.record">0-0</div>
+          </div>
+        </div>
+
+        <div class="mini-vs">VS</div>
+
+        <div class="mini-team right-team">
+          <div class="mini-shield">
+            <div class="mini-shield-fill" data-bg="teamB.logo">
+              <span class="mini-mono" data-mono="teamB.name">?</span>
+            </div>
+          </div>
+          <div class="team-text-meta">
+            <div class="mini-team-name" data-field="teamB.name">LOADING...</div>
+            <div class="team-record" data-field="teamB.record" data-slot="teamB.record">0-0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer. Static: the contract has no brand.url / social field, and
+           Moldy hard-codes it too, so this is not a regression. -->
+      <div class="footer-bar">
+        <div class="social-tag">JOIN THE RIVALRY // <span>therivalry.gg</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      var root = document.querySelector('.scene-root');
+      var container = document.getElementById('castersContainer');
+      var bg = document.getElementById('scBg');
+      var params = new URLSearchParams(location.search);
+
+      // ?live=1 hides the "CAMERA N" preview hints (set on the OBS browser
+      // source URL so they never paint over a real cam) — rivalry-casters
+      // convention.
+      if (params.get('live') === '1') root.setAttribute('data-live', '1');
+
+      // ---- caster frames (dynamic, from control.casters[]) ------------------
+      // Moldy's design is two 680x382 frames; the kit contract allows 1-3
+      // casters, so frames are built per NAMED caster (blank slots hide) and
+      // three-up steps down to 553x311 via CSS. Zero casters (fresh page, no
+      // data yet) keeps the designed two-frame look as camera placeholders.
+      var slots = []; // [{ frame, name, social, hint }]
+
+      function buildFrames(count) {
+        container.innerHTML = '';
+        container.setAttribute('data-count', String(count));
+        slots = [];
+        for (var i = 0; i < count; i++) {
+          var f = document.createElement('div');
+          f.className = 'caster-frame';
+
+          var hint = document.createElement('div');
+          hint.className = 'cam-hint';
+          hint.textContent = 'CAMERA ' + (i + 1);
+          f.appendChild(hint);
+
+          var lt = document.createElement('div');
+          lt.className = 'lower-third';
+          var nm = document.createElement('h2');
+          nm.className = 'caster-name';
+          var social = document.createElement('span');
+          social.className = 'caster-social';
+          lt.appendChild(nm);
+          lt.appendChild(social);
+          f.appendChild(lt);
+
+          container.appendChild(f);
+          slots.push({ frame: f, name: nm, social: social, hint: hint, lt: lt });
+        }
+      }
+
+      // ---- transparent cam holes -------------------------------------------
+      // Punch alpha-0 holes through the background art at each frame rect so
+      // the camera sources behind this overlay in OBS show through. Same
+      // technique as rivalry-casters: ONE even-odd SVG path (outer 1920x1080
+      // subpath + one subpath per frame), used as an alpha mask on .sc-bg.
+      // Rects are MEASURED (not hardcoded) because the vertical position of
+      // the flex stack shifts when Montserrat swaps in and when the frame
+      // count changes — the mask re-derives itself from the live layout, so
+      // holes and borders can never drift apart.
+      function applyMask() {
+        var stage = document.querySelector('.rv-stage').getBoundingClientRect();
+        if (!stage.width) return;
+        var scale = stage.width / 1920;
+        var d = 'M0 0H1920V1080H0Z';
+        slots.forEach(function (s) {
+          var r = s.frame.getBoundingClientRect();
+          var x = Math.round((r.left - stage.left) / scale);
+          var y = Math.round((r.top - stage.top) / scale);
+          var w = Math.round(r.width / scale);
+          var h = Math.round(r.height / scale);
+          d += 'M' + x + ' ' + y + 'H' + (x + w) + 'V' + (y + h) + 'H' + x + 'Z';
+        });
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">' +
+          '<path fill="#fff" fill-rule="evenodd" d="' + d + '"/></svg>';
+        var uri = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
+        bg.style.webkitMaskImage = uri; bg.style.maskImage = uri;
+        bg.style.webkitMaskSize = '1920px 1080px'; bg.style.maskSize = '1920px 1080px';
+        bg.style.webkitMaskRepeat = 'no-repeat'; bg.style.maskRepeat = 'no-repeat';
+      }
+      function scheduleMask() { requestAnimationFrame(applyMask); }
+
+      // ---- data ------------------------------------------------------------
+      // Control-only scene: subscribe to the control bus (auto-mocks on
+      // file://). ONE connect() per page — a second call would open a
+      // duplicate socket pair.
+      var rl = RivalryOverlay.connect({ game: false });
+
+      // Declarative binding for the next-match bar (teamA/teamB name, logo,
+      // record). This replaces the Google Sheets CSV fetch in the original.
+      RivalryBind(root, rl);
+
+      // Caster slots: named casters only (a blank sheet row hid in Moldy's
+      // design too — his update() just never ran for missing cells).
+      rl.onControl(function (c) {
+        var named = ((c && c.casters) || []).filter(function (cs) {
+          return cs && cs.name;
+        }).slice(0, 3);
+        var count = named.length || 2; // no data yet: designed two-frame look
+        if (count !== slots.length) buildFrames(count);
+        slots.forEach(function (s, i) {
+          var cs = named[i] || {};
+          s.name.textContent = cs.name || '';
+          // caster.handle carries what Moldy's sheet called "social"
+          s.social.textContent = cs.handle || '';
+          s.social.style.display = cs.handle ? '' : 'none';
+          s.lt.style.display = cs.name ? '' : 'none'; // never an empty bar
+          s.hint.style.display = cs.name ? 'none' : ''; // named => cam incoming
+        });
+        scheduleMask();
+      });
+
+      // Re-derive the holes when the webfont lands (the header grows, the
+      // whole stack re-centers) — without this the holes sit a few px off.
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(scheduleMask);
+      }
+      window.addEventListener('resize', scheduleMask);
+
+      // Resolution-independent: scale the 1920x1080 design to fill any source
+      // size. Append ?fit=cover to the source URL to fill+crop instead of
+      // letterbox on non-16:9.
+      RivalryFit('.rv-stage');
+    })();
+  </script>
+</body>
+</html>

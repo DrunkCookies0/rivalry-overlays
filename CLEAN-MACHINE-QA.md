@@ -64,13 +64,13 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
 - [ ] In OBS: **View** menu, **Docks**, **Custom Browser Docks**. Add a row named **RIVALRY** with the address `http://localhost:49080/` and click **Apply**. Then click **FINISH SETUP** in the wizard.
 
-  **Expected:** the control panel appears inside OBS as a dock, with the Match/Manual toggle at the top and the team cards below.
+  **Expected:** the control panel appears inside OBS as a dock, with the **Load your match** card at the top and the team cards below.
 
   **If not:** open `http://localhost:49080/` in a normal browser tab instead. If it loads there but not in the dock, re-check the address in the dock row for typos. If it loads nowhere, the app is not running (no tray icon): start it and retry.
 
 ### 6. League key and find matches
 
-- [ ] In the control panel, confirm the toggle is on **Match (league)** (the default). In the **Find your match** card, paste your league API key (starts with `rv_`), click **Save key**, then click **Find matches**.
+- [ ] In the control panel's **Load your match** card, paste your league API key (starts with `rv_`), click **Save key**, then click **Find matches**.
 
   **Expected:** status reads **"Key OK"** plus a masked key, and the real league schedule appears with circuit and "when" filter chips.
 
@@ -78,7 +78,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
   - **"That's your Casterverse access key. This box wants the league API key (starts with rv_)."** You pasted the `RCV1.` key. Paste the `rv_` one instead.
   - **"No key saved. Paste your league API key above."** The save did not take. Paste the key and click **Save key** again.
   - **"Key rejected by the league site. Check it and save again."** The `rv_` key itself is wrong. Re-copy it from where Alex sent it, save again. Still rejected: call Alex, the key may need reissuing.
-  - **"Can't reach the league site. Check your internet connection."** Your machine is offline or the league site is down. Check that a normal website loads. If the internet is fine, the league site is the problem: call Alex, and note that Manual mode still lets you broadcast.
+  - **"Can't reach the league site. Check your internet connection."** Your machine is offline or the league site is down. Check that a normal website loads. If the internet is fine, the league site is the problem: call Alex. A match that was already loaded keeps broadcasting from cache; only loading a new one needs the site back.
   - **"No matches found."** The key works but the search returned nothing. Try clicking **Find matches** with an empty search box, or the **All** chip. A between-seasons schedule can genuinely be empty; confirm with Alex what you should be seeing.
 
 ### 7. Build a 2-series schedule

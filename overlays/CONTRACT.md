@@ -6,12 +6,13 @@ disappear without a contract version bump. The [SDK](sdk/rivalry-overlay-sdk.js)
 is a convenience layer over this contract, not a replacement for it; you can
 ignore the SDK and speak the raw protocol if you want.
 
-> Manual or league-fed, same fields. A producer can type team names/logos/series
-> into the control panel, or load a RIVALRY league match and have the app fill
-> the same fields from the live league API (shipped 2026-07). **The contract
-> below did not change** when the league source arrived, and it will not change
-> when new sources arrive. That is the whole point of the control bus being a
-> defined contract.
+> Source-agnostic, same fields. Since 2026-08 the app is match-first: team
+> identity comes from a loaded RIVALRY league match (cached at load time), and
+> operator-owned fields (series score, best-of, seeds, casters, chrome) come
+> from the control panel. **The contract below did not change** when manual
+> team entry was removed, and it will not change when new sources arrive. An
+> overlay never knows or cares where a field's value came from — that is the
+> whole point of the control bus being a defined contract.
 
 ---
 

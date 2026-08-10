@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RIVALRY — Summer Circuit 2026 Stream Paused</title>
+<style>
+/* =============================================================================
+ * Summer Circuit 2026 — Stream Paused (brb)
+ * Visual design by Moldybanana. Ported onto the RIVALRY overlay kit.
+ * All colour, type, spacing, glow and animation values below are his, unchanged;
+ * the only CSS edits are (a) scoping every rule under the scene-root, (b) making
+ * the page background transparent so OBS can composite under it, and (c) a new
+ * .hero-shield-fill / .hero-mono pair that replaces the two <img> logos.
+ *
+ * OFFLINE NOTE: the Montserrat @import below is the ONE remote dependency in
+ * this scene. It matches existing practice in overlays/shared/rivalry-theme.css
+ * (which imports Exo 2 / Roboto / Space Mono the same way). Without a network
+ * the scene falls back to the local stack in --sc-font and still lays out; the
+ * italic-900 look degrades. Self-host the woff2 into assets/ to make it fully
+ * offline-safe.
+ * ===========================================================================*/
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,900;1,900&display=swap');
+
+/* Fill the OBS Browser Source viewport; rivalry-fit.js scales the 1920x1080
+   stage into it. Transparent so anything composited underneath shows through
+   (Moldy's original painted #0b1519 on <body>, which would block that). */
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+
+/* The fixed 1920x1080 design canvas. Declared locally rather than pulled from
+   shared/rivalry-theme.css on purpose: this is a deliberately different look
+   (cyan/lime, not Kinetic Bold blue/gold), so it must not inherit --rv-* tokens
+   or the theme's font imports. */
+.rv-stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+
+.scene-root[data-scene="brb"] {
+    --sc-cyan: #00f0ff;
+    --sc-lime: #c6f119;
+    --sc-ink: #0b1519;
+    --sc-font: 'Montserrat', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.scene-root[data-scene="brb"],
+.scene-root[data-scene="brb"] * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* 16:9 Canvas Background (Moldy's .canvas, now the scene-root) */
+.scene-root[data-scene="brb"] {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    font-family: var(--sc-font);
+    background-image: url('assets/sc26-background.webp');
+    background-size: cover;
+    background-position: center;
+    background-color: var(--sc-ink); /* was body{background-color}; kept inside the scene so the art never sits on bare transparency */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Outer Animated Content Card */
+.scene-root[data-scene="brb"] .matchup-card {
+    position: relative;
+    width: 1550px;
+    height: 840px;
+    background: rgba(8, 18, 21, 0.93);
+    border-left: 5px solid #00f0ff;
+    border-right: 5px solid #00f0ff;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+    padding: 40px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* Moving light sweep overlay */
+.scene-root[data-scene="brb"] .matchup-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(to right, transparent, rgba(0, 240, 255, 0.03), transparent);
+    transform: skewX(-20deg);
+    animation: scSweep 6s infinite linear;
+}
+
+@keyframes scSweep {
+    0% { left: -150%; }
+    100% { left: 150%; }
+}
+
+/* Header Group */
+.scene-root[data-scene="brb"] .header-group {
+    text-align: center;
+    z-index: 2;
+}
+
+.scene-root[data-scene="brb"] .main-title {
+    font-size: 4.5rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: -2px;
+    color: #ffffff;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+
+.scene-root[data-scene="brb"] .main-title span {
+    color: #c6f119;
+    text-shadow: 0 0 20px rgba(198, 241, 25, 0.3);
+}
+
+.scene-root[data-scene="brb"] .brb-subtext {
+    font-size: 1.5rem;
+    font-weight: 900;
+    font-style: italic;
+    color: #00f0ff;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    text-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+
+/* INNER MATCHUP HERO CARD */
+.scene-root[data-scene="brb"] .matchup-hero-card {
+    width: 100%;
+    max-width: 1350px;
+    height: 400px;
+    background: linear-gradient(135deg, rgba(8, 25, 28, 0.95) 0%, rgba(13, 39, 44, 0.85) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.35);
+    padding: 35px 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 0 35px rgba(0, 0, 0, 0.85);
+    margin: 25px 0 10px 0;
+}
+
+/* Cyberpunk Corner Accents */
+.scene-root[data-scene="brb"] .matchup-hero-card::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 20px;
+    height: 20px;
+    border-top: 3px solid #00f0ff;
+    border-left: 3px solid #00f0ff;
+}
+
+.scene-root[data-scene="brb"] .matchup-hero-card::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 20px;
+    height: 20px;
+    border-bottom: 3px solid #00f0ff;
+    border-right: 3px solid #00f0ff;
+}
+
+/* TOP BADGE GROUP */
+.scene-root[data-scene="brb"] .hero-match-badge-group {
+    position: absolute;
+    top: -34px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    z-index: 5;
+}
+
+.scene-root[data-scene="brb"] .watching-sublabel {
+    font-size: 1.2rem;
+    font-weight: 900;
+    font-style: italic;
+    color: #ffffff;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    background: #081215;
+    padding: 2px 14px;
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.scene-root[data-scene="brb"] .status-badge {
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: #0b1519;
+    background-color: #00f0ff;
+    padding: 7px 32px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    transform: skewX(-10deg);
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.5);
+    display: inline-block;
+}
+
+.scene-root[data-scene="brb"] .hero-team {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    width: 44%;
+    min-width: 0;
+}
+
+.scene-root[data-scene="brb"] .hero-team.left-team {
+    justify-content: flex-start;
+}
+
+.scene-root[data-scene="brb"] .hero-team.right-team {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    text-align: right;
+}
+
+/* Team Logo Shields */
+.scene-root[data-scene="brb"] .hero-shield {
+    width: 180px;
+    height: 180px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 25px rgba(0, 240, 255, 0.3));
+}
+
+/* PORT CHANGE: replaces `.hero-shield img { max-width/max-height:100%;
+   object-fit:contain }`. RivalryBind has no data-src / <img> support, so the
+   logo is a data-bg div; the SDK sets background-size:contain on it, which is
+   the direct equivalent of Moldy's object-fit:contain. */
+.scene-root[data-scene="brb"] .hero-shield-fill {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* PORT ADDITION: monogram fallback, shown only while teamX.logo is empty.
+   Moldy's original had no fallback (it pointed at logos/home.png). Styled in
+   his palette so it reads as part of the design. */
+.scene-root[data-scene="brb"] .hero-mono {
+    font-size: 5.5rem;
+    font-weight: 900;
+    font-style: italic;
+    line-height: 1;
+    color: #00f0ff;
+    text-shadow: 0 0 22px rgba(0, 240, 255, 0.45);
+}
+
+/* FORCED 2-LINE TEAM NAME STYLING */
+.scene-root[data-scene="brb"] .hero-team-name {
+    color: #ffffff;
+    font-size: 3.2rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: -1px;
+    line-height: 0.95;
+    white-space: pre-line; /* Allows \n to break line cleanly */
+    word-wrap: break-word;
+    max-width: 320px;
+    width: 100%;
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
+}
+
+.scene-root[data-scene="brb"] .hero-team-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+}
+
+.scene-root[data-scene="brb"] .hero-team.right-team .hero-team-meta {
+    align-items: flex-end;
+}
+
+.scene-root[data-scene="brb"] .hero-team-record {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: #c6f119;
+    letter-spacing: 3px;
+    background: rgba(198, 241, 25, 0.1);
+    padding: 5px 18px;
+    border-left: 3px solid #c6f119;
+    display: inline-block;
+    width: fit-content;
+    text-transform: uppercase; /* PORT ADDITION: replaces the .toUpperCase() in Moldy's sheet-fetch JS */
+}
+
+.scene-root[data-scene="brb"] .hero-team.right-team .hero-team-record {
+    border-left: none;
+    border-right: 3px solid #c6f119;
+}
+
+.scene-root[data-scene="brb"] .hero-vs-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    padding: 0 10px;
+}
+
+.scene-root[data-scene="brb"] .hero-vs {
+    font-size: 5rem;
+    font-weight: 900;
+    font-style: italic;
+    color: #00f0ff;
+    line-height: 0.9;
+    text-shadow: 0 0 25px rgba(0, 240, 255, 0.7);
+}
+
+.scene-root[data-scene="brb"] .hero-time {
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.6);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+/* Bottom Loading Bar Box */
+.scene-root[data-scene="brb"] .footer-loading {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-top: 2px solid rgba(255, 255, 255, 0.08);
+    padding-top: 25px;
+    z-index: 2;
+}
+
+.scene-root[data-scene="brb"] .progress-track {
+    width: 600px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 20px;
+    border-radius: 2px;
+}
+
+.scene-root[data-scene="brb"] .progress-bar {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 30%;
+    background: linear-gradient(to right, #00f0ff, #c6f119);
+    box-shadow: 0 0 15px #00f0ff;
+    animation: scLoading 2s infinite ease-in-out;
+}
+
+@keyframes scLoading {
+    0% { left: -30%; width: 30%; }
+    50% { width: 40%; }
+    100% { left: 110%; width: 30%; }
+}
+
+.scene-root[data-scene="brb"] .social-tag {
+    font-size: 1.6rem;
+    color: #00f0ff;
+    text-transform: uppercase;
+    font-style: italic;
+    font-weight: 900;
+    letter-spacing: 3px;
+}
+
+.scene-root[data-scene="brb"] .social-tag span {
+    color: #ffffff;
+}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="brb">
+
+      <div class="matchup-card">
+
+        <!-- Main Title Header.
+             STATIC ON PURPOSE: the two-tone "SUMMER CIRCUIT 2026" is season art,
+             and `eventTitle` is a single contract string, so binding it would
+             collapse the white/lime split. The "WE WILL BE RIGHT BACK" line is
+             the designed headline, kept verbatim. -->
+        <div class="header-group">
+          <div class="main-title">Summer Circuit <span>2026</span></div>
+          <div class="brb-subtext">WE WILL BE RIGHT BACK</div>
+        </div>
+
+        <!-- FRAMED MATCHUP CONTAINER CARD -->
+        <div class="matchup-hero-card">
+          <!-- Top Badge Overlay Group.
+               `round` is the carrier for Moldy's region + " // " + tier
+               composite: the producer types the whole string. data-slot sits on
+               the GROUP so an empty round hides the "YOU ARE WATCHING" label
+               together with the badge (his JS fell back to the literal
+               "CURRENT MATCH"; the kit convention is hide-when-blank). -->
+          <div class="hero-match-badge-group" data-slot="round">
+            <div class="watching-sublabel">YOU ARE WATCHING</div>
+            <div id="status-badge" class="status-badge" data-field="round">SUB-SAHARAN AFRICA // TIER 2</div>
+          </div>
+
+          <div class="hero-team left-team">
+            <div class="hero-shield">
+              <div class="hero-shield-fill" data-bg="teamA.logo">
+                <span class="hero-mono" data-mono="teamA.name">?</span>
+              </div>
+            </div>
+            <div class="hero-team-meta">
+              <!-- No data-field: the name is set by the two-line splitter in the
+                   script below (Moldy's formatTwoLines), which RivalryBind's
+                   plain textContent write would otherwise clobber. -->
+              <div id="hero-team1-name" class="hero-team-name">LOADING...</div>
+              <div id="hero-team1-record" class="hero-team-record" data-field="teamA.record" data-slot="teamA.record">0 - 0</div>
+            </div>
+          </div>
+
+          <div class="hero-vs-block">
+            <div class="hero-vs">VS</div>
+            <div id="hero-time" class="hero-time" data-field="startTime">8:00 PM</div>
+          </div>
+
+          <div class="hero-team right-team">
+            <div class="hero-shield">
+              <div class="hero-shield-fill" data-bg="teamB.logo">
+                <span class="hero-mono" data-mono="teamB.name">?</span>
+              </div>
+            </div>
+            <div class="hero-team-meta">
+              <div id="hero-team2-name" class="hero-team-name">LOADING...</div>
+              <div id="hero-team2-record" class="hero-team-record" data-field="teamB.record" data-slot="teamB.record">0 - 0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animated Loading Progress & Social Link.
+             Static: the contract has no brand.url / brand.social field. Moldy
+             hard-codes it too, so this is not a regression. -->
+        <div class="footer-loading">
+          <div class="progress-track">
+            <div class="progress-bar"></div>
+          </div>
+          <div class="social-tag">JOIN THE RIVALRY // <span>THERIVALRY.GG</span></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      // Moldy's helper, unchanged: split multi-word team names across 2 lines.
+      // If 2 words: Word1 \n Word2. If 3+: splits near the middle. The \n lands
+      // in a white-space:pre-line block, exactly as in his original.
+      function formatTwoLines(name) {
+        if (!name) return '';
+        var words = name.trim().split(/\s+/);
+        if (words.length <= 1) return name.toUpperCase();
+
+        var mid = Math.ceil(words.length / 2);
+        var line1 = words.slice(0, mid).join(' ');
+        var line2 = words.slice(mid).join(' ');
+        return (line1 + '\n' + line2).toUpperCase();
+      }
+
+      var root = document.querySelector('.scene-root');
+
+      // Control-only scene: subscribe to the control bus (auto-mocks on file://).
+      // ONE connect() per page — two calls would open duplicate socket pairs.
+      var rl = RivalryOverlay.connect({ game: false });
+
+      // Declarative binding: data-field / data-bg / data-mono / data-slot.
+      // This replaces the entire Google Sheets gviz fetch from the original.
+      RivalryBind(root, rl);
+
+      // Registered AFTER RivalryBind on the SAME instance, so RivalryBind's
+      // handler runs first and this post-pass owns only the two name nodes.
+      // Guarded like Moldy's `if (team1Name)`: a blank name keeps the previous
+      // text rather than wiping the card mid-break.
+      // A single word longer than the 320px column would mid-word wrap
+      // ("GUARDIAN\nS") under Moldy's break-word CSS — fine for his curated
+      // sheet, broken-looking for arbitrary league names. Shrink to fit
+      // instead. One-word names get nowrap (break-word otherwise wraps before
+      // any overflow is measurable); multi-word names keep pre-line wrapping.
+      function fitName(el) {
+        el.style.fontSize = '';
+        el.style.whiteSpace = el.textContent.indexOf('\n') === -1 ? 'nowrap' : '';
+        var size = parseFloat(getComputedStyle(el).fontSize);
+        while (el.scrollWidth > el.clientWidth && size > 28) {
+          size -= 2;
+          el.style.fontSize = size + 'px';
+        }
+      }
+
+      rl.onControl(function (c) {
+        var a = c && c.teamA && c.teamA.name;
+        var b = c && c.teamB && c.teamB.name;
+        var n1 = document.getElementById('hero-team1-name');
+        var n2 = document.getElementById('hero-team2-name');
+        if (a) { n1.textContent = formatTwoLines(a); fitName(n1); }
+        if (b) { n2.textContent = formatTwoLines(b); fitName(n2); }
+      });
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(function () {
+          fitName(document.getElementById('hero-team1-name'));
+          fitName(document.getElementById('hero-team2-name'));
+        });
+      }
+
+      // Resolution-independent: scale the 1920x1080 design to fill any source
+      // size. Append ?fit=cover to the source URL to fill+crop instead of
+      // letterbox on non-16:9.
+      RivalryFit('.rv-stage');
+    })();
+  </script>
+</body>
+</html>

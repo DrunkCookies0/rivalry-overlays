@@ -189,22 +189,59 @@ test("custom collection name is honored", () => {
   assert.equal(col.name, "Summer Circuit");
 });
 
-test("duplicate scene mappings get numeric suffixes, first keeps the clean name", () => {
+test("one overlay per scene type: same-type overlays collapse instead of suffixing", () => {
+  // With overlay sets, two overlays of the same scene type are alternates of
+  // one broadcast scene, never two OBS scenes. House set wins by default.
   const overlays = [
-    entry({ folder: "gameplay-a", name: "Gameplay A", scene: "gameplay" }),
-    entry({ folder: "gameplay-b", name: "Gameplay B", scene: "gameplay" }),
-    entry({ folder: "gameplay-c", name: "Gameplay C", scene: "gameplay" }),
+    { ...entry({ folder: "gameplay-a", name: "Gameplay A", scene: "gameplay" }), set: "kinetic-bold" },
+    { ...entry({ folder: "gameplay-b", name: "Gameplay B", scene: "gameplay" }), set: "sc26" },
   ];
   const col = buildSceneCollection({ overlays, baseUrl: BASE });
-  assert.deepEqual(
-    scenesOf(col).map((s) => s.name),
-    ["RIVALRY - Live", "RIVALRY - Live (2)", "RIVALRY - Live (3)"]
-  );
-  assert.deepEqual(
-    col.scene_order.map((s) => s.name),
-    ["RIVALRY - Live", "RIVALRY - Live (2)", "RIVALRY - Live (3)"]
-  );
+  assert.deepEqual(scenesOf(col).map((s) => s.name), ["RIVALRY - Live"]);
+  assert.ok(browsersOf(col).some((b) => b.name === "Gameplay A Overlay"), "house set is the default");
   assert.equal(col.current_program_scene, "RIVALRY - Live");
+});
+
+test("preferredSet picks that set's overlay, house set fills uncovered scene types", () => {
+  const { selectOverlaysForSet, DEFAULT_SET } = require("../bridge/obs-collection");
+  assert.equal(DEFAULT_SET, "kinetic-bold");
+  const overlays = [
+    { ...entry({ folder: "rivalry-brb", name: "RIVALRY BRB", scene: "brb" }), set: "kinetic-bold" },
+    { ...entry({ folder: "sc26-brb", name: "SC26 BRB", scene: "brb" }), set: "sc26" },
+    { ...entry({ folder: "rivalry-gameplay", name: "RIVALRY Gameplay", scene: "gameplay" }), set: "kinetic-bold" },
+  ];
+  const chosen = selectOverlaysForSet(overlays, "sc26");
+  const byScene = Object.fromEntries(chosen.map((o) => [o.scene, o.folder]));
+  assert.equal(byScene.brb, "sc26-brb", "preferred set covers brb");
+  assert.equal(byScene.gameplay, "rivalry-gameplay", "sc26 has no gameplay: house set fills it");
+  // And the built collection agrees.
+  const col = buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "sc26" });
+  assert.ok(browsersOf(col).some((b) => b.name === "SC26 BRB Overlay"));
+  assert.ok(browsersOf(col).some((b) => b.name === "RIVALRY Gameplay Overlay"));
+});
+
+test("a missing set field reads as the house set", () => {
+  const { selectOverlaysForSet } = require("../bridge/obs-collection");
+  const legacy = entry({ folder: "rivalry-brb", name: "RIVALRY BRB", scene: "brb" }); // no .set
+  const chosen = selectOverlaysForSet([legacy], "sc26");
+  assert.equal(chosen.length, 1, "legacy entries without a set still serve as fallback");
+});
+
+test("opaque scenes never get the chrome pinned on top", () => {
+  const overlays = [
+    entry({ folder: "rivalry-chrome", name: "Chrome (persistent frame)", scene: "chrome" }),
+    entry({ folder: "rivalry-gameplay", name: "RIVALRY Gameplay", scene: "gameplay" }),
+    { ...entry({ folder: "sc26-brb", name: "SC26 BRB", scene: "brb" }), set: "sc26", opaque: true },
+  ];
+  const col = buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "sc26" });
+  const chromeSrc = browsersOf(col).find((b) => b.name === CHROME_SOURCE_NAME);
+  const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");
+  assert.equal(live.settings.items[0].source_uuid, chromeSrc.uuid, "transparent scene keeps the chrome");
+  const brb = scenesOf(col).find((s) => s.name === "RIVALRY - BRB");
+  assert.ok(
+    !brb.settings.items.some((i) => i.source_uuid === chromeSrc.uuid),
+    "opaque scene must not composite the house frame over its own art"
+  );
 });
 
 test("duplicate overlay names get suffixed source names that scene items still resolve", () => {

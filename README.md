@@ -48,19 +48,21 @@ There is no Bracket scene in v1.0. It lives in git history and returns for playo
 
 ## Running a broadcast
 
-### Match mode (the default)
+### Match-first (the only mode)
 
-The control panel opens on the **match finder**. Enter your league API key once (issued from the league site, starts with `rv_`, sent in the `x-api-key` header), search for tonight's match, and load it. Loading a match fills team names, logos, records, and event metadata across every scene at once. Logos are served through a local proxy because the upstream logo URLs expire in about 15 minutes.
+The control panel opens on the **match finder**, and loading a real league match is the way into a broadcast: the packaged app serves no overlay scene until one is loaded. Enter your league API key once (issued from the league site, starts with `rv_`, sent in the `x-api-key` header), search for tonight's match, and load it. Loading locks the broadcast to that match and fills team names, logos, records, rosters, and event metadata across every scene at once. Logos are served through a local proxy because the upstream logo URLs expire in about 15 minutes.
 
-Two fields stay operator-entered because the API does not carry them: **best-of** and **seeds**.
+**Load once, then cache.** The loaded match and its logos are cached to disk the moment they load. If the league site goes down mid-show (or the app restarts), the broadcast keeps running on the cached match; only *switching to a different match* needs the league reachable.
+
+Fields that stay operator-entered because the API does not carry them: **best-of**, **seeds**, the **series score**, and **casters**.
 
 ### Broadcast schedule
 
 The **Broadcast schedule** card lines up the whole night: add each series with its start time, and set the once-per-night season, circuit, and tier fields once. Loading a series from the schedule updates every scene at once, and the Up Next scene fills itself from the schedule. An importable JSON shape for schedules is documented in [SCHEDULE-SPEC.md](SCHEDULE-SPEC.md) (spec only for now).
 
-### Manual mode (the fallback)
+### Overlay looks (sets)
 
-If the league site is unreachable, flip to the clearly labeled **Manual** mode and type team names, logos, and series info yourself. Everything renders identically; you are just the data source.
+Overlays ship in visual families. **Kinetic Bold** is the house look; community sets (like Moldybanana's **SC26**) provide alternate looks for some scene types. Pick a look in the Overlays / Scenes card and rebuild the OBS scene collection; scene types the chosen look doesn't cover fall back to the house look automatically.
 
 ### Caster cams
 
@@ -81,8 +83,9 @@ The app copies each new replay into `Documents\RIVALRY Replays`, organized by ev
 | Overlay is blank in OBS | Is the app running? Look for the tray icon. Was Rocket League restarted once after install? Then right-click the Browser Source and refresh. |
 | Gameplay scene shows no live numbers | It only renders live data during a match (playing or spectating). Saved replays emit nothing. |
 | "Port already in use" dialog at launch | Another app is holding port 49080, 49124, or 49777. The dialog names the port. Close the other app and relaunch. |
-| Match finder can't reach the league | Check the API key (starts with `rv_`) and your connection. Until it is back, use Manual mode; the broadcast does not depend on the league site. |
-| Logos not loading | League logos go through the app's local proxy; refresh the Browser Source. A manually pasted URL must point directly at an image file, or upload the file in the panel instead. |
+| Overlay shows "No league match is loaded" | That is the match gate: open the control panel, find your match, and load it. The source refreshes itself once a match is locked. |
+| Match finder can't reach the league | Check the API key (starts with `rv_`) and your connection. A match that is already loaded keeps running from cache; only loading a *different* match needs the league site reachable. |
+| Logos not loading | League logos go through the app's local proxy and are cached with the loaded match; refresh the Browser Source. |
 | Boost meters show `--` | Boost data only exists on the PC that is spectating the match. That is a Rocket League limit, not a bug. |
 | Need the setup wizard again | Tray icon, **Setup guide**. |
 | Can't find the OBS import | OBS top menu bar: **Scene Collection**, then **Import**, then pick the downloaded file. |

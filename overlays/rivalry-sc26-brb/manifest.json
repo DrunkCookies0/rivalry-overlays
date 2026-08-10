@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-sc26-brb",
+  "name": "SC26 Stream Paused",
+  "author": "Moldybanana (design), RIVALRY (port)",
+  "version": "1.0.0",
+  "scene": "brb",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Stream Paused break scene with the live matchup hero card (Summer Circuit 2026 set).",
+  "set": "sc26",
+  "opaque": true,
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "75156d5f21bd75dfc73d1e9253a4e4378ae38bf67458ac832983f69ed85f83cf",
+    "signature": "3GC18+oTCHWTRGWBN/APburr7ySftDtmXmFxiRAZRdWS9nsskNSpeCZb6a+7/rnDRdruDr7CRwmkNrg3f8fwCQ==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-08-10T01:11:54.646Z"
+  }
+}

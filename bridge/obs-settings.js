@@ -28,6 +28,10 @@ const DEFAULTS = {
     postMatch: "",
   },
   autoSwitchEnabled: false, // master kill switch for auto scene changes
+  // Which overlay look ("set") the OBS scene build uses. Empty = the house
+  // set (kinetic-bold). Scene types the preferred set doesn't cover fall back
+  // to the house set — see selectOverlaysForSet in obs-collection.js.
+  preferredSet: "",
 };
 
 function settingsPath(userDataDir) {

@@ -102,20 +102,21 @@
     </div>
   </div>
 
-  <!-- RV-first: Match mode is the product's default; Manual is the on-air
-       escape hatch for a league outage, one click away, never buried. -->
-  <div class="card full" id="modeCard" style="margin-bottom:18px;">
-    <div class="row" style="gap:10px;align-items:center;">
-      <div class="seg" id="modeToggle">
-        <button class="seg-btn on" data-mode="match" title="Auto-fill teams from a scheduled league match">Match (league)</button>
-        <button class="seg-btn" data-mode="manual" title="League unreachable? Run this series manually">Manual</button>
-      </div>
-      <span class="muted-note" id="modeHint">Match mode fills teams, logos and records from the RIVALRY schedule. Manual is the fallback if the league site is unreachable mid-show.</span>
+  <!-- Match-first: loading a real league match IS the way into a broadcast.
+       There is no manual mode — the app serves no scene without a loaded
+       match, and once loaded it is cached, so a league outage mid-show
+       changes nothing. -->
+  <div class="card full" id="leagueCard" style="margin-bottom:18px;border-left:3px solid var(--accent);">
+    <h2>Load your match <span class="muted-note">(required — scenes stay dark until a league match is loaded)</span></h2>
+    <!-- The loaded match: the single source of team identity. -->
+    <div id="lockBanner" class="row" style="display:none;gap:8px;align-items:center;margin-bottom:10px;
+      padding:9px 12px;border:1px solid rgba(48,192,246,.35);border-radius:8px;background:rgba(48,192,246,.07);">
+      <span class="pill ok">on air</span>
+      <b id="lockTitle" style="font-size:14px;"></b>
+      <span id="lockMeta" class="muted-note" style="flex:1;"></span>
+      <button class="mini" id="leagueRefresh" type="button">Refresh from league</button>
+      <button class="mini" id="lockEnd" type="button" style="background:#3a2430;color:#f1a0b0;">End broadcast</button>
     </div>
-  </div>
-
-  <div class="card full" id="leagueCard" style="display:none;margin-bottom:18px;border-left:3px solid var(--accent);">
-    <h2>Find your match <span class="muted-note">(team names, logos and records fill in from the league)</span></h2>
     <div class="row" style="gap:8px;align-items:flex-end;">
       <div style="flex:2"><label>League API key <span class="muted-note">— starts with rv_, from the league site</span></label><input type="password" id="leagueKey" placeholder="rv_…" /></div>
       <button class="mini" id="leagueSaveKey" type="button">Save key</button>
@@ -124,7 +125,6 @@
     <div class="row" style="gap:8px;margin-top:12px;align-items:flex-end;">
       <div style="flex:2"><label>Search by team</label><input type="text" id="leagueSearch" placeholder="team name, then Enter" autocomplete="off" /></div>
       <button class="mini" id="leagueLoad" type="button">Find matches</button>
-      <button class="mini" id="leagueRefresh" type="button" style="display:none;">Refresh loaded match</button>
     </div>
     <!-- Filters are built from whatever came back, because the league API has
          no circuit/round filter of its own. -->
@@ -136,6 +136,11 @@
     </div>
     <div id="leagueMatches" style="margin-top:10px;"></div>
     <div id="leagueActive" class="muted-note" style="margin-top:6px;"></div>
+    <div class="muted-note" style="margin-top:8px;">
+      Team names, logos, records and rosters come from the league and lock to the loaded match
+      (cached, so a league outage mid-show changes nothing). Best-of, seeds, series score and
+      casters aren't league data — those stay yours below.
+    </div>
     <!-- Dark-launched: appears only when the league actually serves standings
          (Ask 1 of ASKS-FOR-CYNICAL.md; live today it 404s and stays hidden).
          Mock mode serves the fixture, which is how this stays testable. -->
@@ -144,9 +149,6 @@
         <button class="mini" id="standingsLoad" type="button">Load standings</button>
         <div id="standingsStatus" class="muted-note" style="flex:1;">The league is publishing standings. Load them to feed the Standings scene and the ticker.</div>
       </div>
-    </div>
-    <div class="muted-note" style="margin-top:8px;">
-      Everything stays editable after filling. Best-of and seeds aren't in the league data, set those by hand.
     </div>
   </div>
 
@@ -158,15 +160,15 @@
       <div style="flex:1"><label>Tier</label><input type="text" id="evTier" placeholder="TIER 1" /></div>
     </div>
     <div class="row" style="gap:8px;margin-bottom:8px;">
-      <button class="mini" id="queueAddCurrent" type="button">Add current teams as a series</button>
       <button class="mini" id="queueNext" type="button">Load next series</button>
       <div style="flex:1"></div>
       <button class="mini" id="queueClear" type="button">Clear schedule</button>
     </div>
     <div id="queueList"></div>
     <div class="muted-note" style="margin-top:8px;">
-      Loading a series fills the team fields below, resets the series score to 0-0, and updates Up Next, Starting Soon
-      and the ticker in one go. The schedule is saved with everything else, so it survives restarting the app.
+      Line the night up from the match finder above (Add to queue). Loading a series locks the app to
+      that league match, resets the series score to 0-0, and updates Up Next, Starting Soon and the
+      ticker in one go. The schedule survives restarting the app.
     </div>
   </div>
 
@@ -176,7 +178,7 @@
       <div style="flex:2"><label>Stream line (ticker, bottom right)</label><input type="text" id="chStream" placeholder="STREAM • TWITCH.TV/RIVALRY" /></div>
       <div style="flex:1"><label>Showcase label</label><input type="text" id="chScLabel" placeholder="FRANCHISE" /></div>
       <div style="flex:1"><label>Showcase name</label><input type="text" id="chScName" placeholder="FROST" /></div>
-      <div style="flex:2"><label>Showcase logo URL <span class="muted-note">(optional)</span></label><input type="text" id="chScLogo" placeholder="https://... or /user-assets/..." /></div>
+      <div style="flex:2"><label>Showcase logo URL <span class="muted-note">(optional)</span></label><input type="text" id="chScLogo" placeholder="https://.../logo.png" /></div>
     </div>
     <div class="row" style="gap:10px;">
       <div style="flex:1"><label>Social 1 network</label><input type="text" id="chSocNet0" placeholder="discord" /></div>
@@ -213,23 +215,19 @@
   </div>
 
   <div class="grid">
+    <!-- Team identity is the LOADED MATCH's — names, logos and records come
+         from the league and are not hand-editable. What is editable here is
+         match-night state the league doesn't carry: seed, record correction,
+         and the series score the operator drives all night. -->
     <div class="card">
       <h2>Team A (Blue)</h2>
-      <label>Name</label>
-      <input type="text" id="nameA" value="BLUE" />
-      <label>Logo (paste a URL, upload, or drag a file here)</label>
-      <div class="row logo-row" data-team="A" style="gap:6px;">
-        <input type="text" id="logoA" placeholder="https://.../logo.png" style="flex:1;" />
-        <img class="logo-prev" id="logoPrevA" alt="" />
-        <button class="mini" id="logoUpA" type="button">Upload</button>
+      <div class="row" style="gap:10px;align-items:center;margin:6px 0 4px;">
+        <img class="logo-prev" id="lockLogoA" alt="" style="width:44px;height:44px;" />
+        <b id="lockNameA" style="font-size:17px;">— load a match —</b>
       </div>
-      <input type="file" id="logoFileA" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" style="display:none;" />
-      <div class="muted-note" id="logoErrA" style="color:var(--warn);"></div>
-      <label>Tag (region / seed)</label>
-      <input type="text" id="tagA" placeholder="EU1" />
       <div class="row" style="gap:10px;">
         <div style="flex:1"><label>Seed</label><input type="text" id="seedA" placeholder="#1" /></div>
-        <div style="flex:1"><label>Record</label><input type="text" id="recordA" placeholder="12-3" /></div>
+        <div style="flex:1"><label>Record <span class="muted-note">(from the league)</span></label><input type="text" id="recordA" placeholder="12-3" /></div>
       </div>
       <label>Series games won</label>
       <div class="series stepper">
@@ -241,21 +239,13 @@
 
     <div class="card">
       <h2>Team B (Orange)</h2>
-      <label>Name</label>
-      <input type="text" id="nameB" value="ORANGE" />
-      <label>Logo (paste a URL, upload, or drag a file here)</label>
-      <div class="row logo-row" data-team="B" style="gap:6px;">
-        <input type="text" id="logoB" placeholder="https://.../logo.png" style="flex:1;" />
-        <img class="logo-prev" id="logoPrevB" alt="" />
-        <button class="mini" id="logoUpB" type="button">Upload</button>
+      <div class="row" style="gap:10px;align-items:center;margin:6px 0 4px;">
+        <img class="logo-prev" id="lockLogoB" alt="" style="width:44px;height:44px;" />
+        <b id="lockNameB" style="font-size:17px;">— load a match —</b>
       </div>
-      <input type="file" id="logoFileB" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" style="display:none;" />
-      <div class="muted-note" id="logoErrB" style="color:var(--warn);"></div>
-      <label>Tag (region / seed)</label>
-      <input type="text" id="tagB" placeholder="EU2" />
       <div class="row" style="gap:10px;">
         <div style="flex:1"><label>Seed</label><input type="text" id="seedB" placeholder="#4" /></div>
-        <div style="flex:1"><label>Record</label><input type="text" id="recordB" placeholder="9-6" /></div>
+        <div style="flex:1"><label>Record <span class="muted-note">(from the league)</span></label><input type="text" id="recordB" placeholder="9-6" /></div>
       </div>
       <label>Series games won</label>
       <div class="series stepper">
@@ -328,36 +318,9 @@
       </div>
     </div>
 
-    <div class="card full">
-      <h2>Up Next <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(blank rows hide on air)</span></h2>
-      <div class="muted-note" id="upNextAutoNote" style="display:none;margin-bottom:8px;color:var(--accent);">
-        Filled automatically from the broadcast schedule (the series after the one on air). Clear the schedule to type these by hand.
-      </div>
-      <div class="row" style="gap:10px;">
-        <div style="flex:2"><label>Match 1 — Team A</label><input type="text" id="nextA0" placeholder="NOVA" /></div>
-        <div style="flex:2"><label>Team B</label><input type="text" id="nextB0" placeholder="ECLIPSE" /></div>
-        <div style="flex:1"><label>Time</label><input type="text" id="nextTime0" placeholder="9:30 ET" /></div>
-        <div style="flex:1"><label>Round</label><input type="text" id="nextRound0" placeholder="UB R1" /></div>
-      </div>
-      <div class="row" style="gap:10px;">
-        <div style="flex:2"><label>Match 2 — Team A</label><input type="text" id="nextA1" placeholder="" /></div>
-        <div style="flex:2"><label>Team B</label><input type="text" id="nextB1" placeholder="" /></div>
-        <div style="flex:1"><label>Time</label><input type="text" id="nextTime1" placeholder="" /></div>
-        <div style="flex:1"><label>Round</label><input type="text" id="nextRound1" placeholder="" /></div>
-      </div>
-      <div class="row" style="gap:10px;">
-        <div style="flex:2"><label>Match 3 — Team A</label><input type="text" id="nextA2" placeholder="" /></div>
-        <div style="flex:2"><label>Team B</label><input type="text" id="nextB2" placeholder="" /></div>
-        <div style="flex:1"><label>Time</label><input type="text" id="nextTime2" placeholder="" /></div>
-        <div style="flex:1"><label>Round</label><input type="text" id="nextRound2" placeholder="" /></div>
-      </div>
-      <div class="row" style="gap:10px;">
-        <div style="flex:2"><label>Match 4 — Team A</label><input type="text" id="nextA3" placeholder="" /></div>
-        <div style="flex:2"><label>Team B</label><input type="text" id="nextB3" placeholder="" /></div>
-        <div style="flex:1"><label>Time</label><input type="text" id="nextTime3" placeholder="" /></div>
-        <div style="flex:1"><label>Round</label><input type="text" id="nextRound3" placeholder="" /></div>
-      </div>
-    </div>
+    <!-- Up Next has no manual rows any more: the scene is fed from the
+         broadcast schedule (the series after the one on air), which itself
+         only holds real league matches. -->
 
     <div class="card full">
       <h2>Player Titles <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(name must match the in-game name exactly; shows on that player's goal banner)</span></h2>
@@ -396,6 +359,7 @@
     <div class="card full" id="scenesCard" style="border-left:3px solid var(--rivalry);">
       <h2>Overlays / Scenes <span class="muted-note">(add each as an OBS Browser Source, 1920 × 1080)</span></h2>
       <div class="row" style="gap:8px;margin-bottom:6px;align-items:center;">
+        <div class="chips" id="lookChips" title="Which overlay look the OBS scene build uses"></div>
         <div style="flex:1"></div>
         <button id="refreshScenes" style="background:#243040;color:var(--ink);">Refresh</button>
       </div>
@@ -478,10 +442,33 @@ let ws = null, connected = false;
 const $ = (id) => document.getElementById(id);
 const state = {
   series:{a:0,b:0}, queue:[], queueActive:null,
+  // The loaded league match (server lock status: GET /league/lock shape).
+  // This is the ONLY source of team identity — there is no manual entry.
+  match: null,
+  // Which lock side displays as Team A. Swapping flips presentation only;
+  // the lock itself (and its a/b logo proxy URLs) never changes.
+  swapped: false,
   // Lower-third call state. shownAt is stamped at Show time; the chrome scene
   // shows only the REMAINING time, so retained replay can't resurrect it.
   lowerThird: { visible:false, kind:"caster", title:"", subtitle:"", durationSec:8, shownAt:0 },
 };
+
+// Displayed team for panel slot "a"/"b", derived from the lock + swap flag.
+// Returns {name, logo, record, players} with ""s when nothing is loaded.
+function displayTeam(slot){
+  const m = state.match;
+  const empty = { name:"", logo:"", record:"", players:[] };
+  if (!m || !m.locked) return empty;
+  const sideIdx = (slot === "a") !== state.swapped ? 0 : 1;
+  const t = (m.teams || [])[sideIdx];
+  if (!t) return empty;
+  return {
+    name: t.name || "",
+    logo: t.hasLogo ? "/league/logo?matchId=" + encodeURIComponent(m.matchId) + "&side=" + (sideIdx === 0 ? "a" : "b") : "",
+    record: t.record || "",
+    players: Array.isArray(t.players) ? t.players : [],
+  };
+}
 
 // Fetch + render the build label (e.g. "v0.2.0-beta (a3b9c1d)") in the
 // header so a producer can tell installed builds apart at a glance.
@@ -511,15 +498,6 @@ function gatherCasters(){
     const name = $("casterName"+i).value.trim();
     if (!name) continue;
     out.push({ name, role:$("casterRole"+i).value.trim(), handle:$("casterHandle"+i).value.trim(), stream:$("casterStream"+i).value.trim(), avatar:"" });
-  }
-  return out;
-}
-function gatherUpNext(){
-  const out = [];
-  for (let i = 0; i < 4; i++){
-    const a = $("nextA"+i).value.trim(), b = $("nextB"+i).value.trim();
-    if (!a && !b) continue;
-    out.push({ teamA:a, teamB:b, time:$("nextTime"+i).value.trim(), round:$("nextRound"+i).value.trim() });
   }
   return out;
 }
@@ -590,18 +568,22 @@ function gatherTicker(){
   };
 }
 function payload(){
+  // Team identity rides from the LOCK (displayTeam), never from typed input.
+  // tag stays in the contract shape but empty — same as a league fill today.
+  // seed + record are the operator-owned corrections layered on top.
+  const a = displayTeam("a"), b = displayTeam("b");
   return {
     type: "control",
     payload: {
-      teamA: { name:$("nameA").value, logo:$("logoA").value.trim(), tag:$("tagA").value, seed:$("seedA").value.trim(), record:$("recordA").value.trim() },
-      teamB: { name:$("nameB").value, logo:$("logoB").value.trim(), tag:$("tagB").value, seed:$("seedB").value.trim(), record:$("recordB").value.trim() },
+      teamA: { name:a.name, logo:a.logo, tag:"", seed:$("seedA").value.trim(), record:$("recordA").value.trim() || a.record },
+      teamB: { name:b.name, logo:b.logo, tag:"", seed:$("seedB").value.trim(), record:$("recordB").value.trim() || b.record },
       bestOf: parseInt($("bestOf").value, 10) || 5,
       series: { a: state.series.a, b: state.series.b },
       eventTitle: $("eventTitle").value,
       round: $("round").value,
       startTime: $("startTime").value,
       casters: gatherCasters(),
-      upNext: state.queue.length ? upNextFromQueue() : gatherUpNext(),
+      upNext: upNextFromQueue(),
       players: gatherPlayers(),
       // Producer rundown. Additive optional contract field; overlays ignore it.
       queue: state.queue,
@@ -682,16 +664,10 @@ $("l3Hide").addEventListener("click", () => {
 });
 
 // ---- Match queue ------------------------------------------------------------
-// The night's series, lined up in advance. Entries can come from a league match
-// or from whatever is typed in the panel right now, so it works before the
-// league endpoints exist and for non-league events.
-function teamSnapshot(side){
-  return {
-    name: $("name"+side).value.trim(), logo: $("logo"+side).value.trim(),
-    tag: $("tag"+side).value.trim(), seed: $("seed"+side).value.trim(),
-    record: $("record"+side).value.trim(),
-  };
-}
+// The night's series, lined up in advance. Every entry IS a league match (the
+// finder's "Add to queue" is the only way in); loading one locks the app to
+// that match. Loading needs the league reachable — the currently locked match
+// keeps running untouched if it isn't.
 function queueAdd(entry){
   if (!entry) return;
   entry.id = entry.id || ("s" + Date.now() + Math.floor(Math.random() * 1000));
@@ -699,21 +675,15 @@ function queueAdd(entry){
   renderQueue(); push();
 }
 function queueRemove(i){ state.queue.splice(i, 1); renderQueue(); push(); }
-function queueLoad(i){
+async function queueLoad(i){
   const e = state.queue[i];
-  if (!e) return;
-  const a = e.teamA || {}, b = e.teamB || {};
-  setVal("nameA", a.name); setVal("logoA", a.logo); setVal("tagA", a.tag); setVal("seedA", a.seed); setVal("recordA", a.record);
-  setVal("nameB", b.name); setVal("logoB", b.logo); setVal("tagB", b.tag); setVal("seedB", b.seed); setVal("recordB", b.record);
+  if (!e || !e.matchId) return;
+  const locked = await useLeagueMatch(e.matchId);
+  if (!locked) return; // league unreachable: keep the current match on air
   if (e.bestOf) setVal("bestOf", e.bestOf);
   if (e.round) setVal("round", e.round);
   if (e.startTime) setVal("startTime", e.startTime);
-  // A freshly loaded series always starts level.
-  state.series.a = 0; state.series.b = 0;
-  $("seriesA").textContent = "0"; $("seriesB").textContent = "0";
   state.queueActive = e.id;
-  if (e.matchId) leagueMatchId = e.matchId;
-  updateLogoPreview("A"); updateLogoPreview("B");
   renderQueue(); push();
 }
 function queueNext(){
@@ -724,13 +694,8 @@ function queueNext(){
 function renderQueue(){
   const host = $("queueList");
   host.innerHTML = "";
-  // Up Next follows the schedule while one exists; grey the manual rows so it
-  // is obvious where the scene's content is coming from right now.
-  const auto = state.queue.length > 0;
-  for (let i = 0; i < 4; i++) ["nextA","nextB","nextTime","nextRound"].forEach(p => { $(p+i).disabled = auto; });
-  $("upNextAutoNote").style.display = auto ? "" : "none";
   if (!state.queue.length){
-    host.innerHTML = '<span class="muted-note">Nothing lined up yet. Add matches from the league card above, or add the teams you have typed in below.</span>';
+    host.innerHTML = '<span class="muted-note">Nothing lined up yet. Find your matches above and Add to queue.</span>';
     return;
   }
   state.queue.forEach((e, i) => {
@@ -762,12 +727,6 @@ function renderQueue(){
     host.appendChild(row);
   });
 }
-$("queueAddCurrent").addEventListener("click", () => queueAdd({
-  teamA: teamSnapshot("A"), teamB: teamSnapshot("B"),
-  bestOf: parseInt($("bestOf").value, 10) || 5,
-  round: $("round").value.trim(), startTime: $("startTime").value.trim(),
-  matchId: leagueMatchId || "",
-}));
 $("queueNext").addEventListener("click", queueNext);
 $("queueClear").addEventListener("click", () => { state.queue = []; state.queueActive = null; renderQueue(); push(); });
 function push(){
@@ -808,14 +767,13 @@ $("bestOf").addEventListener("input", () => {
   });
 });
 // push on any field change
-["nameA","logoA","tagA","nameB","logoB","tagB","bestOf","eventTitle",
+["bestOf","eventTitle",
  "seedA","recordA","seedB","recordB","round","startTime",
  "evSeason","evCircuit","evTier",
  "chStream","chScLabel","chScName","chScLogo","tickerLines"]
   .forEach(id => $(id).addEventListener("input", push));
 for (let i = 0; i < 3; i++) ["chSocNet","chSocHandle"].forEach(p => $(p+i).addEventListener("input", push));
 for (let i = 0; i < 3; i++) ["casterName","casterRole","casterHandle","casterStream"].forEach(p => $(p+i).addEventListener("input", push));
-for (let i = 0; i < 4; i++) ["nextA","nextB","nextTime","nextRound"].forEach(p => $(p+i).addEventListener("input", push));
 for (let i = 0; i < 6; i++) ["pName","pTitle","pBadges"].forEach(p => $(p+i).addEventListener("input", push));
 $("apply").addEventListener("click", push);
 
@@ -851,6 +809,10 @@ function renderObsStatus(s){
 }
 function hydrateObsForm(settings){
   if (!settings) return;
+  if (typeof settings.preferredSet === "string" && settings.preferredSet !== preferredSet){
+    preferredSet = settings.preferredSet;
+    renderLookChips();
+  }
   $("obsEnabled").checked = !!settings.enabled;
   if (typeof settings.url === "string") $("obsWsUrl").value = settings.url;
   if (typeof settings.password === "string") $("obsWsPassword").value = settings.password;
@@ -895,9 +857,12 @@ function setVal(id, v){
 function hydrateControlForm(p){
   if (!p) return;
   hydratedOnce = true;
+  // Team identity is NOT hydrated from the retained payload: the lock (GET
+  // /league/lock + match-status broadcasts) is the source of truth for names
+  // and logos. Operator corrections (seed, record) do hydrate.
   const a = p.teamA || {}, b = p.teamB || {};
-  setVal("nameA", a.name); setVal("logoA", a.logo); setVal("tagA", a.tag); setVal("seedA", a.seed); setVal("recordA", a.record);
-  setVal("nameB", b.name); setVal("logoB", b.logo); setVal("tagB", b.tag); setVal("seedB", b.seed); setVal("recordB", b.record);
+  setVal("seedA", a.seed); setVal("recordA", a.record);
+  setVal("seedB", b.seed); setVal("recordB", b.record);
   if (p.bestOf) setVal("bestOf", p.bestOf);
   if (p.series){
     state.series.a = p.series.a|0; state.series.b = p.series.b|0;
@@ -907,13 +872,12 @@ function hydrateControlForm(p){
   const cs = Array.isArray(p.casters) ? p.casters : [];
   for (let i = 0; i < 3; i++){ const c = cs[i] || {};
     setVal("casterName"+i, c.name); setVal("casterRole"+i, c.role); setVal("casterHandle"+i, c.handle); setVal("casterStream"+i, c.stream); }
-  const un = Array.isArray(p.upNext) ? p.upNext : [];
-  for (let i = 0; i < 4; i++){ const u = un[i] || {};
-    setVal("nextA"+i, u.teamA); setVal("nextB"+i, u.teamB); setVal("nextTime"+i, u.time); setVal("nextRound"+i, u.round); }
   const pl = Array.isArray(p.players) ? p.players : [];
   for (let i = 0; i < 6; i++){ const q = pl[i] || {};
     setVal("pName"+i, q.name); setVal("pTitle"+i, q.title); setVal("pBadges"+i, (q.badges || []).join(", ")); }
-  if (Array.isArray(p.queue)) state.queue = p.queue;
+  // Only league-backed entries survive: older saved queues could hold
+  // hand-typed series, which have no matchId and nothing to lock to.
+  if (Array.isArray(p.queue)) state.queue = p.queue.filter(e => e && e.matchId);
   if (p.queueActive !== undefined) state.queueActive = p.queueActive;
   if (p.schedule && p.schedule.event){
     setVal("evSeason", p.schedule.event.season);
@@ -943,7 +907,6 @@ function hydrateControlForm(p){
     l3UpdateStatus();
   }
   renderQueue();
-  updateLogoPreview("A"); updateLogoPreview("B");
 }
 
 // Override the basic connect() above to hydrate from retained state, push
@@ -982,6 +945,11 @@ connect = function(){
         setStatus();
       } else if (m && m.type === "license-status") {
         renderLicense(m.payload);
+      } else if (m && m.type === "match-status") {
+        // Another panel (or the main process) changed the lock: mirror it.
+        // No push — the actor that changed the lock pushes.
+        state.match = m.payload || null;
+        renderMatchLock();
       }
     } catch { /* ignore */ }
   };
@@ -1000,6 +968,35 @@ const SCENE_LABELS = {
 };
 const SCENE_ORDER = ["chrome", "starting-soon", "caster", "match-preview", "gameplay", "postgame", "up-next", "brb", "standings"];
 
+// ---- Look (overlay set) picker ---------------------------------------------
+// Overlays ship in visual families; the picker chooses which family the OBS
+// scene build uses. Scene types the chosen look doesn't cover fall back to
+// the house look, so a partial community set still yields a full show.
+let preferredSet = "";
+let lastOverlays = [];
+function setLabel(s){ return s === "kinetic-bold" ? "Kinetic Bold (house)" : (s || "").toUpperCase(); }
+function renderLookChips(){
+  const host = $("lookChips");
+  const sets = [...new Set(lastOverlays.map(o => o.set || "kinetic-bold"))];
+  host.innerHTML = "";
+  if (sets.length < 2) return; // one look installed: nothing to pick
+  const active = preferredSet || "kinetic-bold";
+  for (const s of sets){
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip" + (s === active ? " on" : "");
+    b.textContent = setLabel(s);
+    b.addEventListener("click", () => {
+      preferredSet = s;
+      if (connected && ws.readyState === ws.OPEN)
+        ws.send(JSON.stringify({ type: "obs-settings", payload: { preferredSet: s } }));
+      renderLookChips();
+      $("obsSetupResult").style.color = "var(--muted)";
+      $("obsSetupResult").textContent = "Look set to " + setLabel(s) + ". Rebuild the scene collection to apply it in OBS.";
+    });
+    host.appendChild(b);
+  }
+}
+
 async function renderScenes(){
   const host = $("sceneList");
   let data = null;
@@ -1007,6 +1004,9 @@ async function renderScenes(){
   const overlays = (data && Array.isArray(data.overlays)) ? data.overlays.slice() : [];
   if (!overlays.length) { host.innerHTML = '<span class="muted-note">No overlays found (is the app running?).</span>'; return; }
   overlays.sort((a, b) => ((SCENE_ORDER.indexOf(a.scene) + 1) || 99) - ((SCENE_ORDER.indexOf(b.scene) + 1) || 99));
+  lastOverlays = overlays;
+  renderLookChips();
+  const manySets = new Set(overlays.map(o => o.set || "kinetic-bold")).size > 1;
   host.innerHTML = "";
   for (const o of overlays) {
     const url = location.origin + o.url;
@@ -1024,6 +1024,13 @@ async function renderScenes(){
       pill.className = "pill " + (o.approved ? "ok" : "preview");
       pill.textContent = o.approved ? "approved" : "preview";
       row.appendChild(pill);
+    }
+    // With more than one look installed, say which family each row belongs to.
+    if (manySets) {
+      const sp = document.createElement("span");
+      sp.className = "pill"; sp.style.background = "rgba(255,255,255,.08)"; sp.style.color = "var(--muted)";
+      sp.textContent = setLabel(o.set || "kinetic-bold");
+      row.appendChild(sp);
     }
     const inp = document.createElement("input");
     inp.className = "u"; inp.readOnly = true; inp.value = url;
@@ -1078,25 +1085,30 @@ $("licenseActivate").addEventListener("click", () => {
   catch { /* app not reachable; the connection banner already says so */ }
 })();
 
-let leagueMatchId = null;
-function setMode(mode, persist){
-  document.querySelectorAll("#modeToggle .seg-btn").forEach(x => x.classList.toggle("on", x.dataset.mode === mode));
-  $("leagueCard").style.display = mode === "match" ? "" : "none";
-  $("modeHint").textContent = mode === "match"
-    ? "Match mode fills teams, logos and records from the RIVALRY schedule. Manual is the fallback if the league site is unreachable mid-show."
-    : "Manual mode: type everything by hand. Every field below works exactly the same; switch back to Match (league) when the league site is reachable again.";
-  if (persist) { try { localStorage.setItem("rv-mode", mode); } catch { /* private mode etc. */ } }
-  if (mode === "match") refreshLeagueStatus();
+// ---- The match lock, rendered ----------------------------------------------
+// One strip above the finder: which match is on air, refresh it, end it.
+// Team cards mirror the same state. All identity rendering funnels through
+// here so the lock is visibly the only source of truth.
+function renderMatchLock(){
+  const m = state.match;
+  const locked = !!(m && m.locked);
+  $("lockBanner").style.display = locked ? "" : "none";
+  if (locked){
+    const names = (m.teams || []).map(t => (t && t.name) || "TBD");
+    $("lockTitle").textContent = names.join("  vs  ");
+    const ev = m.event || {};
+    const when = m.scheduledDate ? new Date(m.scheduledDate).toLocaleString([], { weekday:"short", hour:"numeric", minute:"2-digit" }) : "";
+    $("lockMeta").textContent = [ev.composedTitle || ev.circuitShort || ev.circuit, when].filter(Boolean).join(" · ");
+  }
+  ["a","b"].forEach(slot => {
+    const t = displayTeam(slot);
+    const S = slot.toUpperCase();
+    $("lockName"+S).textContent = t.name || "— load a match —";
+    const img = $("lockLogo"+S);
+    if (t.logo){ img.src = t.logo; img.style.display = "inline-block"; }
+    else { img.removeAttribute("src"); img.style.display = "none"; }
+  });
 }
-document.querySelectorAll("#modeToggle .seg-btn").forEach(b =>
-  b.addEventListener("click", () => setMode(b.dataset.mode, true)));
-// RV-first: Match mode is the default. A producer's explicit choice sticks
-// across opens; otherwise the panel opens on the match finder.
-(function initMode(){
-  let saved = null;
-  try { saved = localStorage.getItem("rv-mode"); } catch { /* ignore */ }
-  setMode(saved === "manual" ? "manual" : "match");
-})();
 
 function leagueErrorText(err){
   if (err === "no-key") return "No key saved. Paste your league API key above.";
@@ -1302,23 +1314,33 @@ async function loadLeagueMatches(){
 }
 $("leagueLoad").addEventListener("click", loadLeagueMatches);
 $("leagueSearch").addEventListener("keydown", (e) => { if (e.key === "Enter") loadLeagueMatches(); });
-async function useLeagueMatch(matchId, fresh){
+/* Lock the broadcast to a league match. POST /league/lock proves the match
+ * exists in the system RIGHT NOW, then the main process caches it (match +
+ * logo bytes) so the rest of the night survives a league outage. Returns
+ * true when locked. A failed lock never touches the current one. */
+async function useLeagueMatch(matchId){
   const el = $("leagueActive");
-  el.textContent = "loading match...";
+  el.textContent = "loading match from the league...";
   try {
-    const r = await (await fetch("/league/matches/" + encodeURIComponent(matchId) + (fresh ? "?fresh=1" : ""))).json();
-    if (!r.ok) { el.textContent = leagueErrorText(r.error); return; }
+    const r = await (await fetch("/league/lock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ matchId }),
+    })).json();
+    if (!r.ok) { el.textContent = leagueErrorText(r.error); return false; }
     const d = r.data || {};
+    state.match = r.status || null;
+    state.swapped = false;
     const ta = (d.teams && d.teams[0]) || {}, tb = (d.teams && d.teams[1]) || {};
-    $("nameA").value = ta.name || ""; $("nameB").value = tb.name || "";
-    $("logoA").value = ta.logoUrl || ""; $("logoB").value = tb.logoUrl || "";
-    // Circuit standings, straight from the API — these used to be typed by hand.
-    if (ta.record) $("recordA").value = ta.record;
-    if (tb.record) $("recordB").value = tb.record;
-    // Series score is the tonight's-series count, which the league doesn't
-    // track: a fresh match always starts 0-0 and the operator drives it.
+    // Records come from the league; they land in the (editable) inputs so the
+    // operator can correct them, and payload() falls back to the lock's value
+    // when the input is blank.
+    $("recordA").value = ta.record || ""; $("recordB").value = tb.record || "";
+    $("seedA").value = ""; $("seedB").value = "";
+    // Series score is tonight's count, which the league doesn't track: a
+    // freshly locked match always starts 0-0 and the operator drives it.
     state.series.a = 0; state.series.b = 0;
-    $("seriesA").textContent = state.series.a; $("seriesB").textContent = state.series.b;
+    $("seriesA").textContent = "0"; $("seriesB").textContent = "0";
     if (d.event && d.event.composedTitle) $("eventTitle").value = d.event.composedTitle.toUpperCase();
     if (d.event && d.event.roundLabel) $("round").value = d.event.roundLabel.toUpperCase();
     // Seed the once-per-night event fields from the match, but never clobber
@@ -1329,14 +1351,24 @@ async function useLeagueMatch(matchId, fresh){
     }
     if (d.scheduledDate) $("startTime").value = new Date(d.scheduledDate).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     fillPlayerNames(d);
-    updateLogoPreview("A"); updateLogoPreview("B");
-    leagueMatchId = d.matchId || matchId;
-    el.textContent = "Filled from: " + ($("nameA").value || "?") + " vs " + ($("nameB").value || "?");
-    $("leagueRefresh").style.display = "";
+    renderMatchLock();
+    el.textContent = "";
     push();
-  } catch { el.textContent = "App not reachable."; }
+    return true;
+  } catch { el.textContent = "App not reachable."; return false; }
 }
-$("leagueRefresh").addEventListener("click", () => { if (leagueMatchId) useLeagueMatch(leagueMatchId, true); });
+$("leagueRefresh").addEventListener("click", () => {
+  if (state.match && state.match.locked) useLeagueMatch(state.match.matchId);
+});
+$("lockEnd").addEventListener("click", async () => {
+  // Ends the broadcast: scenes go back to the "no match loaded" notice in the
+  // packaged app. The schedule, chrome and casters survive for the next series.
+  try { await fetch("/league/unlock", { method: "POST" }); } catch {}
+  state.match = null;
+  state.swapped = false;
+  state.queueActive = null;
+  renderMatchLock(); renderQueue(); push();
+});
 
 /* Roster names into the goal-banner rows: team A takes slots 0-2, team B 3-5,
  * so a 2v2 leaves a visible gap rather than interleaving the teams. All six are
@@ -1393,71 +1425,18 @@ $("vdoGen").addEventListener("click", generateVdo);
     if (connected && ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: "obs-action", payload: { action: "switch", scene: b.dataset.scene } }));
   }));
 })();
-// ---- Logo upload / preview --------------------------------------------------
-// Files POST to the app's /assets/upload and come back as a local URL, so the
-// control-bus contract stays "logo is a URL" and retained payloads stay small.
-function updateLogoPreview(team){
-  const url = $("logo"+team).value.trim();
-  const img = $("logoPrev"+team);
-  if (url){
-    // A silently-hidden preview reads as "no logo set"; say what happened and
-    // what to do instead.
-    img.onerror = () => {
-      img.style.display = "none";
-      $("logoErr"+team).textContent = "Logo did not load from that URL. Check the link, or upload the file instead.";
-    };
-    img.onload = () => { $("logoErr"+team).textContent = ""; };
-    img.src = url;
-    img.style.display = "inline-block";
-  } else {
-    img.style.display = "none";
-    $("logoErr"+team).textContent = "";
-  }
-}
-async function uploadLogo(team, file){
-  if (!file) return;
-  const err = $("logoErr"+team);
-  err.textContent = "";
-  try {
-    const res = await fetch("/assets/upload", {
-      method: "POST",
-      headers: {
-        "Content-Type": file.type || "application/octet-stream",
-        "X-File-Name": file.name || "logo.png",
-      },
-      body: file,
-    });
-    const j = await res.json();
-    if (j && j.ok){ $("logo"+team).value = j.url; updateLogoPreview(team); push(); }
-    else err.textContent = "Upload failed: " + ((j && j.error) || "unknown error") + ". PNG/JPG/SVG under 5 MB.";
-  } catch (e){
-    err.textContent = "Upload failed: " + e.message + ". Is the app running?";
-  }
-}
-["A","B"].forEach(team => {
-  $("logoUp"+team).addEventListener("click", () => $("logoFile"+team).click());
-  $("logoFile"+team).addEventListener("change", () => {
-    uploadLogo(team, $("logoFile"+team).files[0]);
-    $("logoFile"+team).value = "";
-  });
-  $("logo"+team).addEventListener("input", () => updateLogoPreview(team));
-  const row = document.querySelector('.logo-row[data-team="'+team+'"]');
-  ["dragenter","dragover"].forEach(ev => row.addEventListener(ev, (e) => { e.preventDefault(); row.classList.add("logo-drop"); }));
-  ["dragleave","drop"].forEach(ev => row.addEventListener(ev, (e) => { e.preventDefault(); row.classList.remove("logo-drop"); }));
-  row.addEventListener("drop", (e) => {
-    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    uploadLogo(team, f);
-  });
-});
-
 // ---- Quick actions ----------------------------------------------------------
+// Swap is presentation-only: it flips which lock side shows as Team A (blue).
+// Operator-owned values (seed, record correction, series score) follow their
+// team across the flip; the lock itself never changes.
 $("swapTeams").addEventListener("click", () => {
-  ["name","logo","tag","seed","record"].forEach(k => {
+  state.swapped = !state.swapped;
+  ["seed","record"].forEach(k => {
     const t = $(k+"A").value; $(k+"A").value = $(k+"B").value; $(k+"B").value = t;
   });
   const s = state.series.a; state.series.a = state.series.b; state.series.b = s;
   $("seriesA").textContent = state.series.a; $("seriesB").textContent = state.series.b;
-  updateLogoPreview("A"); updateLogoPreview("B");
+  renderMatchLock();
   push();
 });
 $("resetSeries").addEventListener("click", () => {
@@ -1468,6 +1447,17 @@ $("resetSeries").addEventListener("click", () => {
 
 renderScenes();
 renderQueue();
+
+// The lock is server state: seed it before (and independent of) the control
+// bus, so a reopened panel shows the on-air match even if the bus is slow.
+(async function initMatchLock(){
+  try {
+    const r = await (await fetch("/league/lock", { cache: "no-store" })).json();
+    state.match = r && r.locked ? r : null;
+  } catch { /* app not reachable; the connection banner already says so */ }
+  renderMatchLock();
+})();
+refreshLeagueStatus();
 
 connect();
 </script>

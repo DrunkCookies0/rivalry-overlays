@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RIVALRY — Summer Circuit 2026 Starting Soon</title>
+<style>
+/* =============================================================================
+ * Summer Circuit 2026 — Starting Soon
+ * Visual design by Moldybanana. Ported onto the RIVALRY overlay kit.
+ * All colour, type, spacing, glow and animation values below are his, unchanged;
+ * the only CSS edits are (a) scoping every rule under the scene-root, (b) making
+ * the page background transparent so OBS can composite under it, and (c) a new
+ * .mini-shield-fill / .mini-mono pair that replaces the two <img> logos.
+ *
+ * OFFLINE NOTE: the Montserrat @import below is the ONE remote dependency in
+ * this scene. It matches existing practice in overlays/shared/rivalry-theme.css
+ * (which imports Exo 2 / Roboto / Space Mono the same way). Without a network
+ * the scene falls back to the local stack in --sc-font and still lays out; the
+ * italic-900 look degrades. Self-host the woff2 into assets/ to make it fully
+ * offline-safe.
+ * ===========================================================================*/
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,900;1,900&display=swap');
+
+/* Fill the OBS Browser Source viewport; rivalry-fit.js scales the 1920x1080
+   stage into it. Transparent so anything composited underneath shows through
+   (Moldy's original painted #0b1519 on <body>, which would block that). */
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+
+/* The fixed 1920x1080 design canvas. Declared locally rather than pulled from
+   shared/rivalry-theme.css on purpose: this is a deliberately different look
+   (cyan/lime, not Kinetic Bold blue/gold), so it must not inherit --rv-* tokens
+   or the theme's font imports. */
+.rv-stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+
+.scene-root[data-scene="starting-soon"] {
+    --sc-cyan: #00f0ff;
+    --sc-cyan-alt: #00eeff;
+    --sc-lime: #c6f119;
+    --sc-ink: #0b1519;
+    --sc-font: 'Montserrat', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+.scene-root[data-scene="starting-soon"],
+.scene-root[data-scene="starting-soon"] * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* 16:9 Canvas Background (Moldy's .canvas, now the scene-root) */
+.scene-root[data-scene="starting-soon"] {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    font-family: var(--sc-font);
+    background-image: url('assets/sc26-background.webp');
+    background-size: cover;
+    background-position: center;
+    background-color: var(--sc-ink); /* was body{background-color}; kept inside the scene so the art never sits on bare transparency */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Animated Content Card */
+.scene-root[data-scene="starting-soon"] .matchup-card {
+    position: relative;
+    width: 1550px;
+    height: 820px;
+    background: rgba(8, 18, 21, 0.93);
+    border-left: 5px solid #00f0ff;
+    border-right: 5px solid #00f0ff;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+    padding: 45px 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* Subtle moving sweep overlay across the card background */
+.scene-root[data-scene="starting-soon"] .matchup-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(to right, transparent, rgba(0, 240, 255, 0.03), transparent);
+    transform: skewX(-20deg);
+    animation: scSweep 6s infinite linear;
+}
+
+@keyframes scSweep {
+    0% { left: -150%; }
+    100% { left: 150%; }
+}
+
+/* Header Group matching "SUMMER CIRCUIT 2026" */
+.scene-root[data-scene="starting-soon"] .header-group {
+    text-align: center;
+    z-index: 2;
+}
+
+.scene-root[data-scene="starting-soon"] .main-title {
+    font-size: 4.8rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: -2px;
+    color: #ffffff;
+    line-height: 1;
+    margin-bottom: 5px;
+}
+
+.scene-root[data-scene="starting-soon"] .main-title span {
+    color: #c6f119;
+    text-shadow: 0 0 20px rgba(198, 241, 25, 0.3);
+}
+
+/* Center Info Container - SHIFTED UPWARD */
+.scene-root[data-scene="starting-soon"] .status-container {
+    text-align: center;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-top: -25px;
+    margin-bottom: 10px;
+}
+
+/* "Match Starts" Label */
+.scene-root[data-scene="starting-soon"] .match-start-label {
+    font-size: 1.3rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    color: #00eeff;
+    letter-spacing: 8px;
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+}
+
+/* Giant clean text for Time */
+.scene-root[data-scene="starting-soon"] .status-text {
+    font-size: 6.5rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    color: #e9e9e9;
+    letter-spacing: 2px;
+    line-height: 0.9;
+    text-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+}
+
+/* Sleek Info Badge Below Time */
+.scene-root[data-scene="starting-soon"] .region-badge {
+    font-size: 1.1rem;
+    font-weight: 900;
+    color: #0b1519;
+    background-color: #c6f119;
+    padding: 6px 24px;
+    margin-top: 5px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    transform: skewX(-10deg);
+    box-shadow: 0 0 15px rgba(198, 241, 25, 0.3);
+}
+
+/* NEXT MATCH PREVIEW CARD - EXPANDED HEIGHT & SPACING */
+.scene-root[data-scene="starting-soon"] .next-match-container {
+    width: 1280px;
+    height: 170px;
+    background: linear-gradient(135deg, rgba(8, 25, 28, 0.9) 0%, rgba(13, 39, 44, 0.6) 100%);
+    border: 1px solid rgba(0, 240, 255, 0.25);
+    padding: 0 45px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+}
+
+/* Angled corner details */
+.scene-root[data-scene="starting-soon"] .next-match-container::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    width: 15px;
+    height: 15px;
+    border-top: 2px solid #00f0ff;
+    border-left: 2px solid #00eeff;
+}
+
+.scene-root[data-scene="starting-soon"] .next-match-container::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 15px;
+    height: 15px;
+    border-bottom: 2px solid #00f0ff;
+    border-right: 2px solid #00f0ff;
+}
+
+.scene-root[data-scene="starting-soon"] .next-label {
+    position: absolute;
+    top: -15px;
+    left: 30px;
+    background: #081215;
+    padding: 2px 15px;
+    font-size: 1rem;
+    font-weight: 900;
+    font-style: italic;
+    color: #00f0ff;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    border: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+.scene-root[data-scene="starting-soon"] .mini-team {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    width: 44%;
+    min-width: 0;
+}
+
+.scene-root[data-scene="starting-soon"] .mini-team.left-team {
+    justify-content: flex-start;
+}
+
+.scene-root[data-scene="starting-soon"] .mini-team.right-team {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+    text-align: right;
+}
+
+.scene-root[data-scene="starting-soon"] .team-text-meta {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
+}
+
+.scene-root[data-scene="starting-soon"] .mini-team.right-team .team-text-meta {
+    align-items: flex-end;
+}
+
+/* Prominent Shield/Logo Containers */
+.scene-root[data-scene="starting-soon"] .mini-shield {
+    width: 115px;
+    height: 115px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* PORT CHANGE: replaces `.mini-shield img { max-width/max-height:100%;
+   object-fit:contain }`. RivalryBind has no data-src / <img> support, so the
+   logo is a data-bg div; the SDK sets background-size:contain on it, which is
+   the direct equivalent of Moldy's object-fit:contain. */
+.scene-root[data-scene="starting-soon"] .mini-shield-fill {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* PORT ADDITION: monogram fallback, shown only while teamX.logo is empty.
+   Moldy's original had no fallback (it pointed at logos/home.png). Styled in
+   his palette so it reads as part of the design. */
+.scene-root[data-scene="starting-soon"] .mini-mono {
+    font-size: 3.6rem;
+    font-weight: 900;
+    font-style: italic;
+    line-height: 1;
+    color: #00f0ff;
+    text-shadow: 0 0 18px rgba(0, 240, 255, 0.45);
+}
+
+/* BOLD & LARGE TWO-LINE TEAM NAMES */
+.scene-root[data-scene="starting-soon"] .mini-team-name {
+    color: #ffffff;
+    font-size: 2.5rem;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    letter-spacing: -0.5px;
+    line-height: 0.95;
+    white-space: normal;
+    word-wrap: break-word;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Dimmed Record Tag Glow with Extra Spacing */
+.scene-root[data-scene="starting-soon"] .team-record {
+    font-size: 1.4rem;
+    font-weight: 900;
+    /* PORT ADDITION: the original uppercased record text in JS on injection;
+       the declarative bind path doesn't, so CSS carries it instead. */
+    text-transform: uppercase;
+    color: #c6f119;
+    letter-spacing: 3px;
+    background: rgba(198, 241, 25, 0.06);
+    padding: 5px 18px;
+    border-left: 3px solid #c6f119;
+    display: inline-block;
+    width: fit-content;
+    margin-top: 6px;
+
+    /* Tamed Text & Box Shadows */
+    text-shadow: 0 0 6px rgba(198, 241, 25, 0.25);
+    box-shadow: 0 0 8px rgba(198, 241, 25, 0.12);
+}
+
+.scene-root[data-scene="starting-soon"] .right-team .team-record {
+    border-left: none;
+    border-right: 3px solid #c6f119;
+}
+
+/* VS BADGE */
+.scene-root[data-scene="starting-soon"] .mini-vs {
+    font-size: 3rem;
+    font-weight: 900;
+    font-style: italic;
+    color: #00f0ff;
+    letter-spacing: -1px;
+    padding: 0 15px;
+    flex-shrink: 0;
+    text-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+}
+
+/* Bottom Loading Bar Box */
+.scene-root[data-scene="starting-soon"] .footer-loading {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-top: 2px solid rgba(255, 255, 255, 0.08);
+    padding-top: 25px;
+    z-index: 2;
+}
+
+/* Infinite looping status progress track */
+.scene-root[data-scene="starting-soon"] .progress-track {
+    width: 600px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 20px;
+    border-radius: 2px;
+}
+
+.scene-root[data-scene="starting-soon"] .progress-bar {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 30%;
+    background: linear-gradient(to right, #00f0ff, #c6f119);
+    box-shadow: 0 0 15px #00f0ff;
+    animation: scLoading 2s infinite ease-in-out;
+}
+
+@keyframes scLoading {
+    0% { left: -30%; width: 30%; }
+    50% { width: 40%; }
+    100% { left: 110%; width: 30%; }
+}
+
+.scene-root[data-scene="starting-soon"] .social-tag {
+    font-size: 1.6rem;
+    color: #00f0ff;
+    text-transform: uppercase;
+    font-style: italic;
+    font-weight: 900;
+    letter-spacing: 3px;
+}
+
+.scene-root[data-scene="starting-soon"] .social-tag span {
+    color: #ffffff;
+}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="starting-soon">
+
+      <div class="matchup-card">
+
+        <!-- Header Group.
+             STATIC ON PURPOSE: the two-tone "SUMMER CIRCUIT 2026" is season art,
+             and `eventTitle` is a single contract string, so binding it would
+             collapse the white/lime split. See the port notes for the one-line
+             change if a producer wants it live. -->
+        <div class="header-group">
+          <div class="main-title">Summer Circuit <span>2026</span></div>
+        </div>
+
+        <!-- Clean Center Status Block -->
+        <div class="status-container">
+          <div class="match-start-label">MATCH STARTS</div>
+          <div id="time-display" class="status-text" data-field="startTime">8:00PM</div>
+          <!-- `round` is the carrier for Moldy's region + " // " + tier composite:
+               the producer types the whole string. data-slot hides the badge when
+               round is empty, replacing his display none/inline-block branch. -->
+          <div id="info-badge" class="region-badge" data-field="round" data-slot="round">SUB-SAHARAN AFRICA // TIER 2</div>
+        </div>
+
+        <!-- NEXT MATCH PREVIEW CARD.
+             Labelled "Next Up" but fed from the CURRENT match row, exactly as in
+             Moldy's original, so it binds teamA/teamB (not upNext[0]). -->
+        <div class="next-match-container">
+          <div class="next-label">Next Up</div>
+
+          <div class="mini-team left-team">
+            <div class="mini-shield">
+              <div class="mini-shield-fill" data-bg="teamA.logo">
+                <span class="mini-mono" data-mono="teamA.name">S</span>
+              </div>
+            </div>
+            <div class="team-text-meta">
+              <div id="team1-name" class="mini-team-name" data-field="teamA.name">SIMPLIFY EMERALD</div>
+              <div id="team1-record" class="team-record" data-field="teamA.record" data-slot="teamA.record">1-0-1</div>
+            </div>
+          </div>
+
+          <div class="mini-vs">VS</div>
+
+          <div class="mini-team right-team">
+            <div class="mini-shield">
+              <div class="mini-shield-fill" data-bg="teamB.logo">
+                <span class="mini-mono" data-mono="teamB.name">T</span>
+              </div>
+            </div>
+            <div class="team-text-meta">
+              <div id="team2-name" class="mini-team-name" data-field="teamB.name">THE PINCHMEN PURPLE</div>
+              <div id="team2-record" class="team-record" data-field="teamB.record" data-slot="teamB.record">2-0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Animated Loading Progress & Social Link.
+             Static: the contract has no brand.url / brand.social field. Moldy
+             hard-codes it too, so this is not a regression. -->
+        <div class="footer-loading">
+          <div class="progress-track">
+            <div class="progress-bar"></div>
+          </div>
+          <div class="social-tag"> JOIN THE RIVALRY // <span>therivalry.gg</span></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      // Moldy's dynamic text scaler, unchanged: allow up to two lines (~105px)
+      // before shrinking, floor at 1.2rem.
+      function fitTeamName(elementId) {
+        var el = document.getElementById(elementId);
+        if (!el) return;
+
+        var fontSize = 2.5; // Massive starting size
+        el.style.fontSize = fontSize + "rem";
+
+        // Only shrink if height exceeds two lines (~105px) or a single-word
+        // width overflows horizontally.
+        while ((el.offsetHeight > 105 || el.scrollWidth > el.clientWidth) && fontSize > 1.2) {
+          fontSize -= 0.05;
+          el.style.fontSize = fontSize + "rem";
+        }
+      }
+
+      function fitAll() {
+        fitTeamName("team1-name");
+        fitTeamName("team2-name");
+      }
+
+      var root = document.querySelector('.scene-root');
+
+      // Control-only scene: subscribe to the control bus (auto-mocks on file://).
+      // ONE connect() per page — two calls would open duplicate socket pairs.
+      var rl = RivalryOverlay.connect({ game: false });
+
+      // Declarative binding: data-field / data-bg / data-mono / data-slot.
+      // This replaces the entire Google Sheets gviz fetch from the original.
+      RivalryBind(root, rl);
+
+      // Registered AFTER RivalryBind on the SAME instance, so RivalryBind's
+      // handler runs first and this post-pass sees the finished DOM.
+      rl.onControl(fitAll);
+
+      // Resolution-independent: scale the 1920x1080 design to fill any source
+      // size. Append ?fit=cover to the source URL to fill+crop instead of
+      // letterbox on non-16:9.
+      RivalryFit('.rv-stage');
+
+      // Fit the markup defaults too, so the scene reads correctly before any
+      // control payload arrives, and again once Montserrat has actually loaded
+      // (web-font swap changes text metrics).
+      fitAll();
+      if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+        document.fonts.ready.then(fitAll);
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -110,19 +110,18 @@ The control panel is laid out top to bottom in the order you use it on a match n
 
 ### Before the stream
 
-1. Make sure the toggle at the top is on **Match (league)**. It is the default.
-2. In the **Find your match** card, paste your league API key (starts with `rv_`) and click **Save key**. You only do this once, it is remembered.
+1. In the **Load your match** card, paste your league API key (starts with `rv_`) and click **Save key**. You only do this once, it is remembered.
    **Expected result:** the status reads **"Key OK"** followed by the masked key.
-3. Click **Find matches** (optionally type a team name first to narrow it).
+2. Click **Find matches** (optionally type a team name first to narrow it).
    **Expected result:** tonight's real schedule appears, with circuit and "when" filter chips you can click to narrow the list.
-4. In the **Broadcast schedule** card, fill in **Season**, **Circuit**, and **Tier** once for the night.
-5. For each series on tonight's slate, in schedule order: find it in the match list and click **Add to queue** (or **Use now** for the one starting first).
+3. In the **Broadcast schedule** card, fill in **Season**, **Circuit**, and **Tier** once for the night.
+4. For each series on tonight's slate, in schedule order: find it in the match list and click **Add to queue** (or **Use now** for the one starting first).
    **Expected result:** the Broadcast schedule card lists the night's series in order, and **Up Next** fills itself from the schedule.
-6. Click **Load next series** to put series 1 on deck.
-   **Expected result:** the Team A and Team B cards fill with names, logos, and records; the series score resets to 0-0.
-7. Set **Best of** and the seeds by hand. The league data does not carry those, so they are always typed.
-8. Everything the league filled in stays hand-editable. Fix anything that looks off, then click **PUSH TO OVERLAY**.
-9. In the **Casters** card: set the VDO.Ninja room name, click **Generate caster links**, and send each caster their personal link. Their cams appear on the Casters scene, no accounts or installs on their end.
+5. Click **Load next series** to put series 1 on air. **Do this well before the stream starts** — until a match is loaded, the overlay sources in OBS show a "No league match is loaded" notice instead of scenes (they wake up on their own once you load one). Loading also caches the match to disk, which is what makes a league outage mid-show a non-event.
+   **Expected result:** the banner at the top of the match card shows the on-air pairing, and the Team A / Team B cards show names, logos, and records from the league; the series score resets to 0-0.
+6. Set **Best of** and the seeds by hand. The league data does not carry those, so they are always typed.
+7. Team names and logos are locked to the loaded match (that is the point). Records are editable if the league's number looks off. Then click **PUSH TO OVERLAY**.
+8. In the **Casters** card: set the VDO.Ninja room name, click **Generate caster links**, and send each caster their personal link. Their cams appear on the Casters scene, no accounts or installs on their end.
 
 ### During the stream
 
@@ -146,17 +145,12 @@ One more thing that runs itself: the app checks for updates every 30 minutes and
 
 ## If the league site goes down mid-show
 
-Manual mode is the escape hatch. Everything in the app works identically in Manual mode; the only thing you lose is auto-fill.
+Nothing happens to your broadcast. The moment you loaded tonight's match, the app cached it — teams, logos, records, rosters — to disk.
 
-1. At the top of the control panel, click **Manual** on the mode toggle.
-   **Expected result:** the "Find your match" card disappears. Nothing on air changes.
-2. Type the team names into the Team A and Team B cards yourself.
-3. For logos: paste an image URL, or click **Upload** and pick a file, or drag a file onto the card.
-4. Fill in seeds, records, and best-of by hand.
-5. Click **PUSH TO OVERLAY**.
-   **Expected result:** every scene updates, exactly as it would in Match mode.
-6. Keep running the show. The scene deck, goal graphics, post-game box score, and series score all work the same.
-7. When the league site is back, flip the toggle back to **Match (league)** whenever you like.
+1. The match on air keeps running from the cache. Scenes, logos, series score, goal graphics: all unaffected. Even restarting the app comes back locked to the same match.
+2. What you cannot do while the league is down is **load a different match** (the next series in your schedule, for example). The app refuses with a clear error and leaves the current match on air.
+3. If the outage crosses a series boundary: stall with **Casters**, **BRB**, or **Up Next** (they all run from cached and operator data) until the league site answers again, then load the next series as normal.
+4. If the league site is still down and you never loaded tonight's match, there is no broadcast to run — call Alex. Loading the match right after the wizard, well before air time, is the habit that makes this a non-event.
 
 ---
 

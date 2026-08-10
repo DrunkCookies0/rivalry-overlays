@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-sc26-casters",
+  "name": "SC26 Casters",
+  "author": "Moldybanana (design), RIVALRY (port)",
+  "version": "1.0.0",
+  "scene": "caster",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Caster frame scene with transparent cam holes, lower thirds and the Next Up matchup bar (Summer Circuit 2026 set).",
+  "set": "sc26",
+  "opaque": true,
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "cf213a18fa331b1cd44a2bf65a8d2f89c6922f1202902bdb33d7078521a4c37a",
+    "signature": "rwffLEa7G/HKmHlAeSzslHuQYcNZ/YrFHNDShToeHXak+kup4MG5G8Edt0GtsMihktgp5Ter5iM6iCo+ubckAg==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-08-10T01:11:53.538Z"
+  }
+}

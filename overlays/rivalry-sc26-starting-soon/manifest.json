@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-sc26-starting-soon",
+  "name": "SC26 Starting Soon",
+  "author": "Moldybanana (design), RIVALRY (port)",
+  "version": "1.0.0",
+  "scene": "starting-soon",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Summer Circuit 2026 pre-stream holding screen. Cyan/lime season set, VS bar fed from the current match.",
+  "set": "sc26",
+  "opaque": true,
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "8f72c9e57f693144c9d461d5ad6da7158b4e5a1a79f053e55406ef0d106aeb39",
+    "signature": "cpsBKEBuQZplWrpBNuWwPXRt/A6Gnsb4auQKuiaCDNa8X60pOXholdznw34cw4RPXHsJuFZ7a/jLd22RGzgyDw==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-08-10T01:11:52.406Z"
+  }
+}

@@ -61,10 +61,15 @@ test("all shipped overlays verify against the public key AND its CRLF form", () 
   }
 });
 
-test("no signed overlay file contains a CR byte (would break on Windows checkout)", () => {
+// Extensions .gitattributes marks `binary` (git never converts them, so a CR
+// byte inside is data, not a line ending). Everything else must be CR-free.
+const BINARY_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".woff", ".woff2", ".ttf"]);
+
+test("no signed overlay TEXT file contains a CR byte (would break on Windows checkout)", () => {
   const offenders = [];
   for (const dir of signedOverlayDirs()) {
     for (const f of walk(dir)) {
+      if (BINARY_EXT.has(path.extname(f).toLowerCase())) continue;
       if (fs.readFileSync(f).includes(0x0d)) offenders.push(path.relative(OVERLAYS_DIR, f));
     }
   }

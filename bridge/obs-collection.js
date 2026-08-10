@@ -64,6 +64,28 @@ const OBS_SCENE_NAMES = {
   "brb": "RIVALRY - BRB",
 };
 
+// Overlays ship in visual families ("sets"): kinetic-bold is the house look,
+// community sets (e.g. Moldybanana's "sc26") provide alternates for some scene
+// types. The OBS build takes ONE overlay per scene type: the preferred set's
+// when it has one, the house set's otherwise — so a partial community set
+// composes with the house look instead of leaving holes, and two overlays of
+// the same scene type never collide over one OBS scene name.
+const DEFAULT_SET = "kinetic-bold";
+function overlaySet(o) {
+  return (o && o.set) || DEFAULT_SET;
+}
+function selectOverlaysForSet(overlays, preferredSet) {
+  const want = preferredSet || DEFAULT_SET;
+  const score = (o) => (overlaySet(o) === want ? 2 : overlaySet(o) === DEFAULT_SET ? 1 : 0);
+  const byScene = new Map();
+  for (const o of overlays || []) {
+    if (!o || !o.scene) continue;
+    const cur = byScene.get(o.scene);
+    if (!cur || score(o) > score(cur)) byScene.set(o.scene, o);
+  }
+  return [...byScene.values()];
+}
+
 // OBS 31.0.1 stamps this version encoding on every saved source; included
 // verbatim (from the reference export) so imports read as same-generation and
 // no migration heuristics kick in.
@@ -222,17 +244,20 @@ function uniqueName(base, taken) {
 // Scene order follows OBS_SCENE_NAMES key order (Starting Soon first), then any
 // unmapped scenes in input order. The gameplay scene also gets a game-capture
 // underlay.
-function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTION_NAME } = {}) {
+function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTION_NAME, preferredSet = "" } = {}) {
   const keyOrder = Object.keys(OBS_SCENE_NAMES);
   const base = String(baseUrl).replace(/\/+$/, ""); // entry urls start with "/"
+
+  // One overlay per scene type, preferred set first, house set as fallback.
+  const chosen = selectOverlaysForSet(overlays, preferredSet);
 
   // The chrome overlay never becomes a scene: it is ONE shared browser source
   // pinned on top of every scene (OBS sources are global; each scene item just
   // references it). Missing/unapproved chrome degrades to the pre-chrome
   // layout: full-canvas capture, no frame, everything still works.
-  const chromeEntry = overlays.find((o) => o.scene === CHROME_SCENE_TYPE) || null;
+  const chromeEntry = chosen.find((o) => o.scene === CHROME_SCENE_TYPE) || null;
 
-  const ordered = overlays
+  const ordered = chosen
     .filter((o) => o.scene !== CHROME_SCENE_TYPE && !DARK_SCENE_TYPES.has(o.scene))
     .map((o, i) => {
       const k = keyOrder.indexOf(o.scene);
@@ -267,7 +292,9 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTI
       underlay = makeGameCapture(uniqueName("Rocket League (Game Capture)", takenSourceNames));
       mediaSources.push(underlay);
     }
-    sceneSources.push(makeScene(sceneName, src, underlay, chromeSource));
+    // Opaque scenes paint the full canvas themselves — pinning the chrome on
+    // top would composite one look's frame over another look's art.
+    sceneSources.push(makeScene(sceneName, src, underlay, o.opaque ? null : chromeSource));
   }
 
   const firstScene = sceneSources.length ? sceneSources[0].name : "";
@@ -305,6 +332,8 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTI
 
 module.exports = {
   buildSceneCollection,
+  selectOverlaysForSet,
+  DEFAULT_SET,
   OBS_SCENE_NAMES,
   OBS_COLLECTION_NAME,
   CHROME_SCENE_TYPE,
