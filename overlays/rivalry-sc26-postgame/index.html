@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<title>RIVALRY — Summer Circuit 2026 Post-Game Results</title>
+<style>
+/* =============================================================================
+ * Summer Circuit 2026 — Post-Game Results (sc26 reskin of the house scene)
+ * Fork of overlays/rivalry-postgame. ALL logic — script blocks, data-field /
+ * data-mono / data-slot bindings, element ids and the .is-mvp state class —
+ * is byte-identical to the house scene; only the visual system changed.
+ * Colour, type, badge, plate, corner-accent and glow values are lifted from
+ * rivalry-sc26-brb / rivalry-sc26-starting-soon (visual design by Moldybanana).
+ *
+ * OFFLINE NOTE: the Montserrat @import below is the ONE remote dependency in
+ * this scene, matching the other sc26 scenes. Without a network the scene
+ * falls back to the local stack in --sc-font; the italic-900 look degrades.
+ * ===========================================================================*/
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,900;1,900&display=swap');
+
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+
+/* Declared locally rather than pulled from shared/rivalry-theme.css on purpose:
+   sc26 is a deliberately different look (cyan/lime, not Kinetic Bold blue/gold),
+   so it must not inherit --rv-* tokens or the theme's font imports. */
+.rv-stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:transparent;}
+
+.scene-root[data-scene="postgame"]{--sc-cyan:#00f0ff;--sc-cyan-alt:#00eeff;--sc-lime:#c6f119;--sc-ink:#0b1519;--sc-font:'Montserrat','Segoe UI',Roboto,Helvetica,Arial,sans-serif;position:absolute;inset:0;overflow:hidden;font-family:var(--sc-font);color:#ffffff;background:var(--sc-ink);}
+
+/* --- layered background: SC26 season art under the content card --- */
+.scene-root[data-scene="postgame"] .pg-bg{position:absolute;inset:0;background-image:url('assets/sc26-background.webp');background-size:cover;background-position:center;background-color:var(--sc-ink);}
+.scene-root[data-scene="postgame"] .pg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.04) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(120% 100% at 50% 46%,#000 52%,transparent 100%);mask-image:radial-gradient(120% 100% at 50% 46%,#000 52%,transparent 100%);}
+.scene-root[data-scene="postgame"] .pg-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 108px,rgba(255,255,255,.02) 108px 110px);animation:pgDrift 22s linear infinite;}
+@keyframes pgDrift{from{transform:translateX(0);}to{transform:translateX(110px);}}
+
+/* --- team-color side washes (team A cyan left / team B lime right) --- */
+.scene-root[data-scene="postgame"] .pg-side{position:absolute;top:0;bottom:0;width:46%;pointer-events:none;}
+.scene-root[data-scene="postgame"] .pg-side-a{left:0;background:radial-gradient(80% 70% at 26% 44%,rgba(0,240,255,.16),transparent 64%),linear-gradient(100deg,rgba(0,240,255,.10),transparent 76%);clip-path:polygon(0 0,100% 0,74% 100%,0 100%);}
+.scene-root[data-scene="postgame"] .pg-side-b{right:0;background:radial-gradient(80% 70% at 74% 44%,rgba(198,241,25,.12),transparent 64%),linear-gradient(260deg,rgba(198,241,25,.08),transparent 76%);clip-path:polygon(26% 0,100% 0,100% 100%,0 100%);}
+
+/* --- the signature diagonal seam, regraded cyan -> lime --- */
+.scene-root[data-scene="postgame"] .pg-seam{position:absolute;top:-6%;bottom:-6%;left:50%;width:9px;transform:translateX(-50%) skewX(-12deg);background:linear-gradient(180deg,transparent,var(--sc-cyan) 28%,var(--sc-lime) 58%,transparent);box-shadow:0 0 12px rgba(0,240,255,.3);opacity:.9;}
+
+/* --- outer content card: the sc26 matchup-card treatment on the house frame
+       (same inset geometry; dark card + 5px cyan side rails + light sweep) --- */
+.scene-root[data-scene="postgame"] .pg-frame{position:absolute;inset:48px 112px 120px;display:flex;flex-direction:column;background:rgba(8,18,21,.93);border-left:5px solid var(--sc-cyan);border-right:5px solid var(--sc-cyan);box-shadow:0 0 50px rgba(0,0,0,.9);padding:34px 24px 26px;overflow:hidden;}
+.scene-root[data-scene="postgame"] .pg-frame::after{content:'';position:absolute;top:0;left:-150%;width:50%;height:100%;background:linear-gradient(to right,transparent,rgba(0,240,255,.03),transparent);transform:skewX(-20deg);animation:scSweep 6s infinite linear;pointer-events:none;}
+@keyframes scSweep{0%{left:-150%;}100%{left:150%;}}
+
+/* --- header --- */
+.scene-root[data-scene="postgame"] .pg-top{display:flex;align-items:flex-start;justify-content:space-between;z-index:2;}
+.scene-root[data-scene="postgame"] .pg-brand{display:flex;align-items:center;gap:18px;padding-top:6px;}
+.scene-root[data-scene="postgame"] .pg-mark{width:70px;height:47px;background:#ffffff;-webkit-mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;filter:drop-shadow(0 0 12px rgba(0,240,255,.5));}
+.scene-root[data-scene="postgame"] .pg-brandtxt{display:flex;flex-direction:column;gap:5px;}
+.scene-root[data-scene="postgame"] .pg-league{font-weight:900;font-style:italic;font-size:18px;letter-spacing:5px;text-transform:uppercase;color:var(--sc-cyan);}
+/* static season art line, two-tone white/lime per the sc26 canon */
+.scene-root[data-scene="postgame"] .pg-sc-title{font-weight:900;font-style:italic;font-size:34px;line-height:1;letter-spacing:-1px;text-transform:uppercase;color:#ffffff;}
+.scene-root[data-scene="postgame"] .pg-sc-title span{color:var(--sc-lime);}
+.scene-root[data-scene="postgame"] .pg-event{font-weight:900;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:var(--sc-ink);background-color:var(--sc-lime);padding:5px 18px;margin-top:2px;align-self:flex-start;transform:skewX(-10deg);}
+
+.scene-root[data-scene="postgame"] .pg-headblock{display:flex;flex-direction:column;align-items:flex-end;}
+.scene-root[data-scene="postgame"] .pg-round{font-weight:900;font-size:16px;letter-spacing:.22em;text-transform:uppercase;color:var(--sc-cyan-alt);margin-bottom:6px;}
+.scene-root[data-scene="postgame"] .pg-final{margin:0;font-weight:900;font-style:italic;font-size:96px;line-height:.84;letter-spacing:-2px;text-transform:uppercase;color:#ffffff;text-shadow:0 10px 28px rgba(0,0,0,.65);}
+.scene-root[data-scene="postgame"] .pg-underbar{display:block;margin-top:12px;width:300px;height:6px;background:linear-gradient(to right,var(--sc-cyan),var(--sc-lime));transform:skewX(-10deg);}
+
+/* --- center final-score band --- */
+.scene-root[data-scene="postgame"] .pg-score{margin-top:26px;display:flex;align-items:center;justify-content:center;gap:40px;z-index:5;}
+.scene-root[data-scene="postgame"] .pg-st{display:flex;align-items:center;gap:24px;flex:1 1 0;}
+.scene-root[data-scene="postgame"] .pg-st-a{justify-content:flex-end;}
+.scene-root[data-scene="postgame"] .pg-st-b{justify-content:flex-start;}
+.scene-root[data-scene="postgame"] .pg-slab{position:relative;width:128px;height:128px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(8,25,28,.95) 0%,rgba(13,39,44,.85) 100%);border:1px solid rgba(0,240,255,.35);box-shadow:0 0 35px rgba(0,0,0,.85);}
+.scene-root[data-scene="postgame"] .pg-slab::before{content:'';position:absolute;top:-1px;left:-1px;width:15px;height:15px;border-top:3px solid var(--sc-cyan);border-left:3px solid var(--sc-cyan);}
+.scene-root[data-scene="postgame"] .pg-slab::after{content:'';position:absolute;bottom:-1px;right:-1px;width:15px;height:15px;border-bottom:3px solid var(--sc-cyan);border-right:3px solid var(--sc-cyan);}
+.scene-root[data-scene="postgame"] .pg-st-b .pg-slab::before,
+.scene-root[data-scene="postgame"] .pg-st-b .pg-slab::after{border-color:var(--sc-lime);}
+.scene-root[data-scene="postgame"] .pg-st-a .pg-slab{box-shadow:0 0 35px rgba(0,0,0,.85);}
+.scene-root[data-scene="postgame"] .pg-st-b .pg-slab{box-shadow:0 0 35px rgba(0,0,0,.85);}
+.scene-root[data-scene="postgame"] .pg-mono{font-weight:900;font-style:italic;font-size:82px;line-height:1;color:var(--sc-cyan);text-shadow:0 0 22px rgba(0,240,255,.45);}
+.scene-root[data-scene="postgame"] .pg-st-b .pg-mono{color:var(--sc-lime);text-shadow:0 0 22px rgba(198,241,25,.45);}
+.scene-root[data-scene="postgame"] .pg-stmeta{display:flex;flex-direction:column;gap:10px;align-items:flex-start;}
+.scene-root[data-scene="postgame"] .pg-stmeta-r{align-items:flex-end;}
+.scene-root[data-scene="postgame"] .pg-name{font-weight:900;font-style:italic;font-size:52px;line-height:.94;letter-spacing:-1px;text-transform:uppercase;color:#ffffff;}
+.scene-root[data-scene="postgame"] .pg-tag{font-weight:900;font-size:16px;letter-spacing:3px;text-transform:uppercase;color:var(--sc-ink);background-color:var(--sc-lime);padding:6px 20px;transform:skewX(-10deg);}
+
+.scene-root[data-scene="postgame"] .pg-tally{flex:0 0 auto;display:flex;align-items:center;gap:24px;padding:0 8px;}
+.scene-root[data-scene="postgame"] .pg-pts{font-weight:900;font-size:148px;line-height:1;font-variant-numeric:tabular-nums;color:#ffffff;text-shadow:0 10px 30px rgba(0,0,0,.7);}
+.scene-root[data-scene="postgame"] .pg-pts-a{color:var(--sc-cyan);text-shadow:0 10px 30px rgba(0,0,0,.7);}
+.scene-root[data-scene="postgame"] .pg-pts-b{color:var(--sc-lime);text-shadow:0 10px 30px rgba(0,0,0,.7);}
+.scene-root[data-scene="postgame"] .pg-dash{font-weight:900;font-style:italic;font-size:80px;color:var(--sc-cyan);opacity:.85;}
+
+/* --- box-score boards: sc26 plates, cyan headers, lime score column --- */
+.scene-root[data-scene="postgame"] .pg-boards{flex:1 1 auto;min-height:0;margin-top:30px;display:flex;align-items:stretch;justify-content:center;gap:34px;z-index:4;}
+.scene-root[data-scene="postgame"] .pg-board{flex:1 1 0;position:relative;display:flex;flex-direction:column;background:linear-gradient(135deg,rgba(8,25,28,.95) 0%,rgba(13,39,44,.85) 100%);border:1px solid rgba(0,240,255,.35);box-shadow:0 0 35px rgba(0,0,0,.85);}
+.scene-root[data-scene="postgame"] .pg-board::before{content:'';position:absolute;top:-1px;left:-1px;width:20px;height:20px;border-top:3px solid var(--sc-cyan);border-left:3px solid var(--sc-cyan);}
+.scene-root[data-scene="postgame"] .pg-board::after{content:'';position:absolute;bottom:-1px;right:-1px;width:20px;height:20px;border-bottom:3px solid var(--sc-cyan);border-right:3px solid var(--sc-cyan);}
+.scene-root[data-scene="postgame"] .pg-board-a{border-top:4px solid var(--sc-cyan);}
+.scene-root[data-scene="postgame"] .pg-board-b{border-top:4px solid var(--sc-lime);}
+.scene-root[data-scene="postgame"] .pg-board-b::before,
+.scene-root[data-scene="postgame"] .pg-board-b::after{border-color:var(--sc-lime);}
+
+.scene-root[data-scene="postgame"] .pg-board-head{display:flex;align-items:center;justify-content:space-between;padding:20px 30px 14px;}
+.scene-root[data-scene="postgame"] .pg-board-b .pg-board-head{flex-direction:row;}
+.scene-root[data-scene="postgame"] .pg-board-team{font-weight:900;font-style:italic;font-size:34px;letter-spacing:-1px;text-transform:uppercase;color:#ffffff;}
+.scene-root[data-scene="postgame"] .pg-board-side{font-weight:900;font-size:15px;letter-spacing:3px;text-transform:uppercase;color:var(--sc-ink);padding:5px 16px;transform:skewX(-10deg);}
+.scene-root[data-scene="postgame"] .pg-board-a .pg-board-side{background-color:var(--sc-cyan);}
+.scene-root[data-scene="postgame"] .pg-board-b .pg-board-side{background-color:var(--sc-lime);}
+
+.scene-root[data-scene="postgame"] .pg-table{flex:1 1 auto;display:flex;flex-direction:column;padding:0 18px 20px;}
+
+/* column geometry shared by header + rows (unchanged from the house scene) */
+.scene-root[data-scene="postgame"] .pg-thead,
+.scene-root[data-scene="postgame"] .pg-row{display:grid;grid-template-columns:1fr 56px 56px 56px 56px 56px 116px;align-items:center;column-gap:6px;}
+.scene-root[data-scene="postgame"] .pg-thead{padding:8px 16px 10px;border-bottom:2px solid rgba(0,240,255,.25);}
+.scene-root[data-scene="postgame"] .pg-thead span{font-weight:900;font-style:italic;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--sc-cyan);text-align:center;}
+.scene-root[data-scene="postgame"] .pg-thead .pg-c-name{text-align:left;}
+.scene-root[data-scene="postgame"] .pg-thead .pg-c-score{text-align:right;color:var(--sc-lime);}
+
+.scene-root[data-scene="postgame"] .pg-row{margin-top:12px;padding:14px 16px;background:linear-gradient(100deg,rgba(8,25,28,.90),rgba(13,39,44,.60));box-shadow:0 8px 22px rgba(0,0,0,.3);}
+.scene-root[data-scene="postgame"] .pg-board-a .pg-row{border-left:3px solid var(--sc-cyan);}
+.scene-root[data-scene="postgame"] .pg-board-b .pg-row{border-left:3px solid var(--sc-lime);}
+
+.scene-root[data-scene="postgame"] .pg-p-name{font-weight:900;font-style:italic;font-size:30px;text-transform:uppercase;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 3px 10px rgba(0,0,0,.6);}
+.scene-root[data-scene="postgame"] .pg-p-stat{font-weight:900;font-size:30px;font-variant-numeric:tabular-nums;color:#e9e9e9;text-align:center;}
+.scene-root[data-scene="postgame"] .pg-p-score{font-weight:900;font-size:34px;font-variant-numeric:tabular-nums;color:var(--sc-lime);text-align:right;}
+
+/* --- MVP highlight: same .is-mvp mechanic, regraded gold -> lime --- */
+.scene-root[data-scene="postgame"] .pg-row.is-mvp{background:linear-gradient(100deg,rgba(198,241,25,.18),rgba(198,241,25,.05));box-shadow:inset 0 0 0 1px rgba(198,241,25,.55),0 8px 22px rgba(0,0,0,.35);border-left-color:var(--sc-lime)!important;}
+.scene-root[data-scene="postgame"] .pg-row.is-mvp .pg-p-name{color:var(--sc-lime);}
+.scene-root[data-scene="postgame"] .pg-row.is-mvp .pg-p-stat{color:#ffffff;}
+
+/* --- center MVP callout --- */
+.scene-root[data-scene="postgame"] .pg-mvp{flex:0 0 248px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:28px 18px;text-align:center;background:linear-gradient(135deg,rgba(8,25,28,.95) 0%,rgba(13,39,44,.85) 100%);border:1px solid rgba(0,240,255,.35);box-shadow:0 0 35px rgba(0,0,0,.85);}
+.scene-root[data-scene="postgame"] .pg-mvp::before{content:'';position:absolute;top:-1px;left:-1px;width:20px;height:20px;border-top:3px solid var(--sc-cyan);border-left:3px solid var(--sc-cyan);}
+.scene-root[data-scene="postgame"] .pg-mvp::after{content:'';position:absolute;bottom:-1px;right:-1px;width:20px;height:20px;border-bottom:3px solid var(--sc-cyan);border-right:3px solid var(--sc-cyan);}
+.scene-root[data-scene="postgame"] .pg-mvp-kick{font-weight:900;font-size:17px;letter-spacing:3px;text-transform:uppercase;color:var(--sc-ink);background-color:var(--sc-lime);padding:7px 22px;transform:skewX(-10deg);}
+.scene-root[data-scene="postgame"] .pg-mvp-name{font-weight:900;font-style:italic;font-size:48px;line-height:.92;letter-spacing:-1px;text-transform:uppercase;color:var(--sc-lime);text-shadow:0 0 14px rgba(198,241,25,.25),0 6px 18px rgba(0,0,0,.6);}
+.scene-root[data-scene="postgame"] .pg-mvp-team{font-weight:900;font-size:18px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.6);}
+
+/* --- footer --- */
+.scene-root[data-scene="postgame"] .pg-foot{display:flex;justify-content:center;margin-top:20px;border-top:2px solid rgba(255,255,255,.08);padding-top:16px;z-index:2;}
+.scene-root[data-scene="postgame"] .pg-foot-label{font-weight:900;font-style:italic;font-size:18px;letter-spacing:.40em;text-transform:uppercase;color:var(--sc-cyan);text-indent:.40em;}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="postgame">
+<div class="pg-bg"></div>
+<div class="pg-grid"></div>
+<div class="pg-lines"></div>
+<div class="pg-side pg-side-a"></div>
+<div class="pg-side pg-side-b"></div>
+<div class="pg-seam"></div>
+
+<div class="pg-frame">
+  <header class="pg-top">
+    <div class="pg-brand">
+      <div class="pg-mark"></div>
+      <div class="pg-brandtxt">
+        <span class="pg-league" data-field="brand.leagueName">RIVALRY</span>
+        <span class="pg-sc-title">Summer Circuit <span>2026</span></span>
+        <span class="pg-event" data-field="event.title">RIVALRY SEASON 1</span>
+      </div>
+    </div>
+    <div class="pg-headblock">
+      <span class="pg-round" data-field="event.round">UPPER BRACKET • ROUND 1</span>
+      <h1 class="pg-final">FINAL</h1>
+      <span class="pg-underbar"></span>
+    </div>
+  </header>
+
+  <section class="pg-score">
+    <div class="pg-st pg-st-a">
+      <div class="pg-slab"><span class="pg-mono" data-mono="teamA.name">G</span></div>
+      <div class="pg-stmeta">
+        <span class="pg-name" data-field="teamA.name">GUARDIANS</span>
+        <span class="pg-tag pg-tag-win">WINNER</span>
+      </div>
+    </div>
+
+    <div class="pg-tally">
+      <span class="pg-pts pg-pts-a" data-field="teamA.score">4</span>
+      <span class="pg-dash">—</span>
+      <span class="pg-pts pg-pts-b" data-field="teamB.score">2</span>
+    </div>
+
+    <div class="pg-st pg-st-b">
+      <div class="pg-stmeta pg-stmeta-r">
+        <span class="pg-name" data-field="teamB.name">SENTINELS</span>
+      </div>
+      <div class="pg-slab"><span class="pg-mono" data-mono="teamB.name">S</span></div>
+    </div>
+  </section>
+
+  <section class="pg-boards">
+    <!-- TEAM A / blue / left -->
+    <div class="pg-board pg-board-a">
+      <div class="pg-board-head">
+        <span class="pg-board-team" data-field="teamA.name">GUARDIANS</span>
+        <span class="pg-board-side">HOME</span>
+      </div>
+      <div class="pg-table">
+        <div class="pg-thead">
+          <span class="pg-c-name">PLAYER</span>
+          <span class="pg-c-stat">G</span>
+          <span class="pg-c-stat">A</span>
+          <span class="pg-c-stat">SV</span>
+          <span class="pg-c-stat">SH</span>
+          <span class="pg-c-stat">DM</span>
+          <span class="pg-c-score">SCORE</span>
+        </div>
+
+        <div class="pg-row is-mvp" data-slot="teamA.players.0">
+          <span class="pg-p-name" data-field="teamA.players.0.name">VECTOR</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.goals">2</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.assists">1</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.saves">3</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.shots">5</span>
+          <span class="pg-p-stat" data-field="teamA.players.0.demos">2</span>
+          <span class="pg-p-score" data-field="teamA.players.0.score">612</span>
+        </div>
+        <div class="pg-row" data-slot="teamA.players.1">
+          <span class="pg-p-name" data-field="teamA.players.1.name">HALO</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.goals">1</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.assists">2</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.saves">4</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.shots">3</span>
+          <span class="pg-p-stat" data-field="teamA.players.1.demos">1</span>
+          <span class="pg-p-score" data-field="teamA.players.1.score">548</span>
+        </div>
+        <div class="pg-row" data-slot="teamA.players.2">
+          <span class="pg-p-name" data-field="teamA.players.2.name">RAMPART</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.goals">1</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.assists">1</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.saves">6</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.shots">2</span>
+          <span class="pg-p-stat" data-field="teamA.players.2.demos">0</span>
+          <span class="pg-p-score" data-field="teamA.players.2.score">503</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MVP center callout -->
+    <div class="pg-mvp">
+      <span class="pg-mvp-kick">MATCH MVP</span>
+      <span class="pg-mvp-name" data-field="mvp.name">VECTOR</span>
+      <span class="pg-mvp-team" data-field="mvp.team">GUARDIANS</span>
+    </div>
+
+    <!-- TEAM B / orange / right -->
+    <div class="pg-board pg-board-b">
+      <div class="pg-board-head">
+        <span class="pg-board-side">AWAY</span>
+        <span class="pg-board-team" data-field="teamB.name">SENTINELS</span>
+      </div>
+      <div class="pg-table">
+        <div class="pg-thead">
+          <span class="pg-c-name">PLAYER</span>
+          <span class="pg-c-stat">G</span>
+          <span class="pg-c-stat">A</span>
+          <span class="pg-c-stat">SV</span>
+          <span class="pg-c-stat">SH</span>
+          <span class="pg-c-stat">DM</span>
+          <span class="pg-c-score">SCORE</span>
+        </div>
+
+        <div class="pg-row" data-slot="teamB.players.0">
+          <span class="pg-p-name" data-field="teamB.players.0.name">WARDEN</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.goals">1</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.assists">1</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.saves">2</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.shots">4</span>
+          <span class="pg-p-stat" data-field="teamB.players.0.demos">1</span>
+          <span class="pg-p-score" data-field="teamB.players.0.score">441</span>
+        </div>
+        <div class="pg-row" data-slot="teamB.players.1">
+          <span class="pg-p-name" data-field="teamB.players.1.name">VIGIL</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.goals">0</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.assists">1</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.saves">5</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.shots">2</span>
+          <span class="pg-p-stat" data-field="teamB.players.1.demos">0</span>
+          <span class="pg-p-score" data-field="teamB.players.1.score">389</span>
+        </div>
+        <div class="pg-row" data-slot="teamB.players.2">
+          <span class="pg-p-name" data-field="teamB.players.2.name">BULWARK</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.goals">1</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.assists">0</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.saves">3</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.shots">3</span>
+          <span class="pg-p-stat" data-field="teamB.players.2.demos">2</span>
+          <span class="pg-p-score" data-field="teamB.players.2.score">357</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="pg-foot">
+    <span class="pg-foot-label">FINAL RESULT</span>
+  </footer>
+</div>
+    </div>
+  </div>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+(function () {
+  var root = document.querySelector('.scene-root');
+  var rl = RivalryOverlay.connect();            // game + control (auto-mock on file://)
+  RivalryFit('.rv-stage');
+  var control = {}, lastGood = null, frozen = null, frozenGuid = null, demos = {};
+  rl.onControl(function (c) { control = c || {}; rebuild(); });
+  // Latch the last LIVE frame; ignore the zeroed UpdateState RL streams at podium.
+  // While frozen, a new MatchGuid means the next match started -> unfreeze even if
+  // MatchCreated/MatchInitialized never fired (bot/private/some modes don't emit them).
+  rl.on('UpdateState', function (d) {
+    if (frozen) {
+      if (d && d.MatchGuid && frozenGuid && d.MatchGuid !== frozenGuid) reset();
+      else return;
+    }
+    if (d && d.Players && d.Players.length) { lastGood = d; rebuild(); }
+  });
+  rl.on('StatfeedEvent', function (d) {
+    if (frozen || !d) return;
+    if ((d.Type || '').toLowerCase() === 'demolition') {
+      var n = (d.Attacker && d.Attacker.Name) || (d.MainTarget && d.MainTarget.Name) || (d.MainPlayer && d.MainPlayer.Name);
+      if (n) demos[n] = (demos[n] || 0) + 1;
+    }
+  });
+  function reset() { lastGood = null; frozen = null; frozenGuid = null; demos = {}; rebuild(); }
+  rl.on('MatchCreated', reset); rl.on('MatchInitialized', reset);
+  rl.on('MatchEnded', freeze); rl.on('PodiumStart', freeze);   // freeze on the FIRST of the two
+  function freeze() { if (frozen || !lastGood) return; frozenGuid = lastGood.MatchGuid || null; frozen = build(lastGood); rebuild(); }
+  function build(d) {
+    d = d || { Game: { Teams: [] }, Players: [] };
+    var teams = (d.Game && d.Game.Teams) || [], players = d.Players || [];
+    function col(t) { return players.filter(function (p) { return p.TeamNum === t; }).map(function (p) {
+      return { name: p.Name, goals: p.Goals || 0, assists: p.Assists || 0, saves: p.Saves || 0, shots: p.Shots || 0, demos: (demos[p.Name] || p.Demos || 0), score: p.Score || 0 };
+    }); }
+    var A = col(0), B = col(1);
+    var all = A.map(function (x) { return { x: x, t: 0 }; }).concat(B.map(function (x) { return { x: x, t: 1 }; }));
+    var mvp = null; all.forEach(function (e) { if (!mvp || e.x.score > mvp.x.score) mvp = e; });
+    var tA = (control.teamA && control.teamA.name) || (teams[0] && teams[0].Name) || 'BLUE';
+    var tB = (control.teamB && control.teamB.name) || (teams[1] && teams[1].Name) || 'ORANGE';
+    return {
+      brand: { leagueName: (control.brand && control.brand.leagueName) || 'RIVALRY' },
+      event: { title: control.eventTitle || 'RIVALRY', round: control.round || '' },
+      teamA: { name: tA, score: (teams[0] && teams[0].Score) || 0, players: A },
+      teamB: { name: tB, score: (teams[1] && teams[1].Score) || 0, players: B },
+      mvp: mvp ? { name: mvp.x.name, team: (mvp.t === 0 ? tA : tB) } : { name: '', team: '' }
+    };
+  }
+  function rebuild() {
+    var data = frozen || build(lastGood);
+    RivalryBind(root, null, data);
+    var rows = root.querySelectorAll('.pg-row');
+    rows.forEach(function (r) { r.classList.remove('is-mvp'); });
+    if (data.mvp && data.mvp.name) rows.forEach(function (r) {
+      var nm = r.querySelector('[data-field$=".name"]'); if (nm && nm.textContent === data.mvp.name) r.classList.add('is-mvp');
+    });
+  }
+  rebuild();
+})();
+</script>
+</body>
+</html>

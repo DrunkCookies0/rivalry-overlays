@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-sc26-up-next",
+  "name": "SC26 Up Next",
+  "author": "RIVALRY (SC26 reskin of the house scene, design language by Moldybanana)",
+  "version": "1.0.0",
+  "scene": "up-next",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Up Next schedule scene with SC26 plate rows, lime time slabs and cyan on-deck emphasis (Summer Circuit 2026 set).",
+  "set": "sc26",
+  "opaque": false,
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "97e2645fc903e5b319c89b6ad67909cde5c7425a35ce3a187ec20077673090d7",
+    "signature": "M9v94PehzfaYePar2c3yzv6BIyq84uq32RHPUraz9mcvDnwr8nLlr0a8YqIkOPPn6n6eV9rozV6QEG0ExcAEDw==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-08-11T20:42:12.253Z"
+  }
+}

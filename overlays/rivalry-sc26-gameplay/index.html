@@ -1,0 +1,2169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RIVALRY Overlay — SC26 Gameplay</title>
+<!-- Stat-pop badge icons are now inlined SVG (no CDN) so they render offline —
+     critical for a broadcast tool. See SVG_ICONS near spawnStatPop. -->
+<style>
+  /* SC26 (Summer Circuit 2026) reskin of the house gameplay scene. Visual
+     design language by Moldybanana (see rivalry-sc26-brb / -starting-soon:
+     cyan #00f0ff + lime #c6f119 on dark teal, Montserrat 900 italic).
+     Display headlines swap Exo 2 -> Montserrat 900 italic (weight-700 rules
+     below resolve to the 900 face, the only one loaded, matching canon).
+     Space Mono stays for tabular numerics, Roboto for body. */
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,900;1,900&family=Roboto:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap');
+
+  /* RLCS-style broadcast overlay. Transparent so it composites in OBS over
+     gameplay + player webcams. Designed against a 1920x1080 canvas. */
+  :root{
+    --blue:#2f7dff;   /* team A accent (Rocket League BLUE team — game color, not brand) */
+    --red:#ff7601;    /* team B accent (Rocket League ORANGE team — matches brand USW orange) */
+    /* SC26 palette — exact values from rivalry-sc26-brb / -starting-soon. */
+    --sc-cyan:#00f0ff;
+    --sc-lime:#c6f119;
+    --sc-ink:#0b1519;                /* dark teal ink — text on cyan/lime slabs */
+    --sc-chip:#081215;               /* dark label chip (canon .watching-sublabel / .next-label) */
+    /* Chrome surfaces — SC26 dark-teal plate family. */
+    --panel:rgba(8,18,21,.93);       /* canon .matchup-card plate, used for scorebar + player tags */
+    --panel-solid:#081215;           /* dark chip solid, used for subbar */
+    --bar:#0d272c;                   /* dark teal (canon gradient midpoint), used for the statfeed bar */
+    --ink:#ffffff;                   /* primary text (canon titles are #ffffff) */
+    --muted:rgba(255,255,255,.65);   /* dimmed white — secondary text */
+    --gold:#F1C40F;                  /* brand gold — goal text + accents (goal gold stays gold in SC26) */
+    --seg-off:#223c43;               /* unclaimed pip — dark teal, reads against the near-black panel */
+    --shadow:0 0 35px rgba(0,0,0,.85);  /* canon plate shadow (hero card) */
+
+    /* RIVALRY brand tokens (sync with RIVALRY-web/brand.css). Available for
+       upcoming brand-pass restyling without re-plumbing CSS variables. */
+    --rivalry-yale-blue:#20496F;
+    --rivalry-jet-black:#132E3B;
+    --rivalry-white-smoke:#F1EEEE;
+    --rivalry-surface-1:#1a3d4d;
+    --rivalry-surface-2:#20496F;
+    --rivalry-gold:#F1C40F;
+    --rivalry-teal:#1ABC9C;
+    --rivalry-green:#2ECC71;
+    --rivalry-red:#E74C3C;
+
+    /* Scorebar geometry — team blocks 340 + scores 64 + clock 120, ×2 for
+       both sides. Used to cap the eventbar so an overlong event title can't
+       stretch the .top flex container and drag the subbar wider than the
+       scorebar. Update if any of those .team / .score / .clockwrap widths
+       change so the eventbar cap tracks. */
+    --scorebar-w: 928px;
+
+    /* Brand font stacks. Use --font-display for italic display headlines,
+       --font-stat for tabular numeric values, --font-body for everything else.
+       SC26: display is Montserrat (900 face only, per canon). */
+    --font-display:'Montserrat','Segoe UI',system-ui,sans-serif;
+    --font-stat:'Space Mono','SF Mono',Consolas,monospace;
+    --font-body:'Roboto','Segoe UI',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;
+    font-family:var(--font-body);color:var(--ink);
+    -webkit-font-smoothing:antialiased;}
+  .nums{font-family:var(--font-stat);font-weight:700;font-variant-numeric:tabular-nums;}
+  /* Display headline utility used by every italic-uppercase brand label. */
+  .headline{font-family:var(--font-display);font-style:italic;font-weight:700;}
+
+  /* ============================ TOP SCOREBAR ============================ */
+  .top{position:fixed;top:0;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;}
+
+  /* Event title strip sitting above the scorebar. max-width caps it at the
+     scorebar's natural width so a long event title can't stretch the .top
+     flex container and drag the subbar wider than the scorebar (the subbar
+     uses width:100% of .top). overflow + ellipsis handles overlong titles. */
+  /* SC26: dark chip with a cyan seam under it (canon .watching-sublabel look);
+     <b> segments take the lime + glow of the canon two-tone header. */
+  .eventbar{background:var(--sc-chip);color:rgba(255,255,255,.88);
+    font-family:var(--font-display);font-style:italic;
+    font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+    padding:5px 26px;border-radius:0 0 0 0;white-space:nowrap;
+    max-width:var(--scorebar-w);overflow:hidden;text-overflow:ellipsis;
+        border-bottom:2px solid var(--sc-cyan);box-shadow:var(--shadow);}
+  .eventbar b{color:var(--sc-lime);}
+  /* State strip — narrow pill that sits BELOW the pip row in the subbar and
+     shows match-state takeovers (OVERTIME red pulse, KICKOFF gold). Hidden
+     when neither applies. OVERTIME wins if both somehow co-apply. .fading
+     keeps the element in layout during the soft fade-out (matches the
+     kickoff countdown's exit feel); JS removes .fading after the transition. */
+  .state-strip{margin:4px auto 0;padding:3px 18px;
+    font-family:var(--font-display);font-style:italic;
+    font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;
+    box-shadow:0 4px 12px rgba(0,0,0,.4);
+    opacity:0;transform:translateY(-4px) scale(.94);
+    transition:opacity .4s ease-in,transform .4s ease-in;
+    pointer-events:none;display:none;}
+  .state-strip.show,
+  .state-strip.fading{display:inline-block;}
+  .state-strip.show{opacity:1;transform:translateY(0) scale(1);}
+  .state-strip.fading{opacity:0;transform:translateY(-4px) scale(.94);}
+  .state-strip.kickoff{background:var(--gold);color:#1a1206;}
+  .state-strip.overtime{background:var(--red);color:#fff;
+    animation:stateStripOT 1.4s ease-in-out infinite;}
+  @keyframes stateStripOT{
+    0%,100%{box-shadow:0 4px 12px rgba(0,0,0,.4),0 0 0 rgba(255,118,1,0);}
+    50%    {box-shadow:0 4px 12px rgba(0,0,0,.4),0 0 18px rgba(255,118,1,.85);}
+  }
+
+  .scorebar{display:flex;align-items:stretch;height:62px;background:var(--panel);
+    position:relative;box-shadow:var(--shadow);}
+  /* SC26 cyberpunk corner brackets (canon .matchup-hero-card::before/::after,
+     exact 20px / 3px cyan values). Decorative only — no JS touches these. */
+  .scorebar::before{content:"";position:absolute;top:-1px;left:-1px;
+    width:20px;height:20px;border-top:3px solid var(--sc-cyan);
+    border-left:3px solid var(--sc-cyan);z-index:6;pointer-events:none;}
+  .scorebar::after{content:"";position:absolute;bottom:-1px;right:-1px;
+    width:20px;height:20px;border-bottom:3px solid var(--sc-cyan);
+    border-right:3px solid var(--sc-cyan);z-index:6;pointer-events:none;}
+  /* Both team slots are fixed-width so the clock + score blocks always sit at
+     the visual center of the scorebar regardless of team-name length. Names
+     longer than the slot truncate with an ellipsis. Budget ~18-20 chars at
+     24px Exo 2 italic for clean display; the league should target that. */
+  .team{position:relative;display:flex;align-items:center;gap:14px;padding:0 20px;
+    width:340px;flex:0 0 340px;
+    background:linear-gradient(135deg,rgba(8,25,28,.95) 0%,rgba(13,39,44,.85) 100%);}
+  .team.left{justify-content:flex-end;text-align:right;}
+  .team.right{flex-direction:row-reverse;justify-content:flex-end;text-align:left;}
+  .team .logo{width:42px;height:42px;flex:0 0 auto;background:center/contain no-repeat;}
+  .team .name{flex:1 1 auto;min-width:0;font-family:var(--font-display);font-style:italic;
+    font-weight:700;font-size:24px;letter-spacing:-.5px;text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+  /* colored accent line under the team's name side */
+  .team::after{content:"";position:absolute;bottom:0;left:0;right:0;height:4px;}
+  .team.left::after{background:var(--blue);}
+  .team.right::after{background:var(--red);}
+
+  /* GOAL flash — fires when a team scores. Overlays the team block with a
+     gold "GOAL" graphic. Multi-stage animation: slab wipes in from the
+     score side, text punches in with an overshoot bounce, a diagonal sheen
+     sweeps across once, and the gold glow pulses during the hold before
+     wiping back out the same side. */
+  .goal-flash{position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;pointer-events:none;overflow:hidden;
+    background:linear-gradient(180deg,#1a1206 0%,#241808 60%,#0e0904 100%);
+    transform:scaleX(0);
+    transition:transform .32s cubic-bezier(.7,0,.2,1);
+    z-index:5;}
+  /* Entry origin = score side (so wipe sweeps inward from the score that
+     just changed). Exit origin = opposite side, which makes the wipe-out
+     continue the same direction it came in (pass-through), not reverse. */
+  .team.left  .goal-flash{transform-origin:right center;}
+  .team.right .goal-flash{transform-origin:left center;}
+  .goal-flash.show{transform:scaleX(1);}
+  .team.left  .goal-flash.exiting{transform-origin:left center;transform:scaleX(0);}
+  .team.right .goal-flash.exiting{transform-origin:right center;transform:scaleX(0);}
+  /* Diagonal sheen sweep — a bright gold streak that translates across the
+     slab once after the text lands. Implemented via a ::before pseudo so it
+     sits over the bg gradient but under the text. */
+  .goal-flash::before{content:"";position:absolute;top:-50%;bottom:-50%;
+    width:60%;left:-70%;
+    background:linear-gradient(105deg,
+      rgba(255,255,255,0)    0%,
+      rgba(255,255,255,0)   35%,
+      rgba(255,225,140,.55) 50%,
+      rgba(255,255,255,0)   65%,
+      rgba(255,255,255,0)  100%);
+    transform:skewX(-18deg);pointer-events:none;
+    opacity:0;}
+  .goal-flash.show::before{animation:gfSheen 1.1s .32s cubic-bezier(.45,.05,.55,1) 1;}
+  @keyframes gfSheen{
+    0%   {left:-70%;opacity:0;}
+    15%  {opacity:1;}
+    85%  {opacity:1;}
+    100% {left:140%;opacity:0;}
+  }
+  .goal-flash .gf-text{font-family:var(--font-display);font-style:italic;
+    font-weight:700;font-size:34px;letter-spacing:6px;text-transform:uppercase;
+    color:var(--gold);position:relative;z-index:2;
+    text-shadow:0 0 14px rgba(241,196,15,.65),0 2px 0 rgba(0,0,0,.55);
+    opacity:0;transform:scale(.4);}
+  .goal-flash.show .gf-text{
+    animation:gfPunch .55s .22s cubic-bezier(.34,1.56,.64,1) forwards,
+              gfPulse 1.2s .85s ease-in-out infinite;}
+  @keyframes gfPunch{
+    0%   {opacity:0;transform:scale(.4)   translateY(8px);}
+    60%  {opacity:1;transform:scale(1.18) translateY(0);}
+    78%  {transform:scale(.96) translateY(0);}
+    100% {opacity:1;transform:scale(1)    translateY(0);}
+  }
+  @keyframes gfPulse{
+    0%,100% {text-shadow:0 0 14px rgba(241,196,15,.65),0 2px 0 rgba(0,0,0,.55);}
+    50%     {text-shadow:0 0 26px rgba(255,220,90,.95),0 0 8px rgba(255,220,90,.55),0 2px 0 rgba(0,0,0,.55);}
+  }
+  /* Thin team-color bar at the bottom — keeps identity readable under the gold. */
+  .goal-flash::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;z-index:3;}
+  .team.left  .goal-flash::after{background:var(--blue);}
+  .team.right .goal-flash::after{background:var(--red);}
+
+  .score{display:flex;align-items:center;justify-content:center;min-width:64px;
+    font-family:var(--font-stat);font-size:38px;font-weight:700;
+    font-variant-numeric:tabular-nums;}
+  .score.blue{background:var(--blue);color:#fff;}
+  .score.red{background:var(--red);color:#fff;}
+
+  /* SC26: the clock is the cyan slab moment (canon .status-badge — cyan
+     ground, dark-teal ink, cyan bloom). */
+  .clockwrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-width:120px;background:var(--sc-cyan);color:var(--sc-ink);
+    box-shadow:0 0 12px rgba(0,240,255,.35);}
+  .clock{font-family:var(--font-stat);font-size:30px;font-weight:700;line-height:1;
+    font-variant-numeric:tabular-nums;}
+  /* OT clock uses true red, NOT --red (which is the team-B orange accent).
+     Keeps the OT clock visually distinct from the orange team's score block. */
+  .clock.ot{color:var(--rivalry-red);}
+
+  /* ===================== KICKOFF CENTER COUNTDOWN (3-2-1-GO) ============== */
+  /* Mirrors RL's own kickoff countdown for broadcasts where the in-game HUD
+     is hidden via Settings → Interface. Driven by CountdownBegin: 3 → 2 → 1
+     each second, then GO! briefly. Each value re-mounts via key change so
+     the punch-in animation restarts cleanly. */
+  .kickoff-count{position:fixed;top:42%;left:50%;
+    font-family:var(--font-display);font-style:italic;font-weight:700;
+    font-size:240px;line-height:1;color:#fff;
+    text-shadow:0 8px 28px rgba(0,0,0,.8);
+    pointer-events:none;z-index:54;
+    opacity:0;transform:translate(-50%,-50%) scale(.94);
+    transition:opacity .4s ease-in,transform .4s ease-in;}
+  .kickoff-count.show{opacity:1;transform:translate(-50%,-50%) scale(1);
+    animation:kickoffPunch .5s cubic-bezier(.34,1.56,.64,1);}
+  .kickoff-count.go{color:var(--gold);
+    text-shadow:0 8px 28px rgba(0,0,0,.8),0 0 32px rgba(241,196,15,.85);}
+  @keyframes kickoffPunch{
+    0%   {opacity:0;transform:translate(-50%,-50%) scale(.4);}
+    60%  {opacity:1;transform:translate(-50%,-50%) scale(1.15);}
+    100% {opacity:1;transform:translate(-50%,-50%) scale(1);}
+  }
+
+  /* ===================== FINAL 10s CENTER COUNTDOWN ====================== */
+  /* When ≤10s remain in regulation, a big gold number appears upper-center
+     of the screen and pulses each second. Hidden during OT (the eventbar's
+     OVERTIME treatment carries the urgency cue there). */
+  .final10{position:fixed;top:18%;left:50%;transform:translate(-50%,-50%);
+    font-family:var(--font-stat);font-weight:700;font-size:180px;line-height:1;
+    color:var(--gold);font-variant-numeric:tabular-nums;
+    text-shadow:0 0 28px rgba(241,196,15,.75),0 6px 18px rgba(0,0,0,.7);
+    pointer-events:none;display:none;z-index:55;
+    animation:final10Tick .9s ease-in-out infinite;}
+  .final10.show{display:block;}
+  @keyframes final10Tick{
+    0%,100%{transform:translate(-50%,-50%) scale(1);
+            text-shadow:0 0 22px rgba(241,196,15,.55),0 6px 18px rgba(0,0,0,.7);}
+    50%    {transform:translate(-50%,-50%) scale(1.08);
+            text-shadow:0 0 36px rgba(241,196,15,.95),0 6px 18px rgba(0,0,0,.7);}
+  }
+
+  /* under-bar row: tag slot (record / seed) + segmented series pips per team.
+     Grid (1fr auto 1fr) pins the pip cluster to the geometric center of the
+     bar regardless of either tag's width — long tag strings can't push the
+     pips off-axis. Each side column is min-width:0 + overflow:hidden so a
+     pathologically long tag clips instead of stretching the column. */
+  .subbar{display:grid;grid-template-columns:1fr auto 1fr;width:100%;
+    background:var(--panel-solid);box-shadow:var(--shadow);}
+  .subside{display:flex;align-items:center;gap:10px;padding:5px 14px;
+    min-width:0;overflow:hidden;}
+  .subside.right{flex-direction:row-reverse;}
+  /* SC26 record chip (canon .team-record): lime text on a faint lime wash
+     with a 3px lime rule on the outer edge, mirrored per side. */
+  .tag{font-family:var(--font-display);font-style:italic;
+    font-size:11px;font-weight:700;letter-spacing:2px;color:var(--sc-lime);
+    background:rgba(198,241,25,.08);border:none;
+    padding:3px 10px;border-radius:0;
+        max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .subside.left .tag{border-left:3px solid var(--sc-lime);}
+  .subside.right .tag{border-right:3px solid var(--sc-lime);}
+  /* RLCS-style unified pip row: blue team's wins fill from the LEFT,
+     red team's wins fill from the RIGHT, gold marker sits on the active
+     game's pip in the middle of unclaimed pips. Single centered row
+     instead of separate per-team clusters. */
+  .pips{display:flex;gap:5px;}
+  .seg{width:26px;height:8px;border-radius:2px;background:var(--seg-off);
+    box-sizing:border-box;}
+  /* SC26: claimed pips go LIME (both sides — canon accent), with a thin
+     team-color underline inset so which side claimed them stays readable. */
+  .seg.on.blue{background:var(--sc-lime);
+    box-shadow:inset 0 -3px 0 var(--blue);}
+  .seg.on.red{background:var(--sc-lime);
+    box-shadow:inset 0 -3px 0 var(--red);}
+  /* Active-game pip is HOLLOW (matches RLCS): transparent fill + cyan outline. */
+  .seg.current{background:transparent;border:2px solid var(--sc-cyan);
+    }
+  /* Series-winning team's claimed pips swap to gold with a strong glow and a
+     thin team-color underline so the "they took the series" moment reads
+     clearly at a glance, while the team identity stays implicit via position +
+     the underline accent. */
+  .seg.win{background:var(--gold);box-shadow:0 0 12px var(--gold);}
+  .seg.win.blue{box-shadow:0 0 12px var(--gold),inset 0 -3px 0 var(--blue);}
+  .seg.win.red{box-shadow:0 0 12px var(--gold),inset 0 -3px 0 var(--red);}
+
+  /* ===================== SIDE PLAYER BOOST TAGS ====================== */
+  .col{position:fixed;top:18px;display:flex;flex-direction:column;gap:7px;width:250px;}
+  .col.left{left:18px;}
+  .col.right{right:18px;}
+  /* .ptag overflow left visible (default). The v0.6.0-0.6.3 floating stat-event
+     badges lived OUTSIDE the tag and an overflow:hidden clipped them invisible;
+     v0.6.4's in-plate treatment (tint + in-slot icon + shimmer) stays within
+     the tag, so this no longer matters either way. The shimmer clips itself. */
+  /* Container chrome only (SC26 plate + a hairline cyan edge via inset
+     shadow, so no layout shift); fill/active behavior below is untouched. */
+  .ptag{position:relative;background:var(--panel);
+    box-shadow:var(--shadow),inset 0 0 0 1px rgba(0,240,255,.22);
+    padding:8px 12px 10px;}
+  .ptag .prow{display:flex;align-items:center;gap:10px;position:relative;z-index:1;}
+  .col.right .ptag .prow{flex-direction:row-reverse;text-align:right;}
+  .ptag .pname{flex:1;font-family:var(--font-display);font-style:italic;
+    font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.5px;
+    transition:color .3s ease-out;}  /* sync to the goal gold-plate fade */
+  .ptag .pboost{font-family:var(--font-stat);font-size:18px;font-weight:700;
+    min-width:40px;text-align:center;font-variant-numeric:tabular-nums;
+    position:relative;}  /* anchors the in-slot event icon to the boost slot */
+  /* boost fill line along the bottom of the tag */
+  .ptag .fill{position:absolute;left:0;bottom:0;height:4px;width:0;transition:width .12s linear;z-index:1;}
+  .col.left .ptag .fill{background:var(--blue);}
+  .col.right .ptag .fill{background:var(--red);right:0;left:auto;}
+  /* On the active tag the team color is the background, so a team-colored fill
+     bar vanishes. Switch it to white-smoke for contrast. Must out-specify the
+     `.col.left/.right .ptag .fill` team-color rules above (which are (0,4,0));
+     scoping to .col.left/.right makes these (0,5,0) so the override wins. */
+  .col.left  .ptag.active .fill,
+  .col.right .ptag.active .fill{background:var(--ink);}
+  /* Spectated player: swap the whole tag background to the team color so
+     the highlight reads as identity (not a gold trim), with a soft ambient
+     shadow tinted to match. Boost number + name stay legible on the
+     saturated team color thanks to white text + dark text shadow on the box. */
+  .col.left .ptag.active{background:var(--blue);
+    box-shadow:0 8px 24px rgba(47,125,255,.55);}
+  .col.right .ptag.active{background:var(--red);
+    box-shadow:0 8px 24px rgba(255,118,1,.55);}
+
+  /* ===================== STAT-EVENT TREATMENT (Option B, v0.6.4) ============
+     On a stat event the player's nameplate gets a MUTED tint of the event-
+     family color, the boost number is replaced by the event icon in-slot,
+     and a single subtle shimmer sweeps the plate. Mirrors the chosen
+     prototype (_prototype-stat-events.html). Tunables: --evtint (plate tint
+     %, default 38%) and STAT_POP_HOLD_MS (hold, in JS). v0.6.5 fine-tunes. */
+  /* SC26 recolor: families shift to the neon-on-dark-teal register (cyan
+     saves, lime fives, neon violet/magenta/red/azure for the rest). Goal
+     stays GOLD — settled design, do not turn it cyan. The dark-icon rule
+     below still covers exactly the bright families (goal/save/five). */
+  .ptag.ev-goal{--evc:var(--gold);}  .ptag.ev-assist{--evc:#a05cff;}
+  .ptag.ev-save{--evc:var(--sc-cyan);} .ptag.ev-shot{--evc:#ff2ea6;}  /* magenta, NOT team orange */
+  .ptag.ev-demo{--evc:#ff3b30;}       .ptag.ev-pass{--evc:#00a2ff;}
+  .ptag.ev-five{--evc:var(--sc-lime);}
+  .ptag{transition:background .28s ease-out,box-shadow .28s ease-out;}
+  /* Plate treatment during the event = GRADIENT FADE: the event color is
+     strong at the icon (boost-slot) side and fades to the dark plate toward
+     the name side. Painted on a ::before overlay whose OPACITY fades in/out
+     (.3s ease) so it transitions smoothly both ways -- CSS can't transition
+     between gradients directly. Only on the NON-focused player (:not(.active));
+     the focused player keeps their team-color plate and just shows the icon. */
+  .ptag::before{content:"";position:absolute;inset:0;z-index:0;opacity:0;
+    pointer-events:none;transition:opacity .3s ease-out;}
+  .col.left  .ptag::before{background:linear-gradient(90deg,transparent 20%,var(--evc,transparent));}
+  .col.right .ptag::before{background:linear-gradient(90deg,var(--evc,transparent),transparent 80%);}
+  .ptag.statev:not(.active)::before{opacity:1;}
+  /* The icon sits at the strong-color end of the gradient, so bright event
+     colors (gold/teal/green) need a DARK icon for legibility. The name sits
+     over the dark end and stays white; other event colors keep a white icon. */
+  .ptag.statev.ev-goal:not(.active) .pboost .slot,
+  .ptag.statev.ev-save:not(.active) .pboost .slot,
+  .ptag.statev.ev-five:not(.active) .pboost .slot{color:#141414;}
+  /* GOAL scorer = full celebratory SOLID-GOLD plate + black name/icon. A goal
+     is the marquee event, so it overrides BOTH the gradient-fade plate and the
+     focused-player "keep team plate" rule: the whole card goes solid gold,
+     painted on ::before (above the plate bg, below the name), shown even when
+     the scorer is the focused (.active) player. */
+  .col.left  .ptag.ev-goal::before,
+  .col.right .ptag.ev-goal::before{background:var(--gold);}
+  .ptag.statev.ev-goal::before{opacity:1;}
+  .ptag.statev.ev-goal .pname{color:#141414;}
+  .ptag.statev.ev-goal .pboost .slot{color:#141414;}
+  /* Gold also owns the boost bar: lock it to the same near-black, independent
+     of focus. Otherwise the fill flips white (.active) -> team color the moment
+     the spectator camera cuts off the scorer mid-replay, flickering under the
+     gold. Scoped to the column so it out-specifies the .active fill (0,5,0) and
+     team-color fill (0,4,0) rules -> (0,6,0). */
+  .col.left  .ptag.statev.ev-goal .fill,
+  .col.right .ptag.statev.ev-goal .fill{background:#141414;}
+  /* Boost number -> event icon, swapped in the boost-number slot. */
+  .pboost .num{display:inline-block;
+    transition:opacity .2s ease-out,transform .26s cubic-bezier(.2,.8,.2,1);}
+  .pboost.statev .num{opacity:0;transform:scale(.7);}
+  .pboost .slot{position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;color:#fff;opacity:0;transform:scale(.55);
+    transition:opacity .22s ease-out,transform .28s cubic-bezier(.2,.8,.2,1);}
+  .pboost.statev .slot{opacity:1;transform:scale(1);}
+  .pboost .slot svg{width:17px;height:17px;display:block;}
+  /* Subtle one-pass shimmer across the plate (below name/boost via z-index;
+     .prow + .fill are lifted to z-index:1). */
+  .ptag .shimmer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+  .ptag .shimmer::after{content:"";position:absolute;inset:0;transform:translateX(-130%);
+    background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.18) 50%,transparent 58%);}
+  .ptag.statev .shimmer::after{animation:statShine .8s ease-out .1s 1;}
+  @keyframes statShine{to{transform:translateX(130%);}}
+
+  /* ===================== BOTTOM STATFEED BAR ====================== */
+  /* While the goal sequence is in flight (banner → replay → card → stinger
+     → kickoff), the focused-player widgets (statfeed bar + radial boost
+     gauge) fade out so they don't compete visually with goal graphics OR
+     pop back in during the banner-exit → replay-start gap. JS toggles
+     body.goal-sequence-active, synced 1:1 with the goalSequenceActive
+     flag — set in showGoalBanner, cleared in clearGoalSequence. */
+  .statbar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+    display:flex;align-items:stretch;height:40px;background:var(--bar);
+    box-shadow:var(--shadow),inset 0 0 0 1px rgba(0,240,255,.22);
+    border-radius:0;overflow:hidden;  /* SC26 plates are square-cornered */
+    transition:opacity .22s ease-out;}
+  body.goal-sequence-active .statbar,
+  body.goal-sequence-active .boostgauge{opacity:0;pointer-events:none;}
+  .statbar .who{display:flex;align-items:center;padding:0 20px;
+    font-family:var(--font-display);font-style:italic;
+    font-weight:700;font-size:16px;letter-spacing:1px;text-transform:uppercase;color:#fff;}
+  .statbar .who.blue{background:var(--blue);}
+  .statbar .who.red{background:var(--red);}
+  .statbar .stat{display:flex;align-items:center;gap:7px;padding:0 18px;
+    border-right:1px solid rgba(0,240,255,.15);}
+  .statbar .stat:last-child{border-right:none;}
+  .statbar .stat b{font-family:var(--font-stat);font-size:18px;font-weight:700;
+    font-variant-numeric:tabular-nums;}
+  .statbar .stat span{font-family:var(--font-display);font-style:italic;
+    font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+
+  /* ===================== RADIAL BOOST GAUGE ====================== */
+  .boostgauge{position:fixed;bottom:22px;right:30px;width:118px;height:118px;
+    transition:opacity .22s ease-out;}
+  .boostgauge svg{transform:rotate(-90deg);}
+  .boostgauge .track{fill:none;stroke:#0d2126;stroke-width:9;}  /* SC26 dark teal */
+  .boostgauge .val{fill:none;stroke:var(--blue);stroke-width:9;stroke-linecap:round;
+    transition:stroke-dashoffset .12s linear,stroke .2s;}
+  .boostgauge .label{position:absolute;inset:0;display:flex;align-items:center;
+    justify-content:center;font-family:var(--font-stat);font-size:34px;font-weight:700;
+    font-variant-numeric:tabular-nums;}
+
+  /* ===================== GOAL BANNER ====================== */
+  /* Positioned at y=35% center, 300px tall, fully opaque across the full
+     width. This was originally chosen to physically cover RL's in-game
+     "X Scored!" text (rendered around y=22-30%). RL has a "Hide In-Game
+     HUD" toggle in Settings → Interface that broadcasters should enable —
+     pending verification of whether it suppresses the goal celebration
+     text too, this overlay coverage remains as a belt-and-suspenders
+     fallback. Coexists with the top scorebar which is centered + only
+     ~50% wide, so the scorebar still shows above the goal slab.
+     Asset spec for the designer is in DESIGN-SPEC.md. */
+  .goal-banner{position:fixed;top:35%;left:0;right:0;transform:translateY(-50%);
+    display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:60;}
+  /* Layer 1: dark slate backing, taller than mid slab, wipes in first/slowest.
+     Gives the team-color slab a "mounted on" feel. */
+  .goal-banner .gb-back{position:absolute;left:0;right:0;top:50%;height:320px;
+    transform:translateY(-50%) scaleX(0);transform-origin:left center;
+    transition:transform .42s cubic-bezier(.65,0,.2,1);
+    background:linear-gradient(180deg,#0d2126 0%,#050b0d 50%,#0d2126 100%);  /* SC26 teal-ink slate */
+    box-shadow:0 0 70px rgba(0,0,0,.85);}
+  /* Layer 2: team-color slab — solid base with soft ambient lighting that
+     mimics RL's in-game focused-player card. Radial spotlight from top center
+     gives a "light from above" feel; bottom subtly darkens for grounding.
+     Inner shadow around the perimeter adds plate depth. No hatch / stripes.
+     Wipes in 90ms after the backing so the layers stagger. */
+  .goal-banner .gb-bg{position:absolute;left:0;right:0;top:50%;height:260px;
+    transform:translateY(-50%) scaleX(0);transform-origin:left center;
+    transition:transform .34s cubic-bezier(.7,0,.25,1) .09s;
+    background-color:var(--goalc);
+    background-image:
+      radial-gradient(ellipse 70% 90% at 50% -10%,
+                      rgba(255,255,255,.32) 0%,
+                      rgba(255,255,255,.10) 35%,
+                      rgba(255,255,255,0)   65%),
+      linear-gradient(180deg,
+                      rgba(255,255,255,0) 0%,
+                      rgba(255,255,255,0) 55%,
+                      rgba(0,0,0,.28)     100%);
+    box-shadow:
+      inset 0 2px 0 rgba(255,255,255,.45),
+      inset 0 -2px 0 rgba(0,0,0,.55),
+      inset 0 0 80px rgba(0,0,0,.20);}
+  /* Layer 3: scorer avatar — square plate with the brand "Rivalry Cut"
+     diagonally clipped corners (matches RIVALRY-web's signature shape).
+     Always to the left of the scorer text regardless of which team scored.
+     RV logo is the placeholder; league API swaps the src later. */
+  .goal-banner .gb-avatar{position:relative;flex:0 0 auto;width:140px;height:140px;
+    object-fit:contain;padding:24px;
+    background:rgba(0,0,0,.45);
+    box-shadow:0 6px 22px rgba(0,0,0,.55);
+    margin-right:28px;
+    clip-path:polygon(
+      0 0,
+      calc(100% - 18px) 0,
+      100% 18px,
+      100% 100%,
+      18px 100%,
+      0 calc(100% - 18px));
+    opacity:0;transform:translateY(14px);
+    transition:opacity .28s .30s,transform .28s .30s;}
+  .goal-banner.show .gb-avatar{opacity:1;transform:translateY(0);}
+  /* Layer 4: scorer text + subtitle + badges — vertical stack to the right of
+     the avatar. Each row fades + slides in last, sits above all layers. */
+  .goal-banner .gb-stack{position:relative;display:flex;flex-direction:column;
+    align-items:flex-start;gap:6px;}
+  .goal-banner .gb-text{position:relative;
+    font-family:var(--font-display);font-style:italic;
+    /* SC26 big-title tracking is negative (canon .main-title -2px); also keeps
+       the wider Montserrat 900 face from overflowing on long scorer names. */
+    font-size:92px;font-weight:700;letter-spacing:-1px;line-height:1;
+    text-transform:uppercase;color:#fff;
+    text-shadow:0 4px 18px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.95),
+                0 2px 0 rgba(0,0,0,.6);
+    opacity:0;transform:translateY(14px);
+    transition:opacity .28s .30s,transform .28s .30s;white-space:nowrap;}
+  /* Subtitle — optional one-liner under the scorer name. Hidden when empty.
+     Will be populated from league-API data (e.g., team name, role, milestone). */
+  .goal-banner .gb-sub{position:relative;
+    font-family:var(--font-display);font-style:italic;
+    font-size:22px;font-weight:700;letter-spacing:4px;
+    text-transform:uppercase;color:rgba(255,255,255,.85);
+    text-shadow:0 2px 8px rgba(0,0,0,.65);
+    opacity:0;transform:translateY(8px);
+    transition:opacity .28s .38s,transform .28s .38s;display:none;}
+  .goal-banner.has-sub .gb-sub{display:block;}
+  .goal-banner.show.has-sub .gb-sub{opacity:1;transform:translateY(0);}
+  /* Badges row — up to 3 small pills (achievement / role / milestone markers).
+     Hidden when empty. Populated from league-API per-player data. */
+  .goal-banner .gb-badges{position:relative;display:none;flex-direction:row;gap:8px;
+    opacity:0;transform:translateY(8px);
+    transition:opacity .28s .46s,transform .28s .46s;}
+  .goal-banner.has-badges .gb-badges{display:flex;}
+  .goal-banner.show.has-badges .gb-badges{opacity:1;transform:translateY(0);}
+  .goal-banner .gb-badge{font-family:var(--font-display);font-style:italic;
+    font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;
+    padding:5px 11px;color:#fff;background:rgba(8,18,21,.6);
+    box-shadow:inset 0 0 0 1px rgba(0,240,255,.35);}  /* SC26 cyan hairline */
+  .goal-banner.show .gb-back{transform:translateY(-50%) scaleX(1);}
+  .goal-banner.show .gb-bg{transform:translateY(-50%) scaleX(1);}
+  .goal-banner.show .gb-text{opacity:1;transform:translateY(0);}
+  /* Per-side content delays — orange (from-right) banner wipes mirror-image so
+     the slab reaches the content area at a different perceived moment than
+     blue. Override these independently to tune each side without affecting
+     the other. Defaults match the base (blue) timing; adjust as needed. */
+  .goal-banner.from-right .gb-avatar{
+    transition:opacity .28s .30s,transform .28s .30s;}
+  .goal-banner.from-right .gb-text{
+    transition:opacity .28s .30s,transform .28s .30s;}
+  .goal-banner.from-right .gb-sub{
+    transition:opacity .28s .38s,transform .28s .38s;}
+  .goal-banner.from-right .gb-badges{
+    transition:opacity .28s .46s,transform .28s .46s;}
+  /* Wipe direction follows the scoring team. Blue (left team) is the default:
+     wipe in from left, exit to right. Orange (right team) gets .from-right,
+     which mirrors both: wipe in from right, exit to left. The .exiting class
+     swaps the active origin so the slab collapses off the screen in the
+     "outgoing" direction instead of rewinding. */
+  .goal-banner.exiting .gb-back,
+  .goal-banner.exiting .gb-bg{transform-origin:right center;}
+  .goal-banner.from-right .gb-back,
+  .goal-banner.from-right .gb-bg{transform-origin:right center;}
+  .goal-banner.from-right.exiting .gb-back,
+  .goal-banner.from-right.exiting .gb-bg{transform-origin:left center;}
+  /* On exit, the text/avatar/extras fade out FASTER than the banner layers
+     so they clear before the slab wipes away. Banner layer timings are
+     untouched (entry behavior preserved). */
+  .goal-banner.exiting .gb-avatar,
+  .goal-banner.exiting .gb-text,
+  .goal-banner.exiting .gb-sub,
+  .goal-banner.exiting .gb-badges{
+    transition:opacity .14s ease-in,transform .14s ease-in;}
+
+  /* ===================== STINGER WIPE (masks replay cut in/out) ============ */
+  .stinger{position:fixed;inset:0;overflow:hidden;pointer-events:none;display:none;z-index:120;}
+  .stinger.run{display:block;}
+  .stinger .panel{position:absolute;top:-20%;height:140%;width:170%;left:-210%;transform:skewX(-12deg);}
+  /* SC26: main panel cyan with a lime trailing edge (p2 sweeps .06s behind).
+     Logo goes dark-ink silhouette so it reads on the cyan slab, same
+     dark-on-cyan pairing as the canon .status-badge. */
+  .stinger .panel.p1{background:var(--sc-cyan);}
+  .stinger .panel.p2{background:var(--sc-lime);}
+  .stinger .slogo{position:absolute;top:50%;left:50%;width:230px;height:155px;opacity:0;
+    transform:translate(-50%,-50%) scale(.55);background:center/contain no-repeat;
+    filter:brightness(0) opacity(.85);}
+  .stinger.run .panel.p1{animation:stgSweep .9s cubic-bezier(.6,0,.2,1) forwards;}
+  .stinger.run .panel.p2{animation:stgSweep .9s cubic-bezier(.6,0,.2,1) .06s forwards;}
+  .stinger.run .slogo{animation:stgLogo .9s ease forwards;}
+  @keyframes stgSweep{0%{left:-210%;}44%{left:-22%;}56%{left:-22%;}100%{left:170%;}}
+  @keyframes stgLogo{0%,30%{opacity:0;transform:translate(-50%,-50%) scale(.55);}
+    46%,54%{opacity:1;transform:translate(-50%,-50%) scale(1);}78%,100%{opacity:0;}}
+
+  /* ===================== REPLAY PLAYER CARD ====================== */
+  /* Sits in the bottom corner on the scorer's team side during the goal
+     replay window. Shows the scorer's name + stats snapshot taken at the
+     moment they scored. Subsequent cuts will add: ball-speed (cut 2),
+     assist player (cut 3), avatar slot (cut 4). */
+  .replay-card{position:fixed;bottom:30px;width:500px;
+    background-color:var(--rpc);
+    background-image:
+      radial-gradient(ellipse 70% 90% at 50% -10%,
+                      rgba(255,255,255,.30) 0%,
+                      rgba(255,255,255,.08) 35%,
+                      rgba(255,255,255,0)   65%),
+      linear-gradient(180deg,
+                      rgba(255,255,255,0) 0%,
+                      rgba(255,255,255,0) 60%,
+                      rgba(0,0,0,.30)     100%);
+    box-shadow:
+      0 12px 32px rgba(0,0,0,.55),
+      inset 0 2px 0 rgba(255,255,255,.45),
+      inset 0 -2px 0 rgba(0,0,0,.55);
+    opacity:0;transform:translateY(40px);pointer-events:none;z-index:55;
+    transition:opacity .28s ease-out,transform .34s cubic-bezier(.2,.7,.2,1);}
+  .replay-card.left{left:30px;}
+  .replay-card.right{right:30px;}
+  .replay-card.show{opacity:1;transform:translateY(0);}
+  /* SC26 corner brackets (canon 20px / 3px cyan pair). Decorative only. */
+  .replay-card::before{content:"";position:absolute;top:-1px;left:-1px;
+    width:20px;height:20px;border-top:3px solid var(--sc-cyan);
+    border-left:3px solid var(--sc-cyan);pointer-events:none;}
+  .replay-card::after{content:"";position:absolute;bottom:-1px;right:-1px;
+    width:20px;height:20px;border-bottom:3px solid var(--sc-cyan);
+    border-right:3px solid var(--sc-cyan);pointer-events:none;}
+  .replay-card .rpc-header{display:flex;align-items:center;justify-content:space-between;
+    padding:11px 20px;background:rgba(0,0,0,.35);
+    border-bottom:1px solid rgba(0,0,0,.5);
+    font-family:var(--font-display);font-style:italic;
+    font-size:14px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+    color:rgba(255,255,255,.8);}
+  .replay-card .rpc-speed{color:var(--gold);font-variant-numeric:tabular-nums;}
+  .replay-card .rpc-speed b{font-family:var(--font-stat);font-size:16px;font-weight:700;
+    color:var(--gold);margin-right:4px;}
+  .replay-card .rpc-identity{display:flex;align-items:center;gap:18px;
+    padding:18px 20px 8px 20px;}
+  .replay-card .rpc-avatar{flex:0 0 auto;width:70px;height:70px;
+    object-fit:contain;padding:12px;
+    background:rgba(0,0,0,.35);
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+    clip-path:polygon(
+      0 0,
+      calc(100% - 10px) 0,
+      100% 10px,
+      100% 100%,
+      10px 100%,
+      0 calc(100% - 10px));}
+  .replay-card .rpc-name{flex:1 1 auto;
+    font-family:var(--font-display);font-style:italic;
+    font-size:36px;font-weight:700;letter-spacing:.5px;
+    text-transform:uppercase;color:#fff;
+    text-shadow:0 2px 6px rgba(0,0,0,.6);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* Assister line — hidden when no assist was captured in the window before
+     the goal. Sits between the name and the stat grid as a thin one-liner. */
+  .replay-card .rpc-assist{padding:0 20px 10px 20px;
+    font-family:var(--font-display);font-style:italic;
+    font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+    color:rgba(255,255,255,.78);display:none;}
+  .replay-card .rpc-assist b{color:#fff;font-weight:700;}
+  .replay-card.has-assist .rpc-assist{display:block;}
+  .replay-card .rpc-stats{display:grid;grid-template-columns:repeat(5,1fr);
+    gap:1px;padding:0 12px 14px 12px;}
+  .replay-card .rpc-stat{display:flex;flex-direction:column;align-items:center;
+    padding:9px 6px;}
+  .replay-card .rpc-stat b{font-family:var(--font-stat);font-size:30px;font-weight:700;
+    color:#fff;line-height:1;font-variant-numeric:tabular-nums;}
+  .replay-card .rpc-stat span{font-family:var(--font-display);font-style:italic;
+    font-size:13px;font-weight:700;letter-spacing:1px;
+    color:rgba(255,255,255,.75);margin-top:5px;text-transform:uppercase;}
+
+  #status{position:fixed;top:2px;right:4px;font-size:10px;color:var(--muted);
+    font-family:monospace;opacity:.6;}
+  .rv-stage{position:relative;width:1920px;height:1080px;transform-origin:center center;}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+  <div id="status">connecting...</div>
+
+  <!-- TOP SCOREBAR -->
+  <div class="top">
+    <div class="eventbar" id="eventbar">RIVALRY</div>
+    <div class="scorebar">
+      <div class="team left">
+        <span class="name" id="nameA">BLUE</span>
+        <span class="logo" id="logoA"></span>
+        <div class="goal-flash" id="goalFlashA"><span class="gf-text">GOAL</span></div>
+      </div>
+      <div class="score blue" id="scoreA">0</div>
+      <div class="clockwrap"><div class="clock" id="clock">5:00</div></div>
+      <div class="score red" id="scoreB">0</div>
+      <div class="team right">
+        <span class="name" id="nameB">ORANGE</span>
+        <span class="logo" id="logoB"></span>
+        <div class="goal-flash" id="goalFlashB"><span class="gf-text">GOAL</span></div>
+      </div>
+    </div>
+    <div class="subbar">
+      <div class="subside left">
+        <span class="tag" id="tagA">EU</span>
+      </div>
+      <div class="pips" id="pips"></div>
+      <div class="subside right">
+        <span class="tag" id="tagB">EU</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;width:100%;">
+      <div class="state-strip" id="stateStrip"></div>
+    </div>
+  </div>
+
+  <!-- SIDE BOOST TAGS -->
+  <div class="col left" id="colA"></div>
+  <div class="col right" id="colB"></div>
+
+  <!-- FINAL 10s COUNTDOWN — upper-center big number, ≤10s in regulation -->
+  <div class="final10" id="final10">10</div>
+
+  <!-- KICKOFF 3-2-1-GO! — center-screen during CountdownBegin → RoundStarted -->
+  <div class="kickoff-count" id="kickoffCount"></div>
+
+  <!-- BOTTOM STATFEED -->
+  <div class="statbar" id="statbar" style="display:none">
+    <div class="who blue" id="sbWho">PLAYER</div>
+    <div class="stat"><b id="sbGoals">0</b><span>Goals</span></div>
+    <div class="stat"><b id="sbShots">0</b><span>Shots</span></div>
+    <div class="stat"><b id="sbAssists">0</b><span>Assists</span></div>
+    <div class="stat"><b id="sbSaves">0</b><span>Saves</span></div>
+    <div class="stat"><b id="sbDemos">0</b><span>Demos</span></div>
+  </div>
+
+  <!-- RADIAL BOOST -->
+  <div class="boostgauge" id="boostgauge" style="display:none">
+    <svg width="118" height="118" viewBox="0 0 118 118">
+      <circle class="track" cx="59" cy="59" r="52"></circle>
+      <circle class="val" id="gaugeVal" cx="59" cy="59" r="52"></circle>
+    </svg>
+    <div class="label nums" id="gaugeLabel">0</div>
+  </div>
+
+  <!-- GOAL BANNER (sweeps across, covers RL's in-game "X Scored" text)
+       Layers: back slate → team-color slab w/ ambient lighting → avatar + text.
+       Avatar defaults to the RV logo placeholder; league API supplies the
+       real per-player image once it lands. -->
+  <div class="goal-banner" id="goalBanner">
+    <div class="gb-back"></div>
+    <div class="gb-bg" id="gbBg"></div>
+    <img class="gb-avatar" id="gbAvatar" src="../../assets/rivalry-logo.svg" alt="" />
+    <div class="gb-stack">
+      <div class="gb-text" id="gbText">GOAL</div>
+      <div class="gb-sub" id="gbSub"></div>
+      <div class="gb-badges" id="gbBadges"></div>
+    </div>
+  </div>
+
+  <!-- REPLAY PLAYER CARD (appears during the goal replay; team side via class)
+       The avatar slot defaults to the RV logo (shared placeholder for all
+       avatar/logo slots); once the league API gives us a per-player URL we
+       just swap rpcAvatar.src in showReplayCard. -->
+  <div class="replay-card" id="replayCard">
+    <div class="rpc-header">
+      <span id="rpcLabel">GOAL</span>
+      <span class="rpc-speed" id="rpcSpeed"></span>
+    </div>
+    <div class="rpc-identity">
+      <img class="rpc-avatar" id="rpcAvatar" src="../../assets/rivalry-logo.svg" alt="" />
+      <div class="rpc-name" id="rpcName">-</div>
+    </div>
+    <div class="rpc-assist">Assist <b id="rpcAssister">-</b></div>
+    <div class="rpc-stats">
+      <div class="rpc-stat"><b class="nums" id="rpcGoals">0</b><span>Goals</span></div>
+      <div class="rpc-stat"><b class="nums" id="rpcAssists">0</b><span>Assists</span></div>
+      <div class="rpc-stat"><b class="nums" id="rpcSaves">0</b><span>Saves</span></div>
+      <div class="rpc-stat"><b class="nums" id="rpcShots">0</b><span>Shots</span></div>
+      <div class="rpc-stat"><b class="nums" id="rpcDemos">0</b><span>Demos</span></div>
+    </div>
+  </div>
+
+  <!-- STINGER WIPE (fires on replay start + end to mask the cut) -->
+  <div class="stinger" id="stinger">
+    <div class="panel p2"></div>
+    <div class="panel p1"></div>
+    <div class="slogo" id="stingerLogo" style="background-image:url('../../assets/rivalry-logo.svg')"></div>
+  </div>
+
+  </div>
+  <script src="../shared/rivalry-geometry.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+const GAME_WS = "ws://localhost:49124";
+const CONTROL_WS = "ws://localhost:49777";
+
+let control = {
+  teamA: { name:"BLUE",   logo:"", tag:"EU" },
+  teamB: { name:"ORANGE", logo:"", tag:"EU" },
+  bestOf: 5,
+  series: { a:0, b:0 },
+  eventTitle: "RIVALRY",
+  // Goal-banner extras. scorerSubtitle is the default league line shown under
+  // any scorer; scorerBadges defaults to NONE so unlisted players never show
+  // placeholder badges on air. Per-player overrides come from the control
+  // panel's "Player Titles" section (control.players, matched by in-game name)
+  // or from the league API (player.subtitle / player.badges) when wired.
+  scorerSubtitle: "RIVALRY PRO LEAGUE • SEASON 1",
+  scorerBadges: [],
+  // Operator-set per-player titles/badges: [{ name, title, badges:[] }].
+  players: [],
+  goalSequence: true,
+  goalText: "{SCORER} SCORED!"
+};
+
+const $ = (id) => document.getElementById(id);
+const GAUGE_CIRC = 2 * Math.PI * 52; // circumference of the boost ring
+
+// demos are not in UpdateState; tally them from StatfeedEvent, keyed by player.
+let demosByName = {};
+// Match-state flags that drive the eventbar takeover (OVERTIME / KICKOFF).
+// updateEventBar() reads these and chooses what to render.
+let currentOT = false;
+let inCountdown = false;
+// True from MatchEnded/PodiumStart until the next kickoff or match reset.
+// Gates the final-10 widget so the held gold "0" at the regulation buzzer
+// doesn't stay pinned on screen through the podium after the match is over.
+let matchOver = false;
+// OT detection: RL never sets Game.IsOT in bot/private/freeplay matches (43k
+// frames across the v0.5.1 capture had zero hits). We keep the IsOT fast path
+// for real-RLCS matches and add a clock-direction hysteresis fallback:
+//   1. clockHitZero flips true when TimeSeconds first reaches 0 (regulation expiry)
+//   2. After that, count consecutive frames where TimeSeconds is increasing
+//   3. inferredOT flips true once that count reaches OT_ASCEND_HYSTERESIS
+// SECONDARY PATH for "connected mid-OT" (e.g., OBS source refresh during OT,
+// WS reconnect mid-OT): if we've never seen a descending frame this match AND
+// otAscendingFrames hits the threshold, also infer OT — covers the case where
+// we never observe the regulation→0 transition. sawDescent flips true on any
+// observed downward step in regulation.
+// Conservative threshold of 3 frames (~600ms at RL's 5fps UpdateState cadence)
+// because only one OT capture so far — revisit if real-match captures show
+// late detection or false positives. Worst case under reordered/jittery frames
+// is ~1.2s (one stale-frame reset). Reset on resetMatch / disconnect / match end.
+let prevTimeSeconds = 0;
+let clockHitZero = false;
+let otAscendingFrames = 0;
+let inferredOT = false;
+let sawDescent = false;
+let clockAscending = false;       // last observed clock direction; gates final10
+const OT_ASCEND_HYSTERESIS = 3;
+// True from showGoalBanner() until clearGoalSequence() — gates the final10
+// counter so it doesn't re-show during the banner/replay/kickoff window when
+// RL freezes TimeSeconds at the goal moment (e.g., goal at clock 0:07 would
+// otherwise keep "7" pinned through the entire goal sequence).
+let goalSequenceActive = false;
+// The scorer's side tag holding the persistent GOLD treatment. The goal gold
+// rides the goal-sequence lifecycle (set in onGoalScored, cleared in
+// clearGoalSequence) instead of the generic STAT_POP_HOLD_MS timer, so it
+// holds through the banner + replay and clears exactly when the sequence ends
+// (kickoff). clearGoalGold() is the single teardown.
+let goalGoldTag = null;
+// Last GoalScored timestamp — used to pick the kickoff countdown delay
+// (post-goal kickoffs have less spawn lead-in than pause/restart kickoffs).
+let lastGoalTime = 0;
+// Most recent assist event — used to attribute the replay card's "Assist" line
+// when a goal lands within ASSIST_WINDOW_MS. RL doesn't include the assister
+// in the GoalScored payload, so we correlate via the statfeed event timing.
+let lastAssist = { player: null, time: 0 };
+const ASSIST_WINDOW_MS = 5000;
+// Last goal's shot speed (raw value from RL's GoalScored.GoalSpeed). Captured
+// at goal time, surfaced on the replay card. Default NA → MPH; non-NA → KPH
+// (region wiring lives in [[team-record-display]] once league API lands).
+let lastGoalSpeed = 0;
+
+// Latest snapshot of the players list. We pin this on every UpdateState so
+// the replay card can look up the scorer's row at the moment they scored.
+let latestPlayers = [];
+// Latest team scores, pinned per frame so RoundStarted's OT preemptive-flip
+// heuristic can read them without re-walking the data tree.
+let lastScoreA = 0;
+let lastScoreB = 0;
+// Timer that fades the replay card in after the goal banner finishes its
+// exit animation, so the two graphics don't overlap on screen.
+let replayCardShowTimer = null;
+// Timer that defers the banner+flash show until after the in-game goal
+// celebration lands. Captured so clearGoalSequence + rapid back-to-back goals
+// can cancel a pending show before it pops over podium / next-goal state.
+let goalBannerShowTimer = null;
+// Stinger fallback timer — GoalReplayEnd is the canonical trigger but RL's
+// Stats API drops that event in bot/freeplay/private matches. Same fallback
+// pattern as the replay card: fire on a timer; clear if the real event arrives.
+let stingerShowTimer = null;
+// Tracks when the stinger last fired so CountdownBegin can trigger it
+// on demand without double-firing if GoalReplayEnd already played it.
+let lastStingerTime = 0;
+// GoalScored dedup — RL fires every goal twice ~4-15ms apart; the second
+// payload typically lacks GoalSpeed and would zero out our captured speed
+// if we ran the pipeline twice. Key on scorer name within GOAL_DEDUP_MS.
+const GOAL_DEDUP_MS = 100;
+let lastGoalFireByName = {};
+// Statfeed dedup — Demolition fires twice per real demo (~800ms apart) which
+// over-counts demos and stacks DEMO pops. Key on `${type}|${actor}` within
+// STATFEED_DEDUP_MS. Trade-off: chained demos under ~1s would lose the second
+// pop; revisit if telemetry shows it.
+const STATFEED_DEDUP_MS = 1000;
+let lastStatfeedFire = {};
+// Last CountdownBegin timestamp so a double-fire (RL quirk after pause) can be
+// debounced. Without this, the second CountdownBegin re-anchors the kickoff
+// sequence with a different regime than the first, drifting from the in-game 3.
+let lastCountdownBeginTime = 0;
+const COUNTDOWN_DEBOUNCE_MS = 500;
+
+// RV logo as the universal avatar/logo placeholder for team-, player-, and
+// franchise-level slots that don't yet have a real asset. League API can
+// override per row when it lands.
+const RV_LOGO = "../../assets/rivalry-logo.svg";
+
+// Eventbar shows the operator-set event title only — match-state takeovers
+// (OVERTIME / KICKOFF) live in the state strip below the pip row.
+function updateEventBar(){
+  $("eventbar").innerHTML = control.eventTitle || "RIVALRY";
+}
+
+// State strip — below the pip row. OVERTIME wins over KICKOFF if both apply.
+// On transition to hidden, the .fading class keeps the element in layout
+// while opacity animates to 0 (matches the kickoff countdown's soft exit),
+// then the styling classes are stripped after the fade completes.
+let stateStripFadeTimer = null;
+function updateStateStrip(){
+  const ss = $("stateStrip");
+  if (!ss) return;
+  clearTimeout(stateStripFadeTimer);
+  ss.classList.remove("fading");
+  if (currentOT){
+    ss.textContent = "OVERTIME";
+    ss.classList.remove("kickoff");
+    ss.classList.add("overtime", "show");
+  } else if (inCountdown){
+    ss.textContent = "KICKOFF";
+    ss.classList.remove("overtime");
+    ss.classList.add("kickoff", "show");
+  } else if (ss.classList.contains("show")){
+    ss.classList.remove("show");
+    ss.classList.add("fading");
+    stateStripFadeTimer = setTimeout(() => {
+      ss.classList.remove("fading", "overtime", "kickoff");
+    }, 420);
+  }
+}
+
+function applyControl(){
+  updateEventBar();
+  $("nameA").textContent = control.teamA.name || "BLUE";
+  $("nameB").textContent = control.teamB.name || "ORANGE";
+  $("logoA").style.backgroundImage = `url("${control.teamA.logo || RV_LOGO}")`;
+  $("logoB").style.backgroundImage = `url("${control.teamB.logo || RV_LOGO}")`;
+  $("tagA").textContent = control.teamA.tag || "";
+  $("tagB").textContent = control.teamB.tag || "";
+  renderPips();
+}
+
+// Unified pip row, RLCS-style: bestOf pips total, blue wins fill from the
+// LEFT, red wins fill from the RIGHT, neutral/gold marker on the GEOMETRIC
+// CENTER pip representing the active game. Pinned to center so the marker
+// never drifts as wins accumulate; hidden when the series is decided or
+// when a claimed pip covers the center slot.
+function renderPips(){
+  const total = Math.max(1, control.bestOf | 0);
+  // For odd bestOf (BO3/5/7), threshold = (N+1)/2. For even (shouldn't
+  // happen in RL but defensive), require strict majority.
+  const oddThresh = Math.ceil((total + 1) / 2);
+  // Cap each team's wins at the threshold so an out-of-spec score from the
+  // control bus can't push one cluster into the other's pips. If a team has
+  // already clinched the series, the other team's render-side wins are
+  // additionally clamped to (total - oddThresh) so the loser's cluster
+  // can't overlap the winner's claimed pips.
+  let blueWins = Math.min(Math.max(0, control.series.a | 0), oddThresh);
+  let redWins  = Math.min(Math.max(0, control.series.b | 0), oddThresh);
+  if (blueWins >= oddThresh) redWins  = Math.min(redWins,  total - oddThresh);
+  if (redWins  >= oddThresh) blueWins = Math.min(blueWins, total - oddThresh);
+  const seriesDecided = blueWins >= oddThresh || redWins >= oddThresh;
+
+  // Active-game pip is always the geometric center. Hidden when:
+  //   - series is decided (no more games to play)
+  //   - center pip is already claimed by either team
+  const centerIdx = Math.floor(total / 2);
+  const centerClaimed = centerIdx < blueWins || centerIdx >= total - redWins;
+  const currentPip = (!seriesDecided && !centerClaimed) ? centerIdx : -1;
+
+  const el = $("pips");
+  el.innerHTML = "";
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement("div");
+    let cls = "seg";
+    if (i < blueWins) {
+      cls += " on blue";
+      if (seriesDecided && blueWins >= oddThresh) cls += " win";
+    } else if (i >= total - redWins) {
+      cls += " on red";
+      if (seriesDecided && redWins >= oddThresh) cls += " win";
+    } else if (i === currentPip) {
+      cls += " current";
+    }
+    d.className = cls;
+    el.appendChild(d);
+  }
+}
+
+function fmtClock(sec, isOT){
+  sec = Math.max(0, Math.round(sec || 0));
+  const m = Math.floor(sec/60), s = sec%60;
+  const t = (isOT ? "+" : "") + m + ":" + String(s).padStart(2,"0");
+  return t;
+}
+
+// Find the currently spectated player across the field shapes the API may use.
+// RL's Stats API sends Game.Target as an OBJECT ({Name, Shortcut, TeamNum})
+// when bHasTarget is true. Older API revisions also showed it as a bare
+// string. We accept either and pull the player name out.
+function getTargetName(data){
+  const g = data.Game || {};
+  const candidates = [
+    data.Target, g.Target, data.Spectated,
+    data.Spectator, g.Spectator,
+  ];
+  for (const t of candidates) {
+    if (!t) continue;
+    if (typeof t === "string") return t;
+    if (typeof t === "object") return t.Name || t.PlayerName || null;
+  }
+  return null;
+}
+
+// Sticky focus: RL's Stats API only includes Game.Target in some frames
+// during director cam (~63% of frames). Without persistence the statbar +
+// radial gauge flicker on/off every other frame. We hold the last known
+// target for FOCUS_STICKY_MS so the UI feels solid; in that window we
+// re-look-up the player by name in the current Players array so live
+// stats (boost, goals) still update.
+const FOCUS_STICKY_MS = 500;
+let lastFocusName = null;
+let lastFocusTime = 0;
+
+// Boost cache: RL only re-sends a player's Boost field when it changes. If
+// we showed "--" on any frame missing the field, the side rails would
+// flicker. Cache the last value per name; we only show "--" if we've never
+// seen a real value for that player.
+const lastBoostByName = {};
+
+function onUpdateState(data){
+  const game = data.Game || {};
+  const teams = game.Teams || [];
+  if (teams[0]) { lastScoreA = teams[0].Score ?? 0; $("scoreA").textContent = lastScoreA; }
+  if (teams[1]) { lastScoreB = teams[1].Score ?? 0; $("scoreB").textContent = lastScoreB; }
+  // Hybrid OT detector. Fast path is RL's explicit Game.IsOT — that's the
+  // truth when it's set. But in bot/private/freeplay matches RL never sets it,
+  // so we infer OT from a clock-direction breadcrumb: once the regulation
+  // clock has touched 0, count consecutive frames where TimeSeconds is going
+  // UP. Confirms OT after OT_ASCEND_HYSTERESIS ascending frames so a flicker
+  // doesn't trigger a false positive. Treats missing/null TimeSeconds as a
+  // no-op rather than coercing to 0 (would latch clockHitZero mid-regulation).
+  const hasTime = typeof game.TimeSeconds === "number";
+  const rawTime = hasTime ? game.TimeSeconds : prevTimeSeconds;
+  if (hasTime) {
+    // clockHitZero — regulation-expiry breadcrumb for OT inference. Widened
+    // to 2.0 because RL's TimeSeconds quantizes near regulation expiry and
+    // frequently skips the (0, 0.5] window entirely. Gated on sawDescent so
+    // pre-kickoff TimeSeconds=0 frames at match start (no regulation descent
+    // observed yet) can't latch this and false-fire inferredOT.
+    if (rawTime <= 2.0 && sawDescent) clockHitZero = true;
+    // OT flip at REGULATION END (deterministic). When the regulation clock
+    // reaches 0 with tied scores after a descent was observed, RL always goes
+    // to OT (no draws), so latch currentOT now -- BEFORE the OT CountdownBegin.
+    // This is what lets the state strip show OVERTIME for the whole OT kickoff
+    // instead of flashing KICKOFF then swapping. The ascending-frame hysteresis
+    // below stays as a fallback (e.g. mid-OT reconnect). If it somehow isn't OT,
+    // MatchEnded / PodiumStart reset currentOT=false.
+    if (clockHitZero && !currentOT && lastScoreA === lastScoreB){
+      inferredOT = true;
+      currentOT = true;
+      updateStateStrip();
+    }
+    // Track direction. clockAscending gates the final10 widget directly so
+    // we don't depend on a single threshold firing reliably under RL's
+    // quantization. Also feeds the OT-inference ascending counter.
+    if (rawTime + 0.05 < prevTimeSeconds) {
+      sawDescent = true;
+      clockAscending = false;
+      otAscendingFrames = 0;
+    } else if (rawTime > prevTimeSeconds + 0.05) {
+      clockAscending = true;
+      otAscendingFrames++;
+      // Three triggers — any one fires inferredOT after the hysteresis count:
+      //   - clockHitZero (the canonical regulation-expiry breadcrumb)
+      //   - sawDescent never set (mid-OT reconnect fallback)
+      //   - prevTimeSeconds was already low (≤3s) when the ascend started —
+      //     covers regulation→OT handoffs where RL skipped the sub-2s window
+      //     entirely and jumped straight to the OT up-counter from a low tick.
+      if (otAscendingFrames >= OT_ASCEND_HYSTERESIS &&
+          (clockHitZero || !sawDescent || prevTimeSeconds <= 3)) {
+        inferredOT = true;
+      }
+    }
+    prevTimeSeconds = rawTime;
+  }
+  const apiOT = !!(game.IsOT || game.isOT);
+  const isOT = apiOT || inferredOT;
+  const clk = $("clock");
+  const t = Math.round(rawTime);
+  clk.textContent = fmtClock(rawTime, isOT);
+  clk.classList.toggle("ot", isOT);
+  // Final 10s of regulation — show big center-screen number, including the
+  // "0" frame which matches the in-game UI's hold at 0:00 while RL waits
+  // for OT or a buzzer-beater goal. Hidden during:
+  //   - OT (via isOT)
+  //   - the clock ascending (covers OT ascend before inferredOT confirms,
+  //     without depending on a single quantization-fragile threshold)
+  //   - any active goal sequence (RL freezes TimeSeconds at the goal moment;
+  //     goalSequenceActive flips true in showGoalBanner so the counter hides
+  //     when the banner takes over, not 750ms earlier on GoalScored).
+  //   - the kickoff countdown (3-2-1-GO) — the big gold "0" shouldn't
+  //     compete with the kickoff center text when OT kickoff begins.
+  const showFinal10 = !matchOver && !isOT && !clockAscending && !goalSequenceActive &&
+                      !inCountdown && t >= 0 && t <= 10;
+  const f10 = $("final10");
+  if (showFinal10){
+    f10.textContent = String(t);
+    f10.classList.add("show");
+  } else {
+    f10.classList.remove("show");
+  }
+  // OT state drives the eventbar takeover. Tracked module-side so the
+  // CountdownBegin handler can re-evaluate eventbar without a fresh snapshot.
+  if (isOT !== currentOT){ currentOT = isOT; updateStateStrip(); }
+
+  const players = data.Players || [];
+  latestPlayers = players;
+  renderBoost($("colA"), players.filter(p => p.TeamNum === 0), "blue");
+  renderBoost($("colB"), players.filter(p => p.TeamNum === 1), "red");
+
+  // focused player -> statfeed + radial boost (with sticky-focus persistence)
+  const targetName = getTargetName(data);
+  let target = targetName ? players.find(p => p.Name === targetName) : null;
+  const now = performance.now();
+  if (target) {
+    lastFocusName = target.Name;
+    lastFocusTime = now;
+  } else if (lastFocusName && now - lastFocusTime < FOCUS_STICKY_MS) {
+    target = players.find(p => p.Name === lastFocusName) || null;
+  }
+  updateFocus(target);
+  markActive(target ? target.Name : null);
+}
+
+function renderBoost(col, players, cls){
+  // keep DOM stable to avoid flicker; rebuild only if roster size changed
+  if (col.childElementCount !== players.length){
+    col.innerHTML = "";
+    players.forEach(() => {
+      const t = document.createElement("div");
+      t.className = "ptag";
+      t.innerHTML = `<span class="shimmer"></span><div class="prow"><span class="pname"></span><span class="pboost nums"><span class="num"></span><span class="slot"></span></span></div><div class="fill"></div>`;
+      col.appendChild(t);
+    });
+  }
+  // Prune stale names so the cache stays bounded to the active roster (and a
+  // returning name can't pick up a previous occupant's last-seen boost).
+  const present = new Set(players.map(p => p.Name));
+  for (const k in lastBoostByName) if (!present.has(k)) delete lastBoostByName[k];
+  players.forEach((p, i) => {
+    const tag = col.children[i];
+    if (typeof p.Boost === "number") lastBoostByName[p.Name] = p.Boost;
+    const boost = lastBoostByName[p.Name];
+    const hasBoost = typeof boost === "number";
+    // Unknown boost shows 0 (not "--") per broadcast preference; RL only
+    // re-sends Boost on change, so an as-yet-unseen player reads 0 until the
+    // first value lands (brief, since boost changes constantly in play).
+    const shownBoost = hasBoost ? boost : 0;
+    tag.querySelector(".pname").textContent = p.Name || "";
+    tag.querySelector(".pboost .num").textContent = shownBoost;
+    tag.querySelector(".fill").style.width = shownBoost + "%";
+    tag.dataset.name = p.Name || "";
+  });
+}
+
+function markActive(name){
+  document.querySelectorAll(".ptag").forEach(t =>
+    t.classList.toggle("active", !!name && t.dataset.name === name));
+}
+
+function updateFocus(p){
+  const bar = $("statbar"), gauge = $("boostgauge");
+  if (!p){ bar.style.display = "none"; gauge.style.display = "none"; return; }
+  bar.style.display = "flex"; gauge.style.display = "block";
+
+  const blue = p.TeamNum === 0;
+  $("sbWho").textContent = p.Name || "";
+  $("sbWho").className = "who " + (blue ? "blue" : "red");
+  $("sbGoals").textContent   = p.Goals   ?? 0;
+  $("sbShots").textContent   = p.Shots   ?? 0;
+  $("sbAssists").textContent = p.Assists ?? 0;
+  $("sbSaves").textContent   = p.Saves   ?? 0;
+  $("sbDemos").textContent   = demosByName[p.Name] || 0;
+
+  // Same boost cache as renderBoost so the radial gauge doesn't flicker
+  // to 0 / "--" on frames where RL omits the Boost field.
+  const cachedBoost = lastBoostByName[p.Name];
+  const boost = typeof p.Boost === "number" ? p.Boost
+              : typeof cachedBoost === "number" ? cachedBoost : 0;
+  const val = $("gaugeVal");
+  val.style.stroke = blue ? "var(--blue)" : "var(--red)";
+  val.style.strokeDasharray = GAUGE_CIRC;
+  val.style.strokeDashoffset = GAUGE_CIRC * (1 - boost/100);
+  // Unknown boost shows 0 (not "--") per broadcast preference.
+  $("gaugeLabel").textContent = boost;
+}
+
+/* ---- Goal sequence (v0.5.5 layered model) --------------------------------
+ * Each visual layer has a single owner and an explicit end condition.
+ * Handlers route events to layer roles; they don't kill siblings except
+ * at explicit cleanup boundaries (clearGoalSequence on kickoff/match end).
+ *
+ * Event                 Layer role
+ * ──────────────────    ──────────────────────────────────────────────────
+ * GoalScored            START banner (+750ms), card (+4350ms), stinger
+ *                       fallback (+13750ms — bot/freeplay path)
+ * GoalReplayStart       END banner; cancel stinger fallback
+ *                       (card show timer LEFT ALIVE — fires mid-replay)
+ * GoalReplayWillEnd     START stinger (+STINGER_LEAD_AFTER_WILLEND_MS,
+ *                       so the wipe-in is mid-animation at the cut)
+ * GoalReplayEnd         BACKSTOP — fire stinger only if WillEnd didn't
+ *                       (deduped on lastStingerTime within ~1.5s)
+ * CountdownBegin        Kickoff 3-2-1 starts; stinger BACKSTOP if no goal
+ *                       was covered yet this cycle; clearGoalSequence
+ * RoundStarted          GO!; OT preemptive flip (tight gate); clearGoalSequence
+ *
+ * The stinger is the topmost cover layer. It is the SINGLE OWNER of the
+ * replay-card hide — the card disappears simultaneously with stinger start,
+ * with the wipe-in covering the swap from the viewer. GoalReplayWillEnd and
+ * GoalReplayEnd never hide the card directly under this model.
+ *
+ * Bot/freeplay/private matches don't emit Replay* events — the +13750ms
+ * fallback in onGoalScored drives the stinger and gets cancelled if the
+ * real events arrive.
+ * ------------------------------------------------------------------------- */
+let bannerTimer = null;
+let bannerExitTimer = null;
+
+function fillGoalText(tpl, scorer, teamName){
+  return String(tpl || "{SCORER} SCORED!")
+    .replace(/\{SCORER\}/g, (scorer || "").toUpperCase())
+    .replace(/\{scorer\}/g, scorer || "")
+    .replace(/\{TEAM\}/g, (teamName || "").toUpperCase())
+    .replace(/\{team\}/g, teamName || "");
+}
+
+function showGoalBanner(scorer, teamNum){
+  // Mark the goal sequence as active so the final10 widget hides while the
+  // banner / replay card / stinger / kickoff window plays out. Cleared in
+  // clearGoalSequence on next kickoff / disconnect / match end.
+  goalSequenceActive = true;
+  const blue = teamNum === 0;
+  const teamName = blue ? control.teamA.name : control.teamB.name;
+  document.documentElement.style.setProperty("--goalc", blue ? "var(--blue)" : "var(--red)");
+  $("gbText").textContent = fillGoalText(control.goalText, scorer, teamName);
+  // Subtitle + badges — populated from per-player league data (when wired).
+  // Look up the scorer in the latest snapshot for any attached metadata. Both
+  // slots stay hidden until real data lands.
+  applyGoalBannerExtras(scorer, teamNum);
+  // Strip the .exiting class from any previous goal cycle so the wipe-in
+  // is anchored at the correct side. Apply .from-right when the orange
+  // (right-side) team scored, so the banner wipes in from their side.
+  const b = $("goalBanner");
+  clearTimeout(bannerExitTimer);
+  b.classList.remove("exiting");
+  b.classList.toggle("from-right", teamNum === 1);
+  b.classList.add("show");
+  // Fade out the focused-player widgets (statbar + radial gauge) for the
+  // ENTIRE goal sequence — banner, replay, replay card, stinger, kickoff —
+  // so they don't pop back in during the banner-exit → replay-start gap.
+  // clearGoalSequence removes the class; hideGoalBanner does NOT (banner
+  // exit is just stage 1, the sequence continues).
+  document.body.classList.add("goal-sequence-active");
+  clearTimeout(bannerTimer);
+  // Measured against the LOS Twitch reference (2026-05-25 08-40-55.mp4):
+  //   LOS banner wipe-in starts T+2.1s after the goal moment
+  //   LOS banner gone T+5.5s after the goal moment
+  //   Total on-screen: ~3.4 seconds
+  // Our wipe-in + wipe-out animations are ~0.56s combined, so 2940ms of
+  // "visible" middle would exactly match LOS's total. Bot match goal
+  // sequences are shorter than LOS's competitive matches though, so
+  // 2500ms keeps us in roughly the right phase without dragging into
+  // kickoff prep in shorter sequences. Tune if needed.
+  bannerTimer = setTimeout(hideGoalBanner, 3000);
+}
+function hideGoalBanner(){
+  // Enter from left, exit to right (mirrored for orange goals).
+  // Adding .exiting and removing .show in the same tick lets the browser
+  // batch them into one paint, which can skip the transform-origin flip
+  // and make the wipe-out look like a normal rewind. The force-reflow
+  // (`void b.offsetWidth`) commits the .exiting origin change as its own
+  // paint first so the scaleX collapse animates against the new origin.
+  // The .exiting class is then cleaned up after the transition finishes
+  // (~600ms for the slowest layer), leaving the banner ready for the
+  // next goal's wipe-in.
+  const b = $("goalBanner");
+  b.classList.add("exiting");
+  void b.offsetWidth;
+  b.classList.remove("show");
+  clearTimeout(bannerExitTimer);
+  bannerExitTimer = setTimeout(() => b.classList.remove("exiting"), 600);
+  clearTimeout(bannerTimer);
+  bannerTimer = null;
+  // Focused-player widgets stay hidden — banner exit is just stage 1 of the
+  // goal sequence. clearGoalSequence (on kickoff / match end / disconnect)
+  // is the single owner of the goal-sequence-active class removal so the
+  // widgets don't pop back in between banner exit and replay start.
+}
+
+// Kickoff 3-2-1-GO center-screen countdown. Fires on CountdownBegin so
+// broadcasts with RL's in-game HUD hidden still see a countdown.
+//
+// v0.5.11 model: GO! is anchored to a CountdownBegin+delay+3000ms timer
+// targeting ball-drop, NOT to RoundStarted. Paired-capture analysis showed
+// RoundStarted fires BEFORE ball-drop (not at it):
+//   admin-pause kickoff: RoundStarted is ~4650ms before ball-drop
+//   OT kickoff:          RoundStarted is ~805ms  before ball-drop
+// Anchoring on RoundStarted dropped GO! several seconds early. RoundStarted
+// is kept as a safety backstop that calls fireKickoffGo (idempotent), so a
+// future regression that clears the primary timer still recovers.
+//
+// Four delay regimes — pick at CountdownBegin time:
+//   - FIRST kickoff after MatchCreated (longest intro)        — LOW confidence
+//   - OT kickoff (~4800ms CountdownBegin→ball-drop)           — measured v0.5.11
+//   - POST-GOAL kickoff (celebration already covered spawn)   — LOW confidence
+//   - FRESH kickoff (admin pause/resume; ~7770ms ball-drop)   — measured v0.5.10
+// OT is detected via the same gate as the OT preemptive state flip:
+// sawDescent + prevTimeSeconds≤2 + tied scores + not the first kickoff.
+//
+// NOTE: FIRST + POSTGOAL delays have no ball-drop ground truth yet — they
+// were tuned by feel and may drift. Capture and re-verify against
+// match-start and post-goal kickoffs before declaring them stable.
+// CONFIDENCE: LOW for FIRST + POSTGOAL — no ball-drop measurements yet.
+// These were tuned by feel pre-v0.5.11 and may drift; re-verify against
+// captured ball-drop frames for first-of-match and post-goal kickoffs
+// before assuming stable.
+const KICKOFF_FIRST_DELAY_MS     = 750;
+// v0.5.10: bumped 1500 → 4750 per the v0.5.9 admin-pause capture analysis
+// (workflow wul19xv9n, ball-drop ground-truth anchor):
+//   CountdownBegin → ball-drop = ~7770ms in admin-pause/resume kickoffs
+//   Digit span 3→2→1→GO = 3000ms hardcoded
+//   Entry delay needed = 7770 − 3000 ≈ 4770ms → rounded to 4750
+//
+// The v0.5.4 analysis I tuned v0.5.6's value against was WRONG: it
+// conflated RoundStarted (camera-cut to player POV) with ball-drop.
+// RoundStarted in admin-resume is ~4650ms BEFORE ball-drop, not at it.
+// So 1500ms made overlay "GO!" land 3267ms before the ball actually
+// dropped. Tuning in the opposite direction now.
+//
+// CONFIDENCE: LOW. Ball-drop frame ID has ±50ms wobble at 60fps + ±100ms
+// estimation error on the soft ball-touch-down moment. Verify with a
+// follow-up admin-pause capture before assuming stable.
+//
+// KNOWN UNKNOWN: this is tuned for admin-pause/restart specifically. A
+// "true fresh kickoff" (different scenario — TBD what triggers it) may
+// have a different lead-in. If a non-admin-pause case shows drift,
+// introduce a dedicated KICKOFF_ADMIN_RESUME_DELAY_MS and detect it via
+// state-change heuristics (clock jump, score jump, etc.).
+const KICKOFF_FRESH_DELAY_MS     = 4750;
+// v0.5.11: OT kickoffs use a shorter lead-in than admin-pause kickoffs.
+// Paired capture analysis:
+//   CountdownBegin → ball-drop = ~4800ms in OT kickoffs
+//   Digit span 3→2→1→GO = 3000ms hardcoded
+//   Entry delay needed = 4800 − 3000 = 1800ms
+// Detected via the same heuristic as the RoundStarted OT preemptive flip,
+// but evaluated at CountdownBegin instead — see startKickoffCountdown.
+const KICKOFF_OT_DELAY_MS        = 1800;
+const KICKOFF_POSTGOAL_DELAY_MS  = 900;
+const KICKOFF_POST_GOAL_WINDOW_MS = 15000;
+const KICKOFF_GO_HOLD_MS = 1300;
+let firstKickoffPending = true;
+let kickoffTimers = [];
+// Set when fireKickoffGo runs; prevents the fallback timer and RoundStarted
+// from both showing GO! and producing a flicker. Cleared on finish.
+let kickoffGoShown = false;
+
+// WALL-CLOCK ANCHORED KICKOFF COUNTDOWN.
+// OBS browser sources (CEF) throttle setTimeout/setInterval to ~1Hz (worse
+// after minutes) when the source is off the active scene or OBS is minimized,
+// which made the chained-setTimeout 3-2-1-GO drop / bunch / arrive late. We
+// now stamp a start time + chosen delay at CountdownBegin and let an
+// un-throttled tick re-render the CORRECT digit for the actual elapsed wall
+// time every ~60ms. A missed/clamped tick self-heals: it shows the right
+// digit for the real elapsed time and jumps straight to GO! if behind.
+let kickoffStartMs = 0;        // performance.now() stamped at CountdownBegin
+let kickoffDelayMs = 0;        // chosen per-scenario lead-in for this kickoff
+let kickoffActive = false;     // true between start and finish (gates the tick)
+let kickoffLastDigit = null;   // last rendered digit/state, so we only re-render on change
+// Tick source. A Web Worker's timers are NOT throttled when the page is
+// backgrounded, so its 60ms ping keeps reaching the main thread (whose
+// handler runs even when the page's own timers are clamped). Built inline via
+// a Blob URL so this file stays self-contained. If Worker construction throws
+// (restricted env), we fall back to a main-thread setInterval — the render
+// reads wall-clock either way, so even a clamped ~1Hz fallback shows correct
+// digits (they only change at 1Hz anyway).
+let kickoffWorker = null;
+let kickoffFallbackTimer = null;
+function startKickoffTick(){
+  stopKickoffTick();
+  if (!kickoffWorker){
+    try {
+      kickoffWorker = new Worker(URL.createObjectURL(new Blob(
+        ["let i;onmessage=e=>{if(e.data==='start'){clearInterval(i);i=setInterval(()=>postMessage(0),60)}else{clearInterval(i)}}"],
+        {type:'text/javascript'})));
+      kickoffWorker.onmessage = kickoffTick;
+    } catch (err) {
+      kickoffWorker = null;   // restricted env — fall back to main-thread timer
+    }
+  }
+  if (kickoffWorker){
+    kickoffWorker.postMessage('start');
+  } else {
+    kickoffFallbackTimer = setInterval(kickoffTick, 60);
+  }
+}
+function stopKickoffTick(){
+  if (kickoffWorker) kickoffWorker.postMessage('stop');
+  if (kickoffFallbackTimer){ clearInterval(kickoffFallbackTimer); kickoffFallbackTimer = null; }
+}
+// Render the correct digit for the elapsed wall time, re-rendering only on a
+// change. Windows: [delay, delay+1000)->"3", [+1000,+2000)->"2",
+// [+2000,+3000)->"1", >= delay+3000 -> GO!. Before `delay` we hold (no digit
+// shown yet). GO! is idempotent via fireKickoffGo's kickoffGoShown guard.
+function kickoffTick(){
+  if (!kickoffActive) return;
+  const elapsed = performance.now() - kickoffStartMs;
+  if (elapsed < kickoffDelayMs) return;        // pre-roll: nothing shown yet
+  const since = elapsed - kickoffDelayMs;
+  if (since >= 3000){
+    if (kickoffLastDigit !== "GO"){ kickoffLastDigit = "GO"; fireKickoffGo(); }
+    return;
+  }
+  const digit = since >= 2000 ? "1" : since >= 1000 ? "2" : "3";
+  if (digit !== kickoffLastDigit){
+    kickoffLastDigit = digit;
+    showKickoffValue(digit, false);
+  }
+}
+function showKickoffValue(text, isGo){
+  const el = $("kickoffCount");
+  if (!el) return;
+  el.classList.remove("show", "go");
+  void el.offsetWidth;
+  el.textContent = text;
+  el.classList.add("show");
+  if (isGo) el.classList.add("go");
+}
+function startKickoffCountdown(){
+  finishKickoffCountdown();
+  const postGoal = (performance.now() - lastGoalTime) < KICKOFF_POST_GOAL_WINDOW_MS;
+  // Deterministic delay pick. currentOT is now reliable BEFORE the OT kickoff
+  // (regulation-buzzer flip in onUpdateState), so OT no longer races the old
+  // sawDescent/prevTimeSeconds/tied heuristic. Order: FIRST kickoff after
+  // MatchCreated, else OT (~4800ms ball-drop), else POST-GOAL (celebration
+  // covered spawn), else FRESH (admin pause/resume, ~7770ms ball-drop).
+  const delay = firstKickoffPending ? KICKOFF_FIRST_DELAY_MS
+              : currentOT            ? KICKOFF_OT_DELAY_MS
+              : postGoal             ? KICKOFF_POSTGOAL_DELAY_MS
+              :                        KICKOFF_FRESH_DELAY_MS;
+  firstKickoffPending = false;
+  // Anchor to wall-clock and start the un-throttled tick. The tick renders the
+  // correct digit for the actual elapsed time (3 -> 2 -> 1 -> GO!), so a CEF
+  // timer clamp can't drop / bunch digits — a late tick self-heals to the
+  // right value and jumps to GO! if behind. GO! fires from the tick at
+  // delay+3000; RoundStarted no longer drives it.
+  kickoffStartMs = performance.now();
+  kickoffDelayMs = delay;
+  kickoffLastDigit = null;
+  kickoffActive = true;
+  startKickoffTick();
+}
+// GO! anchor. Driven by the wall-clock tick (kickoffTick) at delay+3000, which
+// targets ball-drop, not RoundStarted (which RL fires ~4650ms BEFORE ball-drop
+// in admin-pause kickoffs and ~805ms BEFORE ball-drop in OT). RoundStarted no
+// longer calls this. Idempotent via kickoffGoShown so a re-entrant tick can't
+// double-fire.
+function fireKickoffGo(){
+  if (kickoffGoShown) return;
+  kickoffGoShown = true;
+  kickoffLastDigit = "GO";
+  // The digit tick is done once GO! shows — stop it so it can't keep pinging.
+  // (currentOT is already true for OT kickoffs from the regulation-buzzer flip
+  // in onUpdateState, so no OT flip is needed here anymore.)
+  stopKickoffTick();
+  kickoffTimers.forEach(clearTimeout);
+  kickoffTimers = [];
+  showKickoffValue("GO!", true);
+  // GO!-hold teardown is a single one-shot timer (not a sequence), so a CEF
+  // clamp only delays the teardown harmlessly.
+  kickoffTimers.push(setTimeout(finishKickoffCountdown, KICKOFF_GO_HOLD_MS));
+}
+function finishKickoffCountdown(){
+  stopKickoffTick();
+  kickoffActive = false;
+  kickoffLastDigit = null;
+  kickoffTimers.forEach(clearTimeout);
+  kickoffTimers = [];
+  kickoffGoShown = false;
+  const el = $("kickoffCount");
+  if (el) el.classList.remove("show", "go");
+}
+
+// Populate the goal banner's optional subtitle + badges slots. Data sources:
+//   1. League API per-player blob (future) — `subtitle` string + `badges` array
+//   2. Manual override on control state (`control.scorerSubtitle`, `control.scorerBadges`)
+// Both slots stay hidden when no data is supplied. Up to 3 badges max.
+function applyGoalBannerExtras(scorer, teamNum){
+  const b = $("goalBanner");
+  const player = (latestPlayers || []).find(p => p && p.Name === scorer) || {};
+  // Operator-set title/badges (control panel "Player Titles"), matched to the
+  // scorer by in-game name (trimmed, case-insensitive). Precedence:
+  // operator override > league API per-player > global default.
+  const key = String(scorer || "").trim().toLowerCase();
+  const op = (control.players || []).find(p => p && (p.name || "").trim().toLowerCase() === key) || {};
+  const subtitle = op.title || player.subtitle || control.scorerSubtitle || "";
+  const badges   = (op.badges && op.badges.length ? op.badges
+                  : player.badges && player.badges.length ? player.badges
+                  : (control.scorerBadges || [])).slice(0, 3);
+  if (subtitle){
+    $("gbSub").textContent = subtitle;
+    b.classList.add("has-sub");
+  } else {
+    b.classList.remove("has-sub");
+  }
+  const host = $("gbBadges");
+  host.innerHTML = "";
+  if (badges.length){
+    badges.forEach(label => {
+      const el = document.createElement("span");
+      el.className = "gb-badge";
+      el.textContent = label;
+      host.appendChild(el);
+    });
+    b.classList.add("has-badges");
+  } else {
+    b.classList.remove("has-badges");
+  }
+}
+
+// Scoreboard GOAL flash — gold "GOAL" graphic over the scoring team's name
+// block. Synced with the goal banner so both reactions read as one moment.
+let goalFlashTimers = { A:null, B:null };
+let goalFlashExitTimers = { A:null, B:null };
+function showGoalFlash(teamNum){
+  const which = teamNum === 0 ? "A" : "B";
+  const el = $("goalFlash" + which);
+  if (!el) return;
+  // Clean up any pending exit-cleanup from a previous flash before we re-show.
+  clearTimeout(goalFlashExitTimers[which]);
+  el.classList.remove("exiting", "show");
+  // Force reflow so re-trigger during a previous flash re-animates cleanly.
+  void el.offsetWidth;
+  el.classList.add("show");
+  clearTimeout(goalFlashTimers[which]);
+  goalFlashTimers[which] = setTimeout(() => hideGoalFlash(teamNum), 2800);
+}
+function hideGoalFlash(teamNum){
+  const which = teamNum === 0 ? "A" : "B";
+  const el = $("goalFlash" + which);
+  if (!el) return;
+  el.classList.add("exiting");
+  void el.offsetWidth;
+  el.classList.remove("show");
+  clearTimeout(goalFlashExitTimers[which]);
+  goalFlashExitTimers[which] = setTimeout(() => el.classList.remove("exiting"), 400);
+}
+
+// The stinger is the topmost cover layer. It owns the visual handoff from
+// replay → live (or banner → live in bot-mode fallback), so it ALSO hides
+// the replay card as it fires — the card disappears simultaneously with
+// the wipe-in starting, and the wipe-in covers the card-vacate frame from
+// the viewer. Per the layered ownership model: the stinger is the single
+// authority on "card is gone now", not GoalReplayWillEnd / GoalReplayEnd.
+// Also cancels any pending replay-card show timer — a very short replay
+// (shorter than the +4350ms scheduled show) could otherwise fire the timer
+// AFTER the stinger has already cut to live, popping the card on top of
+// the wrong scene with no exit animation.
+function playStinger(){
+  if (!control.goalSequence) return;
+  const s = $("stinger");
+  if (!s) return;
+  lastStingerTime = performance.now();
+  clearTimeout(replayCardShowTimer);
+  hideReplayCard();
+  s.classList.remove("run");
+  void s.offsetWidth;        // force reflow so the animation restarts
+  s.classList.add("run");
+  clearTimeout(playStinger._t);
+  playStinger._t = setTimeout(() => s.classList.remove("run"), 950);
+}
+
+// Delay (ms) between RL firing GoalScored and the banner starting to wipe in.
+// Lets the in-game celebration land first, then the broadcast graphic sweeps
+// in over it. Bump up for more breathing room, down for snappier.
+const GOAL_BANNER_DELAY_MS = 750;
+
+function onGoalScored(data){
+  if (!control.goalSequence) return;     // let the in-game text show if disabled
+  const scorer = (data.Scorer && data.Scorer.Name) || "";
+  const teamNum = (data.Scorer && data.Scorer.TeamNum);
+  // Don't render a "name-less" banner. Some game modes / own-goals fire
+  // GoalScored with an empty Scorer.Name (also fires on every GoalReplayEnd
+  // as a phantom payload). Skip — and skip BEFORE the dedup map update so the
+  // phantom doesn't poison the last-fire key.
+  if (!scorer) return;
+  // Dedup the double-fire RL emits per real goal (~4-15ms apart; second payload
+  // typically lacks GoalSpeed and would zero out lastGoalSpeed if we re-ran the
+  // pipeline). If the late payload carries a GoalSpeed and the earlier one was
+  // 0, adopt it; otherwise drop the duplicate.
+  const now = performance.now();
+  const prevFire = lastGoalFireByName[scorer] || 0;
+  if (now - prevFire < GOAL_DEDUP_MS) {
+    const lateSpeed = Number(data.GoalSpeed) || 0;
+    if (lateSpeed > 0 && lastGoalSpeed === 0) lastGoalSpeed = lateSpeed;
+    return;
+  }
+  lastGoalFireByName[scorer] = now;
+  lastGoalTime = now;
+  lastGoalSpeed = Number(data.GoalSpeed) || 0;
+  // The scorer's card goes full gold and HOLDS through the whole goal sequence
+  // (banner + replay), not the generic 2s stat-pop timer — cleared in
+  // clearGoalSequence when the next kickoff begins. Clear any prior gold first
+  // (defensive: a rare back-to-back goal by a different player).
+  clearGoalGold();
+  goalGoldTag = spawnStatPop(scorer, "goal", "futbol", true);
+  // Cancel any in-flight pending banner+flash from a previous goal so a
+  // rapid back-to-back doesn't double-pop.
+  clearTimeout(goalBannerShowTimer);
+  goalBannerShowTimer = setTimeout(() => {
+    showGoalBanner(scorer, teamNum);
+    showGoalFlash(teamNum);
+  }, GOAL_BANNER_DELAY_MS);
+  // Schedule the replay card to fade in once the goal banner has wiped
+  // out. Replay events (GoalReplayStart/End) don't fire in every game
+  // mode, so we drive the card off the same trigger as the banner with
+  // a longer delay. onGoalReplayStart/End / clearGoalSequence cancel this
+  // if RL does fire those.
+  clearTimeout(replayCardShowTimer);
+  replayCardShowTimer = setTimeout(
+    () => showReplayCard(scorer, teamNum),
+    GOAL_BANNER_DELAY_MS + 3600
+  );
+  // Same fallback pattern for the stinger — GoalReplayEnd doesn't fire in
+  // bot/freeplay/private matches, so trigger the wipe on a timer ~9s after
+  // the replay card lands (13.75s after the goal). onGoalReplayEnd /
+  // clearGoalSequence cancel this if the real event arrives so we don't
+  // double-fire. CountdownBegin also fires the stinger early if the fallback
+  // hasn't run yet (lastGoalTime > lastStingerTime check).
+  clearTimeout(stingerShowTimer);
+  // playStinger hides the card as it fires (single owner of the cut handoff
+  // under the v0.5.5 layered model). No explicit hideReplayCard call needed.
+  stingerShowTimer = setTimeout(playStinger, GOAL_BANNER_DELAY_MS + 13000);
+}
+function onGoalReplayStart(){
+  if (!control.goalSequence) return;
+  if (!goalSequenceActive) return;
+  // Real replay started. Cancel the stinger fallback only — the replay card
+  // show timer is INTENTIONALLY left alive so the card still appears at its
+  // scheduled moment (after the banner has exited), which lines up with the
+  // replay playback. RL fires GoalReplayStart ~1-3s after the goal, well
+  // before the replay-card show timer at GOAL_BANNER_DELAY_MS + 3600ms.
+  clearTimeout(stingerShowTimer);
+  hideGoalBanner();
+}
+// RL fires GoalReplayWillEnd ~3s before GoalReplayEnd. Under the v0.5.5
+// layered model this is the STINGER START trigger — not a card cleanup
+// event. We schedule the stinger to fire shortly before the expected cut
+// so the wipe-in is mid-animation when GoalReplayEnd lands (covering
+// the cut from viewers). The replay card stays up the entire time; the
+// stinger hides it simultaneously when it fires, with the wipe-in
+// covering the swap. Tuned against [[live-capture-workflow]] data.
+const STINGER_LEAD_AFTER_WILLEND_MS = 2500;
+function onGoalReplayWillEnd(){
+  if (!control.goalSequence) return;
+  if (!goalSequenceActive) return;
+  if (performance.now() - lastStingerTime < STINGER_BACKSTOP_DEDUP_MS) return;
+  // Card stays. Schedule (or re-schedule) the stinger for the lead-in.
+  // Cancels any prior bot-mode fallback that was already in flight so we
+  // can't double-fire from the +13750ms GoalScored timer landing later.
+  clearTimeout(stingerShowTimer);
+  stingerShowTimer = setTimeout(playStinger, STINGER_LEAD_AFTER_WILLEND_MS);
+}
+// Backstop only. By the time GoalReplayEnd fires, the stinger should
+// already be running (started ~500ms ago from GoalReplayWillEnd). If for some
+// reason it didn't — e.g., GoalReplayWillEnd never fired, or the WillEnd→End
+// gap was shorter than STINGER_LEAD_AFTER_WILLEND_MS — fire it now so the
+// cut to live isn't completely uncovered. Dedup on lastStingerTime so a
+// successful WillEnd-triggered stinger isn't double-fired.
+//
+// Dedup window is wide enough to cover: full stinger animation (~950ms) +
+// the WillEnd→End gap variance observed across captures (RL is not bounded
+// at exactly ~3s — long-tailed replays push it further). 3500ms gives us
+// solid headroom against a second stinger firing over the first's tail.
+const STINGER_BACKSTOP_DEDUP_MS = 3500;
+function onGoalReplayEnd(){
+  if (!control.goalSequence) return;
+  if (!goalSequenceActive) return;
+  // Card show-timer is no longer needed (we either showed it already or
+  // the replay was too short for the show timer to fire — either way kill it).
+  clearTimeout(replayCardShowTimer);
+  const now = performance.now();
+  if (now - lastStingerTime < STINGER_BACKSTOP_DEDUP_MS) {
+    // Stinger already running from GoalReplayWillEnd — nothing to do. It's
+    // already hiding the card and covering the cut.
+    return;
+  }
+  // Stinger didn't fire from WillEnd; fire it now as the backstop.
+  clearTimeout(stingerShowTimer);
+  playStinger();
+}
+// Remove the scorer's persistent gold treatment. Safe to call when no gold is
+// active. Single teardown for goalGoldTag, called from clearGoalSequence (all
+// the kickoff / disconnect / match-end paths route through it) and resetMatch.
+function clearGoalGold(){
+  if (!goalGoldTag) return;
+  goalGoldTag.classList.remove("statev");
+  const gpb = goalGoldTag.querySelector(".pboost");
+  if (gpb) gpb.classList.remove("statev");
+  goalGoldTag = null;
+}
+
+function clearGoalSequence(){
+  clearGoalGold();
+  // Cancel every in-flight timer that drives a piece of the goal sequence so
+  // a match boundary / disconnect / next goal can't leave any element stuck
+  // on screen. NOTE: deliberately does NOT touch the stinger's .run class or
+  // its self-clearing timer — clearGoalSequence is often called RIGHT AFTER
+  // playStinger() (CountdownBegin / RoundStarted backstop path), and stripping
+  // .run synchronously would cancel the stinger before the browser paints it.
+  // playStinger owns its own 950ms teardown; let the animation complete.
+  goalSequenceActive = false;
+  clearTimeout(goalBannerShowTimer);
+  clearTimeout(replayCardShowTimer);
+  clearTimeout(stingerShowTimer);
+  clearTimeout(bannerTimer);
+  clearTimeout(bannerExitTimer);
+  clearTimeout(goalFlashTimers.A);
+  clearTimeout(goalFlashTimers.B);
+  clearTimeout(goalFlashExitTimers.A);
+  clearTimeout(goalFlashExitTimers.B);
+  hideGoalBanner();
+  hideReplayCard();
+  // Force-clear the GOAL flashes if either was visible.
+  document.querySelectorAll(".goal-flash").forEach(el => {
+    el.classList.remove("show", "exiting");
+  });
+  document.body.classList.remove("goal-sequence-active");
+}
+
+// Look up the scorer's row in the latest UpdateState snapshot and paint
+// their stats into the card. Team color drives both the card background
+// and which corner it sits in (left for blue, right for orange).
+function showReplayCard(scorerName, teamNum){
+  const blue = teamNum === 0;
+  const p = latestPlayers.find(x => x && x.Name === scorerName) || {};
+  document.documentElement.style.setProperty("--rpc", blue ? "var(--blue)" : "var(--red)");
+  const card = $("replayCard");
+  card.classList.remove("left", "right");
+  card.classList.add(blue ? "left" : "right");
+  $("rpcName").textContent = scorerName || "-";
+  $("rpcGoals").textContent   = p.Goals   ?? 0;
+  $("rpcAssists").textContent = p.Assists ?? 0;
+  $("rpcSaves").textContent   = p.Saves   ?? 0;
+  $("rpcShots").textContent   = p.Shots   ?? 0;
+  $("rpcDemos").textContent   = demosByName[scorerName] ?? 0;
+  // Goal speed — RL's GoalScored.GoalSpeed comes in KPH (matches the in-game
+  // post-goal display unit). Convert to MPH for NA broadcasts: MPH = KPH × 0.621371.
+  // When league API supplies match region, the unit will flip for non-NA matches.
+  const speedEl = $("rpcSpeed");
+  if (lastGoalSpeed > 0){
+    const mph = Math.round(lastGoalSpeed * 0.621371);
+    speedEl.innerHTML = `<b>${mph}</b>MPH`;
+  } else {
+    speedEl.textContent = "";
+  }
+  // Assister attribution — only show if an assist statfeed fired in the
+  // window before this goal AND the assister isn't the scorer themselves.
+  const recentAssist = lastAssist.player &&
+                       lastAssist.player !== scorerName &&
+                       (performance.now() - lastAssist.time) < ASSIST_WINDOW_MS;
+  if (recentAssist){
+    $("rpcAssister").textContent = lastAssist.player;
+    card.classList.add("has-assist");
+  } else {
+    card.classList.remove("has-assist");
+  }
+  card.classList.add("show");
+}
+
+function hideReplayCard(){
+  const c = $("replayCard");
+  c.classList.remove("show", "has-assist");
+  // Scrub the assister text so a rapid next goal doesn't flash the previous
+  // assister's name on the new card for one frame before applyControl re-paints.
+  const a = $("rpcAssister");
+  if (a) a.textContent = "";
+}
+
+// Inlined Font Awesome 6 Free (solid) icon paths, keyed by name. Inlining
+// keeps stat-pop badges offline-safe (no CDN fetch that can fail silently in
+// an OBS browser source). Swap these for brand-custom SVGs later — same
+// { viewBox, path } shape, just edit the entries.
+const SVG_ICONS = {
+  "futbol": {
+    viewBox: "0 0 512 512",
+    path: "M417.3 360.1l-71.6-4.8c-5.2-.3-10.3 1.1-14.5 4.2s-7.2 7.4-8.4 12.5l-17.6 69.6C289.5 445.8 273 448 256 448s-33.5-2.2-49.2-6.4L189.2 372c-1.3-5-4.3-9.4-8.4-12.5s-9.3-4.5-14.5-4.2l-71.6 4.8c-17.6-27.2-28.5-59.2-30.4-93.6L125 228.3c4.4-2.8 7.6-7 9.2-11.9s1.4-10.2-.5-15l-26.7-66.6C128 109.2 155.3 89 186.7 76.9l55.2 46c4 3.3 9 5.1 14.1 5.1s10.2-1.8 14.1-5.1l55.2-46c31.3 12.1 58.7 32.3 79.6 57.9l-26.7 66.6c-1.9 4.8-2.1 10.1-.5 15s4.9 9.1 9.2 11.9l60.7 38.2c-1.9 34.4-12.8 66.4-30.4 93.6zM256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm14.1-325.7c-8.4-6.1-19.8-6.1-28.2 0L194 221c-8.4 6.1-11.9 16.9-8.7 26.8l18.3 56.3c3.2 9.9 12.4 16.6 22.8 16.6h59.2c10.4 0 19.6-6.7 22.8-16.6l18.3-56.3c3.2-9.9-.3-20.7-8.7-26.8l-47.9-34.8z"
+  },
+  "trophy": {
+    viewBox: "0 0 576 512",
+    path: "M400 0H176c-26.5 0-48.1 21.8-47.1 48.2c.2 5.3 .4 10.6 .7 15.8H24C10.7 64 0 74.7 0 88c0 92.6 33.5 157 78.5 200.7c44.3 43.1 98.3 64.8 138.1 75.8c23.4 6.5 39.4 26 39.4 45.6c0 20.9-17 37.9-37.9 37.9H192c-17.7 0-32 14.3-32 32s14.3 32 32 32H384c17.7 0 32-14.3 32-32s-14.3-32-32-32H357.9C337 448 320 431 320 410.1c0-19.6 15.9-39.2 39.4-45.6c39.9-11 93.9-32.7 138.2-75.8C542.5 245 576 180.6 576 88c0-13.3-10.7-24-24-24H446.4c.3-5.2 .5-10.4 .7-15.8C448.1 21.8 426.5 0 400 0zM48.9 112h84.4c9.1 90.1 29.2 150.3 51.9 190.6c-24.9-11-50.8-26.5-73.2-48.3c-32-31.1-58-76-63-142.3zM464.1 254.3c-22.4 21.8-48.3 37.3-73.2 48.3c22.7-40.3 42.8-100.5 51.9-190.6h84.4c-5.1 66.3-31.1 111.2-63 142.3z"
+  },
+  "plane": {
+    viewBox: "0 0 576 512",
+    path: "M482.3 192c34.2 0 93.7 29 93.7 64c0 36-59.5 64-93.7 64l-116.6 0L265.2 495.9c-5.7 10-16.3 16.1-27.8 16.1l-56.2 0c-10.6 0-18.3-10.2-15.4-20.4l49-171.6L112 320 68.8 377.6c-3 4-7.8 6.4-12.8 6.4l-42 0c-7.8 0-14-6.3-14-14c0-1.3 .2-2.6 .5-3.9L32 256 .5 145.9c-.4-1.3-.5-2.6-.5-3.9c0-7.8 6.3-14 14-14l42 0c5 0 9.8 2.4 12.8 6.4L112 192l102.9 0-49-171.6C162.9 10.2 170.6 0 181.2 0l56.2 0c11.5 0 22.1 6.2 27.8 16.1L365.7 192l116.6 0z"
+  },
+  "bicycle": {
+    viewBox: "0 0 640 512",
+    path: "M312 32c-13.3 0-24 10.7-24 24s10.7 24 24 24h25.7l34.6 64H222.9l-27.4-38C191 99.7 183.7 96 176 96H120c-13.3 0-24 10.7-24 24s10.7 24 24 24h43.7l22.1 30.7-26.6 53.1c-10-2.5-20.5-3.8-31.2-3.8C57.3 224 0 281.3 0 352s57.3 128 128 128c65.3 0 119.1-48.9 127-112h49c8.5 0 16.3-4.5 20.7-11.8l84.8-143.5 21.7 40.1C402.4 276.3 384 312 384 352c0 70.7 57.3 128 128 128s128-57.3 128-128s-57.3-128-128-128c-13.5 0-26.5 2.1-38.7 6L375.4 48.8C369.8 38.4 359 32 347.2 32H312zM458.6 303.7l32.3 59.7c6.3 11.7 20.9 16 32.5 9.7s16-20.9 9.7-32.5l-32.3-59.7c3.6-.6 7.4-.9 11.2-.9c39.8 0 72 32.2 72 72s-32.2 72-72 72s-72-32.2-72-72c0-18.6 7-35.5 18.6-48.3zM133.2 368h65c-7.3 32.1-36 56-70.2 56c-39.8 0-72-32.2-72-72s32.2-72 72-72c1.7 0 3.4 .1 5.1 .2l-24.2 48.5c-9 18.1 4.1 39.4 24.3 39.4zm33.7-48l50.7-101.3 72.9 101.2-.1 .1H166.8zm90.6-128H365.9L317 274.8 257.4 192z"
+  },
+  "baseball": {
+    viewBox: "0 0 512 512",
+    path: "M62.7 223.4c-4.8 .4-9.7 .6-14.7 .6c-15.6 0-30.8-2-45.2-5.9C19.2 107.1 107.1 19.2 218.1 2.8C222 17.2 224 32.4 224 48c0 4.9-.2 9.8-.6 14.7c-.7 8.8 5.8 16.5 14.6 17.3s16.5-5.8 17.3-14.6c.5-5.7 .7-11.5 .7-17.3c0-16.5-1.9-32.6-5.6-47.9c1.8 0 3.7-.1 5.6-.1C397.4 0 512 114.6 512 256c0 1.9 0 3.7-.1 5.6c-15.4-3.6-31.4-5.6-47.9-5.6c-5.8 0-11.6 .2-17.3 .7c-8.8 .7-15.4 8.5-14.6 17.3s8.5 15.4 17.3 14.6c4.8-.4 9.7-.6 14.7-.6c15.6 0 30.8 2 45.2 5.9C492.8 404.9 404.9 492.8 293.9 509.2C290 494.8 288 479.6 288 464c0-4.9 .2-9.8 .6-14.7c.7-8.8-5.8-16.5-14.6-17.3s-16.5 5.8-17.3 14.6c-.5 5.7-.7 11.5-.7 17.3c0 16.5 1.9 32.6 5.6 47.9c-1.8 0-3.7 .1-5.6 .1C114.6 512 0 397.4 0 256c0-1.9 0-3.7 .1-5.6C15.4 254.1 31.5 256 48 256c5.8 0 11.6-.2 17.3-.7c8.8-.7 15.4-8.5 14.6-17.3s-8.5-15.4-17.3-14.6zM121.3 208c-8 3.7-11.6 13.2-7.9 21.2s13.2 11.6 21.2 7.9c45.2-20.8 81.7-57.2 102.5-102.5c3.7-8 .2-17.5-7.9-21.2s-17.5-.2-21.2 7.9c-17.6 38.3-48.5 69.2-86.7 86.7zm277.2 74.7c-3.7-8-13.2-11.6-21.2-7.9c-45.2 20.8-81.7 57.2-102.5 102.5c-3.7 8-.2 17.5 7.9 21.2s17.5 .2 21.2-7.9c17.6-38.3 48.5-69.2 86.7-86.7c8-3.7 11.6-13.2 7.9-21.2z"
+  },
+  "shield-halved": {
+    viewBox: "0 0 512 512",
+    path: "M256 0c4.6 0 9.2 1 13.4 2.9L457.7 82.8c22 9.3 38.4 31 38.3 57.2c-.5 99.2-41.3 280.7-213.6 363.2c-16.7 8-36.1 8-52.8 0C57.3 420.7 16.5 239.2 16 140c-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.8 1 251.4 0 256 0zm0 66.8V444.8C394 378 431.1 230.1 432 141.4L256 66.8l0 0z"
+  },
+  "hand-fist": {
+    viewBox: "0 0 448 512",
+    path: "M192 0c17.7 0 32 14.3 32 32V144H160V32c0-17.7 14.3-32 32-32zM64 64c0-17.7 14.3-32 32-32s32 14.3 32 32v80H64V64zm192 0c0-17.7 14.3-32 32-32s32 14.3 32 32v96c0 17.7-14.3 32-32 32s-32-14.3-32-32V64zm96 64c0-17.7 14.3-32 32-32s32 14.3 32 32v64c0 17.7-14.3 32-32 32s-32-14.3-32-32V128zm-96 88l0-.6c9.4 5.4 20.3 8.6 32 8.6c13.2 0 25.4-4 35.6-10.8c8.7 24.9 32.5 42.8 60.4 42.8c11.7 0 22.6-3.1 32-8.6V256c0 52.3-25.1 98.8-64 128v96c0 17.7-14.3 32-32 32H160c-17.7 0-32-14.3-32-32V401.6c-17.3-7.9-33.2-18.8-46.9-32.5L69.5 357.5C45.5 333.5 32 300.9 32 267V240c0-35.3 28.7-64 64-64h88c22.1 0 40 17.9 40 40s-17.9 40-40 40H128c-8.8 0-16 7.2-16 16s7.2 16 16 16h56c39.8 0 72-32.2 72-72z"
+  },
+  "hand": {
+    viewBox: "0 0 512 512",
+    path: "M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V240c0 8.8-7.2 16-16 16s-16-7.2-16-16V64c0-17.7-14.3-32-32-32s-32 14.3-32 32V336c0 1.5 0 3.1 .1 4.6L67.6 283c-16-15.2-41.3-14.6-56.6 1.4s-14.6 41.3 1.4 56.6L124.8 448c43.1 41.1 100.4 64 160 64H304c97.2 0 176-78.8 176-176V128c0-17.7-14.3-32-32-32s-32 14.3-32 32V240c0 8.8-7.2 16-16 16s-16-7.2-16-16V64c0-17.7-14.3-32-32-32s-32 14.3-32 32V240c0 8.8-7.2 16-16 16s-16-7.2-16-16V32z"
+  },
+  "handshake": {
+    viewBox: "0 0 640 512",
+    path: "M323.4 85.2l-96.8 78.4c-16.1 13-19.2 36.4-7 53.1c12.9 17.8 38 21.3 55.3 7.8l99.3-77.2c7-5.4 17-4.2 22.5 2.8s4.2 17-2.8 22.5l-20.9 16.2L512 316.8V128h-.7l-3.9-2.5L434.8 79c-15.3-9.8-33.2-15-51.4-15c-21.8 0-43 7.5-60 21.2zm22.8 124.4l-51.7 40.2C263 274.4 217.3 268 193.7 235.6c-22.2-30.5-16.6-73.1 12.7-96.8l83.2-67.3c-11.6-4.9-24.1-7.4-36.8-7.4C234 64 215.7 69.6 200 80l-72 48V352h28.2l91.4 83.4c19.6 17.9 49.9 16.5 67.8-3.1c5.5-6.1 9.2-13.2 11.1-20.6l17 15.6c19.5 17.9 49.9 16.6 67.8-2.9c4.5-4.9 7.8-10.6 9.9-16.5c19.4 13 45.8 10.3 62.1-7.5c17.9-19.5 16.6-49.9-2.9-67.8l-134.2-123zM16 128c-8.8 0-16 7.2-16 16V352c0 17.7 14.3 32 32 32H64c17.7 0 32-14.3 32-32V128H16zM48 320a16 16 0 1 1 0 32 16 16 0 1 1 0-32zM544 128V352c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V144c0-8.8-7.2-16-16-16H544zm32 208a16 16 0 1 1 32 0 16 16 0 1 1 -32 0z"
+  },
+  "bullseye": {
+    viewBox: "0 0 512 512",
+    path: "M448 256A192 192 0 1 0 64 256a192 192 0 1 0 384 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm256 80a80 80 0 1 0 0-160 80 80 0 1 0 0 160zm0-224a144 144 0 1 1 0 288 144 144 0 1 1 0-288zM224 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"
+  },
+  "bomb": {
+    viewBox: "0 0 512 512",
+    path: "M459.1 52.4L442.6 6.5C440.7 2.6 436.5 0 432.1 0s-8.5 2.6-10.4 6.5L405.2 52.4l-46 16.8c-4.3 1.6-7.3 5.9-7.2 10.4c0 4.5 3 8.7 7.2 10.2l45.7 16.8 16.8 45.8c1.5 4.4 5.8 7.5 10.4 7.5s8.9-3.1 10.4-7.5l16.5-45.8 45.7-16.8c4.2-1.5 7.2-5.7 7.2-10.2c0-4.6-3-8.9-7.2-10.4L459.1 52.4zm-132.4 53c-12.5-12.5-32.8-12.5-45.3 0l-2.9 2.9C256.5 100.3 232.7 96 208 96C93.1 96 0 189.1 0 304S93.1 512 208 512s208-93.1 208-208c0-24.7-4.3-48.5-12.2-70.5l2.9-2.9c12.5-12.5 12.5-32.8 0-45.3l-80-80zM200 192c-57.4 0-104 46.6-104 104v8c0 8.8-7.2 16-16 16s-16-7.2-16-16v-8c0-75.1 60.9-136 136-136h8c8.8 0 16 7.2 16 16s-7.2 16-16 16h-8z"
+  },
+  "arrows-left-right": {
+    viewBox: "0 0 512 512",
+    path: "M406.6 374.6l96-96c12.5-12.5 12.5-32.8 0-45.3l-96-96c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L402.7 224l-293.5 0 41.4-41.4c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-96 96c-12.5 12.5-12.5 32.8 0 45.3l96 96c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 288l293.5 0-41.4 41.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0z"
+  },
+  "arrow-up": {
+    viewBox: "0 0 384 512",
+    path: "M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"
+  },
+};
+
+// StatfeedEvent type → { color family class, SVG_ICONS key }.
+// Color family groups related events under one visual identity (e.g. epic
+// save shares save's teal); the icon differentiates the subtype. Keys are
+// substrings matched against the lowercased event name.
+const STAT_POP_TYPES = [
+  // Order matters — more specific keywords first so "epic save" doesn't
+  // match the plain "save" rule, "hat" doesn't match "shot", etc.
+  { match: "hat",         cls: "goal",   icon: "trophy"          },
+  { match: "aerial",      cls: "goal",   icon: "plane"           },
+  { match: "bicycle",     cls: "goal",   icon: "bicycle"         },
+  { match: "pool",        cls: "goal",   icon: "baseball"        },
+  { match: "epicsave",    cls: "save",   icon: "shield-halved"   },
+  { match: "epic save",   cls: "save",   icon: "shield-halved"   },
+  { match: "save",        cls: "save",   icon: "hand-fist"       },
+  { match: "highfive",    cls: "five",   icon: "hand"            },
+  { match: "high five",   cls: "five",   icon: "hand"            },
+  { match: "lowfive",     cls: "five",   icon: "hand"            },
+  { match: "low five",    cls: "five",   icon: "hand"            },
+  { match: "assist",      cls: "assist", icon: "handshake"       },
+  { match: "shot",        cls: "shot",   icon: "bullseye"        },
+  { match: "demolish",    cls: "demo",   icon: "bomb"            },
+  { match: "demo",        cls: "demo",   icon: "bomb"            },
+  { match: "centre",      cls: "pass",   icon: "arrows-left-right" },
+  { match: "center",      cls: "pass",   icon: "arrows-left-right" },
+  { match: "clear",       cls: "pass",   icon: "arrow-up"        },
+  { match: "goal",        cls: "goal",   icon: "futbol"          },
+];
+function lookupStatPop(type){
+  for (const t of STAT_POP_TYPES) if (type.includes(t.match)) return t;
+  return null;
+}
+
+function onStatfeed(data){
+  const type = (data.Type || data.EventName || data.Event || "").toString().toLowerCase();
+  // Pull the "main actor" name across the field-name variants RL has used.
+  const mainName = (data.MainPlayer && data.MainPlayer.Name) ||
+                   (data.MainTarget && data.MainTarget.Name) ||
+                   data.MainPlayer || data.Name;
+  // Demolitions need their own branch — attacker is the actor (not the
+  // demoed player), they double-fire (~800ms apart), and the bottom-bar
+  // demo counter is tallied here. All other event types fall through to
+  // the generic STAT_POP_TYPES lookup.
+  if (type.includes("demo") || type.includes("demolish")){
+    const attacker = (data.Attacker && data.Attacker.Name) || mainName;
+    if (attacker){
+      const key = "demo|" + attacker;
+      const now = performance.now();
+      if (now - (lastStatfeedFire[key] || 0) < STATFEED_DEDUP_MS) return;
+      lastStatfeedFire[key] = now;
+      demosByName[attacker] = (demosByName[attacker] || 0) + 1;
+      spawnStatPop(attacker, "demo", "bomb");
+    }
+    return;
+  }
+  // Goal pops are spawned from onGoalScored (the canonical trigger) to avoid
+  // double-popping if RL also fires a Goal-typed StatfeedEvent. Special-goal
+  // subtypes (hat-trick, aerial, bicycle, pool) DO come through statfeed and
+  // are handled below — they don't conflict with onGoalScored's plain "goal"
+  // because the StatfeedEvent type string carries the subtype keyword.
+  if (type === "goal" || type === "goalscored") return;
+
+  const meta = lookupStatPop(type);
+  if (!meta || !mainName) return;
+  spawnStatPop(mainName, meta.cls, meta.icon);
+  if (meta.cls === "assist") {
+    // Remember the most recent assist so the replay card can attribute it.
+    lastAssist = { player: mainName, time: performance.now() };
+  }
+}
+
+// Stat-event treatment (Option B, v0.6.4): muted plate tint + boost number
+// replaced by the event icon in-slot + a subtle one-pass shimmer. Mirrors
+// the chosen prototype. Re-firing within the hold crossfades to the new icon
+// and restarts the tint/shimmer. Hold tunable here (v0.6.5).
+const STAT_POP_HOLD_MS = 2000;
+const EV_FAMILIES = ["ev-goal","ev-assist","ev-save","ev-shot","ev-demo","ev-pass","ev-five"];
+// persist=true skips the auto-clear timer; the caller owns teardown (used for
+// the goal gold, which rides the goal-sequence lifecycle). Returns the tag so
+// the caller can track it.
+function spawnStatPop(playerName, cls, iconKey, persist){
+  const tag = document.querySelector('.ptag[data-name="' + cssEscape(playerName) + '"]');
+  if (!tag) return null;
+  const pb = tag.querySelector(".pboost");
+  const slot = tag.querySelector(".pboost .slot");
+  if (!pb || !slot) return;
+  // Put the event icon in the boost-number slot (inline SVG; offline-safe).
+  const def = SVG_ICONS[iconKey];
+  slot.innerHTML = "";
+  if (def) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", def.viewBox);
+    svg.setAttribute("aria-hidden", "true");
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", def.path);
+    p.setAttribute("fill", "currentColor");
+    svg.appendChild(p);
+    slot.appendChild(svg);
+  }
+  // Event-family color drives the muted plate tint via --evc.
+  tag.classList.remove(...EV_FAMILIES);
+  tag.classList.add("ev-" + cls);
+  // Restart cleanly so a rapid re-fire replays the shimmer + transitions.
+  tag.classList.remove("statev"); pb.classList.remove("statev");
+  void tag.offsetWidth;
+  tag.classList.add("statev"); pb.classList.add("statev");
+  clearTimeout(tag._statT);
+  tag._statT = null;
+  if (!persist) {
+    tag._statT = setTimeout(() => {
+      tag.classList.remove("statev");
+      pb.classList.remove("statev");
+    }, STAT_POP_HOLD_MS);
+  }
+  return tag;
+}
+// Minimal CSS.escape polyfill for the rare case it's not present in the
+// Electron build's renderer; player names can contain quotes/brackets.
+function cssEscape(s){
+  if (window.CSS && CSS.escape) return CSS.escape(s);
+  return String(s).replace(/["\\]/g, "\\$&");
+}
+
+function resetMatch(){
+  // Tear down any in-flight kickoff tick so a mid-kickoff match reset can't
+  // leak a running tick into the next match.
+  finishKickoffCountdown();
+  demosByName = {};
+  firstKickoffPending = true;
+  clearGoalGold();
+  // Clear per-match state that could bleed into the next match if matches
+  // start back-to-back within the assist/goal-dedup windows.
+  lastAssist = { player: null, time: 0 };
+  lastGoalSpeed = 0;
+  lastGoalTime = 0;
+  lastStingerTime = 0;
+  lastGoalFireByName = {};
+  lastStatfeedFire = {};
+  lastCountdownBeginTime = 0;
+  // OT detector — clear so a new match starts in regulation mode regardless
+  // of where the previous one ended.
+  prevTimeSeconds = 0;
+  clockHitZero = false;
+  otAscendingFrames = 0;
+  inferredOT = false;
+  sawDescent = false;
+  clockAscending = false;
+  goalSequenceActive = false;
+  matchOver = false;
+  // Scores get re-populated by the next UpdateState; reset so the RoundStarted
+  // OT preemptive flip can't see stale tied scores carried from the prior match.
+  lastScoreA = 0;
+  lastScoreB = 0;
+}
+
+function connectGame(){
+  const ws = new WebSocket(GAME_WS);
+  ws.onopen = () => $("status").textContent = "live";
+  ws.onclose = () => {
+    $("status").textContent = "reconnecting";
+    // Tear down any in-flight goal sequence so a dropped WS during a goal
+    // doesn't leave the banner / replay card / stinger pinned on screen
+    // for the rest of the broadcast.
+    clearGoalSequence();
+    finishKickoffCountdown();   // stops the kickoff tick + clears the anchor
+    inCountdown = false;
+    currentOT = false;
+    // Reset OT detector so the reconnect doesn't re-fire OVERTIME based on
+    // stale state from before the drop. sawDescent stays false so if we
+    // reconnect mid-OT, the "no descent ever observed" path can still infer.
+    clockHitZero = false;
+    otAscendingFrames = 0;
+    inferredOT = false;
+    prevTimeSeconds = 0;
+    sawDescent = false;
+    clockAscending = false;
+    // Reset goal-sequence state too — a disconnect during a goal sequence
+    // shouldn't leave final10 suppressed for the rest of the match.
+    goalSequenceActive = false;
+    lastGoalTime = 0;
+    lastStingerTime = 0;
+    // OT preemptive flip at RoundStarted reads lastScoreA/lastScoreB AND
+    // gates on !firstKickoffPending. The sawDescent reset above already
+    // blocks false positives until a real descent is observed post-reconnect,
+    // but reset these too so the gate doesn't depend on that side effect.
+    firstKickoffPending = true;
+    lastScoreA = 0;
+    lastScoreB = 0;
+    updateStateStrip();
+    setTimeout(connectGame, 1500);
+  };
+  ws.onerror = () => ws.close();
+  ws.onmessage = (e) => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    const ev = (msg.event || "").toString();
+    const data = msg.data || {};
+    if (ev === "UpdateState") onUpdateState(data);
+    else if (ev === "GoalScored") onGoalScored(data);
+    // Canonical RL replay event names: GoalReplayStart / GoalReplayWillEnd /
+    // GoalReplayEnd (confirmed via live WS capture 2026-06-14). The prior
+    // ReplayPlayback* / ReplayWillEnd names were the dead-handler bug (RL
+    // never emitted them, so these branches never matched). Bot/freeplay/private
+    // modes may not fire the replay events at all, so the onGoalScored fallback
+    // timers remain as the safety net for modes that drop them entirely.
+    else if (ev === "GoalReplayStart")   onGoalReplayStart();
+    else if (ev === "GoalReplayWillEnd") onGoalReplayWillEnd();
+    else if (ev === "GoalReplayEnd")     onGoalReplayEnd();
+    else if (ev === "CountdownBegin") {
+      // Debounce — RL sometimes fires CountdownBegin twice after pause/resume,
+      // and the second would re-anchor the kickoff timer with a different
+      // regime than the first (drifts the visible 3-2-1 from the in-game one).
+      const now = performance.now();
+      if (now - lastCountdownBeginTime < COUNTDOWN_DEBOUNCE_MS) return;
+      lastCountdownBeginTime = now;
+      matchOver = false; // a new kickoff means we're back in live play
+      // If a goal happened since the last stinger fired, play the stinger NOW
+      // to mask the cut to kickoff. playStinger hides the card itself.
+      if (goalSequenceActive && lastGoalTime > lastStingerTime) {
+        playStinger();
+      }
+      inCountdown = true;
+      updateStateStrip();
+      startKickoffCountdown();
+      clearGoalSequence();
+    }
+    else if (ev === "RoundStarted")  {
+      // RoundStarted is the camera-cut to player POV — NOT ball-drop. Per the
+      // v0.5.11 paired-capture measurement (RoundStarted lands 805ms-4650ms
+      // BEFORE actual ball-drop depending on scenario), it is NOT a reliable
+      // GO! anchor. fireKickoffGo is now driven by the per-scenario delay+3000
+      // timer scheduled in startKickoffCountdown. RoundStarted just clears
+      // inCountdown and any lingering goal-sequence state.
+      inCountdown = false;
+      updateStateStrip();
+      clearGoalSequence();
+    }
+    else if (ev === "StatfeedEvent") onStatfeed(data);
+    else if (ev === "MatchCreated" || ev === "MatchInitialized") resetMatch();
+    // Golden-goal OT ends the match without firing GoalReplayEnd, which
+    // would leave the replay card pinned on screen. MatchEnded / PodiumStart
+    // force a full clear of the goal sequence and the OT/kickoff takeovers.
+    else if (ev === "MatchEnded" || ev === "PodiumStart") {
+      clearGoalSequence();
+      currentOT = false;
+      inCountdown = false;
+      // Match is over: hide the held final-10 "0" and gate it from re-showing
+      // if UpdateState keeps streaming a 0:00 clock through the podium.
+      matchOver = true;
+      $("final10").classList.remove("show");
+      // Reset OT detector so the next match starts in regulation mode.
+      clockHitZero = false;
+      otAscendingFrames = 0;
+      inferredOT = false;
+      prevTimeSeconds = 0;
+      sawDescent = false;
+      clockAscending = false;
+      // Reset goal-sequence state so a stuck goalSequenceActive can't
+      // suppress final10 in the next match's final 10 seconds.
+      goalSequenceActive = false;
+      lastGoalTime = 0;
+      lastStingerTime = 0;
+      // RL sometimes drops back to a fresh match without a MatchInitialized
+      // (e.g., menu drop → straight into next match). Reset firstKickoff +
+      // scores so the OT preemptive flip doesn't see stale tied state at
+      // the next match's first kickoff.
+      firstKickoffPending = true;
+      lastScoreA = 0;
+      lastScoreB = 0;
+      // Reset the per-match tally maps here too. These normally clear in
+      // resetMatch (MatchCreated/MatchInitialized), but bot/private modes
+      // don't reliably emit those — without this, stale demo counts / goal
+      // dedup keys / statfeed dedup keys could carry into the next match.
+      demosByName = {};
+      lastGoalFireByName = {};
+      lastStatfeedFire = {};
+      updateStateStrip();
+      finishKickoffCountdown();
+    }
+  };
+}
+
+function connectControl(){
+  const ws = new WebSocket(CONTROL_WS);
+  ws.onclose = () => setTimeout(connectControl, 1500);
+  ws.onerror = () => ws.close();
+  ws.onmessage = (e) => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg.type === "control"){ control = Object.assign(control, msg.payload || {}); applyControl(); }
+  };
+}
+
+applyControl();
+connectGame();
+connectControl();
+</script>
+  <!-- The persistent chrome frames every scene; the whole tuned layout scales
+       uniformly into its interior window (one transform, zero reflow, timing
+       engine untouched). Geometry lives in shared/rivalry-geometry.js. -->
+  <script>RivalryFit('.rv-stage', { safeArea: true });</script>
+</body>
+</html>

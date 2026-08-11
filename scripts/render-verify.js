@@ -94,10 +94,20 @@ const SCENE_CHECKS = {
   "rivalry-casters": { selector: ".cs-frame", description: "caster cam frame" },
   "rivalry-postgame": { selector: ".pg-boards", description: "team stat boards" },
   "rivalry-brb": { selector: ".brb-title", description: "BE RIGHT BACK title" },
-  // sc26 set (Moldybanana's Summer 2026 look, ported onto the kit)
+  // sc26 set (Moldybanana's Summer 2026 look: 3 ported originals + 5 house
+  // scenes reskinned to the same design language)
   "rivalry-sc26-starting-soon": { selector: '#team1-name[data-field="teamA.name"]', description: "left team name in the VS bar" },
   "rivalry-sc26-casters": { selector: ".caster-name", description: "caster name plate from casters[]" },
   "rivalry-sc26-brb": { selector: "#hero-time", description: "match start time in the VS block" },
+  "rivalry-sc26-chrome": { selector: ".ticker", description: "bottom ticker bar" },
+  "rivalry-sc26-gameplay": {
+    selector: ".scorebar",
+    description: "scorebar container",
+    sdkBadge: false, // fork of the shipped gameplay overlay: own socket code, no SDK, no badge
+  },
+  "rivalry-sc26-match-preview": { selector: ".mp-name", description: "team name node" },
+  "rivalry-sc26-postgame": { selector: ".pg-boards", description: "team stat boards" },
+  "rivalry-sc26-up-next": { selector: '.scene-root[data-scene="up-next"] .un-row[data-slot="upNext.0"]', description: "first on-deck schedule row" },
 };
 
 // ---------------------------------------------------------------------------
@@ -200,6 +210,12 @@ function preflightSignatures() {
 // Throwaway Electron profile for this run, so results never depend on state
 // left behind by a previous session (see spawnApp).
 const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "rivalry-verify-"));
+// Pre-stamp the migration marker: a FRESH profile still inherits the legacy
+// "rivalry-overlay" state via userdata-migrate (retained control payloads
+// whose logo URLs 404 in a keyless run and flake the console-clean checks).
+// The marker makes the migration a no-op, so hermetic actually means hermetic.
+const { MARKER } = require(path.join(REPO_ROOT, "bridge", "userdata-migrate"));
+fs.writeFileSync(path.join(userDataDir, MARKER), new Date().toISOString());
 
 function portInUse(port) {
   return new Promise((resolve) => {

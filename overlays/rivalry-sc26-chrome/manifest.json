@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-sc26-chrome",
+  "name": "SC26 Chrome",
+  "author": "RIVALRY (SC26 reskin of the house scene, design language by Moldybanana)",
+  "version": "1.0.0",
+  "scene": "chrome",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "set": "sc26",
+  "opaque": false,
+  "description": "Always-on SC26 broadcast frame: cyan-seamed rails, lime-slab ticker, SC26 lower thirds and the cyan/lime wipe, layered above every scene.",
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "a843ac9bae35a25fd521e44d60ca2d317adba3e98c486bff96c22b6897b233b9",
+    "signature": "VMANU6CWQkHKbKSUvPy/9i9611r7KtHRVtC/6tmcOyPrrmn4YOTKTsqwBbc0QEkax8MfVcrKHlDsyWJkdavCDw==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-08-11T20:42:11.230Z"
+  }
+}

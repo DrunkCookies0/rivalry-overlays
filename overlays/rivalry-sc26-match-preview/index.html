@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RIVALRY — Summer Circuit 2026 Match Preview</title>
+<style>
+/* =============================================================================
+ * Summer Circuit 2026 — Match Preview
+ * SC26 reskin of the house Match Preview scene (rivalry-match-preview).
+ * Layout geometry, data bindings and the script block are the house scene's,
+ * untouched. Every surface value (palette, Montserrat italic-900 type, dark
+ * teal plates, cyan corner brackets, lime slabs, glows, background art) is
+ * lifted from Moldybanana's SC26 canon: rivalry-sc26-brb and
+ * rivalry-sc26-starting-soon. Design language by Moldybanana.
+ *
+ * OFFLINE NOTE: the Montserrat @import below is the ONE remote dependency in
+ * this scene, matching the other SC26 scenes (and the practice in
+ * overlays/shared/rivalry-theme.css). Without a network the scene falls back
+ * to the local stack in --sc-font and still lays out; the italic-900 look
+ * degrades. Self-host the woff2 into assets/ to make it fully offline-safe.
+ * ===========================================================================*/
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,900;1,900&display=swap');
+
+/* Fill the OBS Browser Source viewport; rivalry-fit.js scales the 1920x1080 stage into it. */
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+
+/* The fixed 1920x1080 design canvas. Declared locally rather than pulled from
+   shared/rivalry-theme.css on purpose: SC26 is a deliberately different look
+   (cyan/lime, not Kinetic Bold blue/gold), so it must not inherit --rv-*
+   tokens or the theme's font imports. */
+.rv-stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:transparent;}
+
+.scene-root[data-scene="match-preview"]{
+  --sc-cyan:#00f0ff;
+  --sc-cyan-alt:#00eeff;
+  --sc-lime:#c6f119;
+  --sc-ink:#0b1519;
+  --sc-font:'Montserrat','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  /* Motion curves copied verbatim from shared/rivalry-theme.css so the house
+     animations keep their exact feel without importing the theme. */
+  --sc-ease-bounce:cubic-bezier(0.34,1.56,0.64,1);
+  --sc-ease-wipe:cubic-bezier(0.6,0,0.2,1);
+}
+.scene-root[data-scene="match-preview"]{position:absolute;inset:0;overflow:hidden;font-family:var(--sc-font);color:#ffffff;background:var(--sc-ink);}
+/* SC26 season art full-bleed, exactly where the house scene painted its own
+   full-bleed radial. The chrome composites on top (opaque:false). */
+.scene-root[data-scene="match-preview"] .mp-bg{position:absolute;inset:0;background-color:var(--sc-ink);background-image:url('assets/sc26-background.webp');background-size:cover;background-position:center;}
+.scene-root[data-scene="match-preview"] .mp-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.04) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(120% 100% at 50% 50%,#000 50%,transparent 100%);mask-image:radial-gradient(120% 100% at 50% 50%,#000 50%,transparent 100%);}
+.scene-root[data-scene="match-preview"] .mp-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 110px,rgba(0,240,255,.03) 110px 112px);animation:mpDrift 22s linear infinite;}
+@keyframes mpDrift{from{transform:translateX(0);}to{transform:translateX(112px);}}
+/* Side washes: house blue/orange remapped to the SC26 pair (A cyan, B lime),
+   intensity halved because both accents are far brighter than the originals. */
+.scene-root[data-scene="match-preview"] .mp-side{position:absolute;top:0;bottom:0;width:48%;pointer-events:none;}
+.scene-root[data-scene="match-preview"] .mp-side-a{left:0;background:radial-gradient(90% 80% at 28% 46%,rgba(0,240,255,.22),transparent 64%),linear-gradient(100deg,rgba(0,240,255,.15),transparent 78%);clip-path:polygon(0 0,100% 0,72% 100%,0 100%);animation:mpSlideL .8s var(--sc-ease-wipe) both;}
+.scene-root[data-scene="match-preview"] .mp-side-b{right:0;background:radial-gradient(90% 80% at 72% 46%,rgba(198,241,25,.16),transparent 64%),linear-gradient(260deg,rgba(198,241,25,.11),transparent 78%);clip-path:polygon(28% 0,100% 0,100% 100%,0 100%);animation:mpSlideR .8s var(--sc-ease-wipe) both;}
+@keyframes mpSlideL{from{opacity:0;transform:translateX(-60px);}to{opacity:1;transform:translateX(0);}}
+@keyframes mpSlideR{from{opacity:0;transform:translateX(60px);}to{opacity:1;transform:translateX(0);}}
+.scene-root[data-scene="match-preview"] .mp-split{position:absolute;top:-6%;bottom:-6%;left:50%;width:9px;transform:translateX(-50%) skewX(-12deg);background:linear-gradient(180deg,transparent,var(--sc-cyan) 30%,var(--sc-lime) 60%,transparent);box-shadow:0 0 12px rgba(0,240,255,.3);opacity:.9;}
+.scene-root[data-scene="match-preview"] .mp-frame{position:absolute;inset:48px 112px 120px;display:flex;flex-direction:column;}
+.scene-root[data-scene="match-preview"] .mp-top{position:relative;display:flex;align-items:center;justify-content:space-between;z-index:5;}
+.scene-root[data-scene="match-preview"] .mp-brand{display:flex;align-items:center;gap:18px;}
+.scene-root[data-scene="match-preview"] .mp-mark{width:72px;height:48px;background:#ffffff;-webkit-mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;filter:drop-shadow(0 0 12px rgba(0,240,255,.5));}
+.scene-root[data-scene="match-preview"] .mp-league{font-weight:900;font-style:italic;font-size:30px;letter-spacing:.08em;text-transform:uppercase;color:#ffffff;text-shadow:0 2px 8px rgba(0,0,0,.6);}
+/* Static season art (two-tone treatment lifted from the SC26 .main-title).
+   Deliberately NOT bound: eventTitle is a single contract string and binding
+   it here would collapse the white/lime split — same call as the canon
+   scenes. The bound eventTitle lives on in the lime slab to the right. */
+.scene-root[data-scene="match-preview"] .mp-season{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:900;font-style:italic;font-size:34px;letter-spacing:-1px;text-transform:uppercase;line-height:1;white-space:nowrap;color:#ffffff;}
+.scene-root[data-scene="match-preview"] .mp-season b{font-weight:900;color:var(--sc-lime);}
+/* Bound eventTitle as an SC26 lime slab (region-badge values from the canon). */
+.scene-root[data-scene="match-preview"] .mp-event{font-weight:900;font-size:17px;letter-spacing:4px;text-transform:uppercase;color:var(--sc-ink);background:var(--sc-lime);padding:6px 24px;transform:skewX(-10deg);}
+.scene-root[data-scene="match-preview"] .mp-round-wrap{position:absolute;top:128px;left:0;right:0;display:flex;justify-content:center;z-index:5;}
+/* Round line: dark SC26 plate, cyan type, thin border + corner brackets
+   (next-match-container / next-label values from the canon). */
+.scene-root[data-scene="match-preview"] .mp-round{position:relative;font-weight:900;font-style:italic;font-size:18px;letter-spacing:3px;text-transform:uppercase;color:var(--sc-cyan);padding:12px 34px;background:#081215;border:1px solid rgba(0,240,255,.25);box-shadow:0 8px 24px rgba(0,0,0,.5);}
+.scene-root[data-scene="match-preview"] .mp-round::before{content:'';position:absolute;top:-1px;left:-1px;width:15px;height:15px;border-top:2px solid var(--sc-cyan);border-left:2px solid var(--sc-cyan);}
+.scene-root[data-scene="match-preview"] .mp-round::after{content:'';position:absolute;bottom:-1px;right:-1px;width:15px;height:15px;border-bottom:2px solid var(--sc-cyan);border-right:2px solid var(--sc-cyan);}
+.scene-root[data-scene="match-preview"] .mp-stage{position:absolute;left:0;right:0;top:200px;bottom:104px;display:flex;align-items:center;justify-content:space-between;gap:20px;z-index:4;padding:0 12px;}
+.scene-root[data-scene="match-preview"] .mp-team{display:flex;flex-direction:column;align-items:center;flex:1 1 0;padding:0 30px;}
+.scene-root[data-scene="match-preview"] .mp-team-a{animation:mpTeamL .8s .15s var(--sc-ease-bounce) both;}
+.scene-root[data-scene="match-preview"] .mp-team-b{animation:mpTeamR .8s .15s var(--sc-ease-bounce) both;}
+@keyframes mpTeamL{from{opacity:0;transform:translateX(-50px) skewX(-6deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
+@keyframes mpTeamR{from{opacity:0;transform:translateX(50px) skewX(6deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
+/* Seed badge: house circle traded for the SC26 square plate with cyan corner
+   brackets; seed number goes lime with the canon lime glow. Same 104px
+   footprint so the team column geometry is unchanged. */
+.scene-root[data-scene="match-preview"] .mp-seed-badge{position:relative;display:flex;align-items:center;justify-content:center;width:104px;height:104px;background:linear-gradient(135deg,rgba(8,25,28,.95) 0%,rgba(13,39,44,.85) 100%);border:1px solid rgba(0,240,255,.35);box-shadow:0 8px 22px rgba(0,0,0,.55);margin-bottom:18px;}
+.scene-root[data-scene="match-preview"] .mp-seed-badge::before{content:'';position:absolute;top:-1px;left:-1px;width:15px;height:15px;border-top:2px solid var(--sc-cyan);border-left:2px solid var(--sc-cyan);}
+.scene-root[data-scene="match-preview"] .mp-seed-badge::after{content:'';position:absolute;bottom:-1px;right:-1px;width:15px;height:15px;border-bottom:2px solid var(--sc-cyan);border-right:2px solid var(--sc-cyan);}
+.scene-root[data-scene="match-preview"] .mp-seed-badge span{font-weight:900;font-style:italic;font-size:40px;color:var(--sc-lime);}
+/* Logo plate: same 288px box, Rivalry-Cut clip traded for the SC26 hero-card
+   surface (dark teal gradient, 1px cyan border, 20px/3px corner brackets,
+   cyan glow). background-color stays beneath the gradient so a real logo
+   (inline background-image from the SDK) still sits on a dark plate. */
+.scene-root[data-scene="match-preview"] .mp-logo{position:relative;width:288px;height:288px;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:#081215;background-image:linear-gradient(135deg,rgba(8,25,28,.95) 0%,rgba(13,39,44,.85) 100%);border:1px solid rgba(0,240,255,.35);box-shadow:0 16px 40px rgba(0,0,0,.6);}
+.scene-root[data-scene="match-preview"] .mp-logo::before{content:'';position:absolute;top:-1px;left:-1px;width:20px;height:20px;border-top:3px solid var(--sc-cyan);border-left:3px solid var(--sc-cyan);}
+.scene-root[data-scene="match-preview"] .mp-logo::after{content:'';position:absolute;bottom:-1px;right:-1px;width:20px;height:20px;border-bottom:3px solid var(--sc-cyan);border-right:3px solid var(--sc-cyan);}
+/* Monogram fallback: exact rivalry-sc26-starting-soon .mini-mono treatment
+   (italic-900 cyan with the canon cyan glow), at the house scene's scale. */
+.scene-root[data-scene="match-preview"] .mp-mono{font-weight:900;font-style:italic;font-size:170px;line-height:1;color:var(--sc-cyan);text-shadow:0 0 22px rgba(0,240,255,.45);}
+.scene-root[data-scene="match-preview"] .mp-name{margin-top:22px;font-weight:900;font-style:italic;font-size:74px;line-height:.92;letter-spacing:-1px;text-transform:uppercase;text-align:center;color:#ffffff;text-shadow:0 6px 22px rgba(0,0,0,.75);max-width:600px;}
+.scene-root[data-scene="match-preview"] .mp-meta{margin-top:18px;display:flex;align-items:center;gap:22px;}
+/* Region tag: dark chip with cyan type + hairline border (next-label values). */
+.scene-root[data-scene="match-preview"] .mp-tag{font-weight:900;font-style:italic;font-size:18px;letter-spacing:3px;padding:7px 16px;background:#081215;border:1px solid rgba(0,240,255,.2);color:var(--sc-cyan);}
+.scene-root[data-scene="match-preview"] .mp-rec{display:flex;flex-direction:column;align-items:center;gap:6px;}
+/* Record: the canon lime slab (team-record values from the SC26 scenes). */
+.scene-root[data-scene="match-preview"] .mp-rec b{font-weight:900;font-size:28px;line-height:1.1;letter-spacing:3px;text-transform:uppercase;color:var(--sc-lime);background:rgba(198,241,25,.06);padding:5px 18px;border-left:3px solid var(--sc-lime);}
+.scene-root[data-scene="match-preview"] .mp-rec i{font-weight:900;font-style:italic;font-size:13px;letter-spacing:.22em;color:var(--sc-cyan-alt);}
+.scene-root[data-scene="match-preview"] .mp-center{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:18px;z-index:6;padding:0 6px;}
+/* VS plate: same 168px box + entrance, SC26 hero-card surface, and the VS
+   glyph in the canon hero-vs cyan glow. */
+.scene-root[data-scene="match-preview"] .mp-vs{position:relative;width:168px;height:168px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(8,25,28,.95) 0%,rgba(13,39,44,.85) 100%);border:1px solid rgba(0,240,255,.35);box-shadow:0 16px 40px rgba(0,0,0,.7);animation:mpVs .7s .35s var(--sc-ease-bounce) both;}
+.scene-root[data-scene="match-preview"] .mp-vs::before{content:'';position:absolute;top:-1px;left:-1px;width:20px;height:20px;border-top:3px solid var(--sc-cyan);border-left:3px solid var(--sc-cyan);}
+.scene-root[data-scene="match-preview"] .mp-vs::after{content:'';position:absolute;bottom:-1px;right:-1px;width:20px;height:20px;border-bottom:3px solid var(--sc-cyan);border-right:3px solid var(--sc-cyan);}
+@keyframes mpVs{from{opacity:0;transform:scale(.4) rotate(-8deg);}to{opacity:1;transform:scale(1) rotate(0);}}
+.scene-root[data-scene="match-preview"] .mp-vs span{font-weight:900;font-style:italic;font-size:84px;color:var(--sc-cyan);text-shadow:0 6px 16px rgba(0,0,0,.7);}
+/* Best-of: SC26 lime slab (region-badge values). */
+.scene-root[data-scene="match-preview"] .mp-bo{font-weight:900;font-size:18px;letter-spacing:3px;text-transform:uppercase;color:var(--sc-ink);background:var(--sc-lime);padding:8px 20px;transform:skewX(-10deg);white-space:nowrap;}
+.scene-root[data-scene="match-preview"] .mp-bo b{font-weight:900;font-size:22px;}
+.scene-root[data-scene="match-preview"] .mp-foot{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:center;z-index:5;}
+/* Footer label in the canon social-tag two-tone (cyan base, white span). */
+.scene-root[data-scene="match-preview"] .mp-foot-label{font-weight:900;font-style:italic;font-size:20px;letter-spacing:.40em;text-transform:uppercase;color:var(--sc-cyan);text-indent:.40em;}
+.scene-root[data-scene="match-preview"] .mp-foot-label span{color:#ffffff;}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root" data-scene="match-preview">
+<div class="mp-bg"></div>
+<div class="mp-grid"></div>
+<div class="mp-lines"></div>
+<div class="mp-side mp-side-a"></div>
+<div class="mp-side mp-side-b"></div>
+<div class="mp-split"></div>
+
+<div class="mp-frame">
+  <header class="mp-top">
+    <div class="mp-brand">
+      <div class="mp-mark"></div>
+      <span class="mp-league" data-field="brand.leagueName">RIVALRY</span>
+    </div>
+    <!-- PORT ADDITION (decorative, no JS refs): static two-tone season title,
+         absolutely centered so the two bound house flanks keep their exact
+         space-between layout. -->
+    <span class="mp-season">SUMMER CIRCUIT <b>2026</b></span>
+    <span class="mp-event" data-field="eventTitle">RIVALRY SEASON 1</span>
+  </header>
+
+  <div class="mp-round-wrap">
+    <span class="mp-round" data-field="round">UPPER BRACKET • ROUND 1</span>
+  </div>
+
+  <div class="mp-stage">
+    <section class="mp-team mp-team-a">
+      <div class="mp-seed-badge"><span data-field="teamA.seed">#1</span></div>
+      <div class="mp-logo" data-bg="teamA.logo"><span class="mp-mono" data-mono="teamA.name">G</span></div>
+      <div class="mp-name" data-field="teamA.name">GUARDIANS</div>
+      <div class="mp-meta">
+        <span class="mp-tag" data-field="teamA.tag">NA</span>
+        <span class="mp-rec"><b data-field="teamA.record">12-3</b><i>RECORD</i></span>
+      </div>
+    </section>
+
+    <div class="mp-center">
+      <div class="mp-vs"><span>VS</span></div>
+      <div class="mp-bo">BEST OF <b data-field="bestOf">5</b></div>
+    </div>
+
+    <section class="mp-team mp-team-b">
+      <div class="mp-seed-badge"><span data-field="teamB.seed">#4</span></div>
+      <div class="mp-logo" data-bg="teamB.logo"><span class="mp-mono" data-mono="teamB.name">S</span></div>
+      <div class="mp-name" data-field="teamB.name">SENTINELS</div>
+      <div class="mp-meta">
+        <span class="mp-tag" data-field="teamB.tag">NA</span>
+        <span class="mp-rec"><b data-field="teamB.record">9-6</b><i>RECORD</i></span>
+      </div>
+    </section>
+  </div>
+
+  <footer class="mp-foot">
+    <!-- PORT CHANGE (decorative, no JS refs): two-tone span, canon social-tag style. -->
+    <span class="mp-foot-label">MATCH <span>PREVIEW</span></span>
+  </footer>
+</div>
+    </div>
+  </div>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+    // Control-only scene: subscribe to the control bus (auto-mocks on file://).
+    var rl = RivalryOverlay.connect({ game: false });
+    RivalryBind(document.querySelector('.scene-root'), rl);
+    // Resolution-independent: scale the 1920x1080 design to fill any source size.
+    // Append ?fit=cover to the source URL to fill+crop instead of letterbox on non-16:9.
+    RivalryFit('.rv-stage');
+  </script>
+</body>
+</html>

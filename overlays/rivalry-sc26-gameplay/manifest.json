@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-sc26-gameplay",
+  "name": "SC26 Gameplay",
+  "author": "RIVALRY (SC26 reskin of the house scene, design language by Moldybanana)",
+  "version": "1.0.0",
+  "scene": "gameplay",
+  "entry": "index.html",
+  "needs": [
+    "game",
+    "control"
+  ],
+  "contract": "1.x",
+  "set": "sc26",
+  "opaque": false,
+  "description": "Live in-match gameplay overlay (scorebug, boost, stat pops, goal sequence) in the Summer Circuit 2026 look.",
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "3da0b5aed05c4ccb40cccade03548ac48762d1603065901301124d9cb8c071ca",
+    "signature": "M4E7g4zLTWxt9hqDjW++YvEj9Kk6dWInCBBuD5Qnu25Wy8J+pH4ecG3foD0ue2ssqUGTJFabTHbuxYuT2ZFaAA==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-08-11T20:42:11.484Z"
+  }
+}

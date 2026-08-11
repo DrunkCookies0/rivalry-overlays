@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-sc26-match-preview",
+  "name": "SC26 Match Preview",
+  "author": "RIVALRY (SC26 reskin of the house scene, design language by Moldybanana)",
+  "version": "1.0.0",
+  "scene": "match-preview",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Pre-match VS marquee in the Summer Circuit 2026 cyan/lime language, built to run under the SC26 chrome (sc26 set).",
+  "set": "sc26",
+  "opaque": false,
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "0560193ebe84043b46a60b27ad351f08a83453b8c85d4783c43776fa1b2b60f4",
+    "signature": "zHVo/NzB8WFiyuCFpElG4MwBwA8CdXg/OME77m8AXQ9lW4qJjdSfGmzk9H/C6VGwxO6xFz9kJTaUQ/QeN//5DA==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-08-11T20:42:11.715Z"
+  }
+}

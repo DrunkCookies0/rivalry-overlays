@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RIVALRY SC26 Chrome</title>
+<!--
+  SC26 reskin of the house chrome (rivalry-chrome). Design language by
+  Moldybanana, lifted from the signed SC26 scenes (rivalry-sc26-brb /
+  rivalry-sc26-starting-soon): cyan #00f0ff + lime #c6f119 on dark teal ink,
+  Montserrat 900 italic uppercase, lime slab badges with dark text, cyan glow
+  text-shadows, thin cyan corner accents.
+
+  The persistent broadcast frame: left/right rails, bottom ticker, producer
+  lower thirds, and the branded wipe. Added ONCE in OBS as a browser source
+  layered above every scene; the interior window it leaves open is the safe
+  area every other scene (and the game capture) fits inside.
+
+  Geometry comes from ../shared/rivalry-geometry.js (single source, guarded by
+  tests). Data rides the control bus as the additive v1 fields documented in
+  overlays/CONTRACT.md: chrome, ticker, lowerThird, schedule. The wipe fires on
+  the transient "chrome-wipe" bus message (never retained, so a reloaded scene
+  can never replay an old wipe).
+
+  Frame construction inherited from the 2026-08-01 house pick: kinetic seam
+  surfaces molded into one continuous frame (the three bars are slices of one
+  shared 1920x1080 background, so they read as one piece), rails 64 / ticker
+  72, standard ticker density. The reskin swaps only the SURFACES: the shared
+  background is now the SC26 art under a dark-teal scrim, the seam is cyan
+  edge-light instead of gold, the badge is a lime slab, the wipe is the SC26
+  cyan/lime sweep. All wipe timing classes and keyframe durations are byte
+  identical to the house scene (main.js switches scenes ~450ms in).
+
+  Like the other SC26 scenes this file does NOT pull shared/rivalry-theme.css:
+  the look is deliberately cyan/lime, not Kinetic Bold blue/gold, so it must
+  not inherit - -rv-* tokens or the theme's font imports. The Montserrat
+  @import below is the accepted remote dependency of the SC26 set.
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,900;1,900&display=swap');
+
+  html,body{margin:0;height:100%;background:transparent;overflow:hidden;}
+  .rv-stage{position:relative;width:1920px;height:1080px;overflow:hidden;background:transparent;
+    --sc-cyan:#00f0ff;--sc-lime:#c6f119;--sc-ink:#0b1519;
+    --sc-font:'Montserrat','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    font-family:var(--sc-font);}
+
+  /* Geometry: JS stamps --rail/--ticker from RivalryGeometry before first paint. */
+  .rv-stage{--rail:64px;--ticker:72px;}
+  .rail{position:absolute;top:0;bottom:var(--ticker);width:var(--rail);z-index:40;
+    display:flex;flex-direction:column;align-items:center;}
+  .rail.left{left:0;}
+  .rail.right{right:0;}
+  .ticker{position:absolute;left:0;right:0;bottom:0;height:var(--ticker);z-index:41;
+    display:flex;align-items:center;}
+
+  /* Molded frame (house technique, SC26 surfaces): the three bars are SLICES
+     of one shared 1920x1080 background, so the ticker slice continues the
+     rails' surface exactly where they meet and the frame reads as one piece.
+     Layer 1 is a dark-teal scrim in Moldy's ink ramp, layer 2 is the SC26
+     season art. The art lives only inside these opaque bars; the interior
+     window stays fully transparent for the game. */
+  .rail,.ticker{
+    background-color:var(--sc-ink);
+    background-image:
+      linear-gradient(180deg,rgba(8,18,21,.88) 0%,rgba(9,24,28,.92) 60%,rgba(13,39,44,.88) 125%),
+      url('assets/sc26-background.webp');
+    background-size:1920px 1080px,1920px 1080px;
+    background-repeat:no-repeat,no-repeat;}
+  .rail.left{background-position:0 0,0 0;}
+  .rail.right{background-position:calc(var(--rail) - 1920px) 0,calc(var(--rail) - 1920px) 0;}
+  .ticker{background-position:0 calc(var(--ticker) - 1080px),0 calc(var(--ticker) - 1080px);}
+  .rail::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg,transparent 0%,rgba(0,240,255,.06) 50%,transparent 100%);
+    background-size:100% 300%;animation:sheen 9s linear infinite;}
+  @keyframes sheen{0%{background-position:0 300%;}100%{background-position:0 -300%;}}
+  .tile,.sc-logo{clip-path:polygon(0 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%);}
+  .badge{clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%);padding-right:30px;}
+
+  /* One molded seam around the interior window, now SC26 cyan edge-light. The
+     borders sit on the bars' inner 3px (not over the game) and the two bottom
+     corners MITER, exactly as in the house frame; the outer glow falls onto
+     the bars, never into the game window. */
+  .frame-seam{position:absolute;z-index:42;pointer-events:none;
+    left:calc(var(--rail) - 3px);right:calc(var(--rail) - 3px);
+    top:0;bottom:calc(var(--ticker) - 3px);
+    border-left:3px solid var(--sc-cyan);
+    border-right:3px solid var(--sc-cyan);
+    border-bottom:3px solid var(--sc-cyan);
+    box-shadow:0 0 10px rgba(0,240,255,.28);}
+
+  /* Rail contents */
+  .rail .logo{width:48px;height:48px;margin-top:8px;flex:none;
+    background:url("../../assets/rivalry-logo.svg") center/contain no-repeat;
+    filter:drop-shadow(0 0 10px rgba(0,240,255,.35));}
+  .rail .wordmark{margin-top:14px;flex:none;
+    writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);
+    font-family:var(--sc-font);font-style:italic;
+    font-weight:900;font-size:26px;letter-spacing:.35em;text-transform:uppercase;
+    color:#ffffff;white-space:nowrap;
+    }
+  .rail .eventmeta{margin-top:auto;margin-bottom:14px;flex:none;
+    writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:var(--sc-font);font-weight:900;font-size:12px;
+    letter-spacing:.26em;color:var(--sc-cyan);white-space:nowrap;
+        max-height:640px;overflow:hidden;}
+  .rail .follow{margin-top:10px;flex:none;
+    writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:var(--sc-font);font-weight:900;font-size:11px;
+    letter-spacing:.3em;color:rgba(0,240,255,.75);}
+  .rail .tiles{display:flex;flex-direction:column;gap:12px;margin-top:16px;flex:none;}
+  .tile{width:46px;height:46px;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,240,255,.08);color:#ffffff;
+    box-shadow:inset 0 0 0 1px rgba(0,240,255,.35);
+    font-family:var(--sc-font);font-style:italic;
+    font-weight:900;font-size:18px;}
+  .tile svg{width:24px;height:24px;fill:currentColor;}
+
+  .showcase{margin-top:auto;margin-bottom:14px;flex:none;display:flex;
+    flex-direction:column;align-items:center;gap:8px;}
+  .showcase .sc-label{writing-mode:vertical-rl;transform:rotate(180deg);
+    font-family:var(--sc-font);font-weight:900;font-size:11px;
+    letter-spacing:.28em;color:var(--sc-lime);white-space:nowrap;
+    }
+  .showcase .sc-logo{width:46px;height:46px;background:rgba(0,240,255,.08) center/contain no-repeat;
+    box-shadow:inset 0 0 0 1px rgba(0,240,255,.35);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--sc-font);font-style:italic;
+    font-weight:900;font-size:18px;color:var(--sc-cyan);
+    }
+  /* FOLLOW block sits under the top tiles; when the showcase is present it
+     anchors the rail bottom, so both never fight for space. */
+
+  /* Ticker contents. The badge is the SC26 lime slab (lime, dark ink text,
+     lime glow) straight off the region-badge in rivalry-sc26-starting-soon. */
+  .badge{flex:none;height:100%;display:flex;align-items:center;gap:10px;
+    padding:0 18px;background:var(--sc-lime);color:var(--sc-ink);
+    font-family:var(--sc-font);font-style:italic;
+    font-weight:900;font-size:20px;letter-spacing:.08em;text-transform:uppercase;
+    }
+  .items{flex:1;overflow:hidden;position:relative;height:100%;}
+  .t-item{position:absolute;inset:0;display:flex;align-items:center;gap:14px;
+    padding:0 26px;opacity:0;transform:translateY(12px);
+    transition:opacity .45s cubic-bezier(0.2,0.8,0.2,1),transform .45s cubic-bezier(0.2,0.8,0.2,1);
+    font-family:var(--sc-font);font-style:italic;font-weight:900;text-transform:uppercase;
+    font-size:21px;color:#ffffff;white-space:nowrap;
+    }
+  .t-item.on{opacity:1;transform:none;}
+  .t-item .k{font-family:var(--sc-font);font-style:normal;font-weight:900;font-size:13px;
+    letter-spacing:.2em;color:var(--sc-lime);flex:none;
+    }
+  .t-item .vs{color:rgba(255,255,255,.55);font-size:16px;}
+  .t-item .rec{font-style:normal;font-weight:900;letter-spacing:.08em;
+    font-size:16px;color:var(--sc-cyan);}
+  .t-item .live-dot{width:10px;height:10px;border-radius:50%;flex:none;
+    background:var(--sc-lime);box-shadow:0 0 12px rgba(198,241,25,.7);
+    animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{50%{opacity:.35}}
+  .stream{flex:none;height:100%;display:flex;align-items:center;gap:10px;
+    padding:0 22px;font-family:var(--sc-font);font-weight:900;
+    font-size:11px;letter-spacing:.18em;color:rgba(0,240,255,.6);}
+
+  /* Lower third: inside the safe area, above the ticker. SC26 slab: cyan glow
+     bar, dark-teal gradient plate with a thin cyan border (the hero-card
+     surface from rivalry-sc26-brb), Montserrat 900 italic title, lime kicker,
+     one thin cyan corner accent on the unclipped top-right corner. */
+  .lower3{position:absolute;z-index:45;left:calc(var(--rail) + 42px);
+    bottom:calc(var(--ticker) + 34px);display:flex;align-items:stretch;
+    opacity:0;transform:translateX(-24px);pointer-events:none;
+    transition:opacity .4s cubic-bezier(0.2,0.8,0.2,1),transform .4s cubic-bezier(0.2,0.8,0.2,1);}
+  .lower3.on{opacity:1;transform:none;}
+  .lower3::before{content:"";position:absolute;top:-5px;right:-5px;
+    width:20px;height:20px;
+    border-top:3px solid var(--sc-cyan);border-right:3px solid var(--sc-cyan);}
+  .lower3 .bar{width:8px;background:var(--sc-cyan);flex:none;
+    box-shadow:0 0 12px rgba(0,240,255,.35);}
+  .lower3.kind-announce .bar{background:var(--sc-lime);
+    box-shadow:0 0 12px rgba(198,241,25,.35);}
+  .lower3 .body{background:linear-gradient(135deg,rgba(8,25,28,.95) 0%,rgba(13,39,44,.85) 100%);
+    border-top:1px solid rgba(0,240,255,.35);border-bottom:1px solid rgba(0,240,255,.35);
+    padding:14px 30px 14px 22px;
+    clip-path:polygon(0 0,100% 0,calc(100% - 18px) 100%,0 100%);}
+  .lower3 .l3-title{font-family:var(--sc-font);
+    font-style:italic;font-weight:900;font-size:30px;letter-spacing:-1px;
+    text-transform:uppercase;color:#ffffff;
+    }
+  .lower3 .l3-sub{font-family:var(--sc-font);font-weight:900;
+    font-size:14px;letter-spacing:3px;text-transform:uppercase;
+    color:var(--sc-lime);margin-top:2px;
+    }
+
+  /* Wipe: covers the whole canvas, driven by the transient chrome-wipe event.
+     SC26 cyan/lime sweep: p1 is the cyan panel with a lime leading edge, p2
+     the dark-teal ink panel behind it. TIMING IS SACRED: every duration,
+     delay, easing and keyframe below is byte identical to the house scene
+     (main.js switches scenes ~450ms in, at full coverage). */
+  .wipe{position:absolute;inset:0;z-index:60;display:none;pointer-events:none;}
+  .wipe.run{display:block;}
+  .wipe .p{position:absolute;top:0;bottom:0;width:120%;left:-130%;}
+  .wipe .p1{background:linear-gradient(90deg,var(--sc-cyan) 0%,var(--sc-cyan) 86%,var(--sc-lime) 100%);}
+  .wipe .p2{background:#081215;}
+  .wipe.run .p1{animation:wSweep 1s cubic-bezier(.6,0,.2,1) forwards;}
+  .wipe.run .p2{animation:wSweep 1s cubic-bezier(.6,0,.2,1) .12s forwards;}
+  .wipe .wlogo{position:absolute;left:50%;top:50%;width:220px;height:220px;
+    transform:translate(-50%,-50%) scale(.6);opacity:0;
+    background:url("../../assets/rivalry-logo.svg") center/contain no-repeat;
+    filter:drop-shadow(0 0 30px rgba(0,240,255,.6));}
+  .wipe.run .wlogo{animation:wLogo 1.12s cubic-bezier(.3,1.4,.4,1) .3s forwards;}
+  @keyframes wSweep{0%{transform:translateX(0) skewX(-12deg);}100%{transform:translateX(215%) skewX(-12deg);}}
+  @keyframes wLogo{0%{opacity:0;transform:translate(-50%,-50%) scale(.6);}
+    30%{opacity:1;transform:translate(-50%,-50%) scale(1);}
+    70%{opacity:1;transform:translate(-50%,-50%) scale(1);}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(1.15);}}
+</style>
+</head>
+<body>
+<div class="rv-stage" id="stage">
+  <div class="frame-seam"></div>
+  <div class="rail left">
+    <div class="logo"></div>
+    <div class="wordmark" id="leagueName">RIVALRY</div>
+    <div class="eventmeta" id="eventMeta"></div>
+  </div>
+
+  <div class="rail right">
+    <div class="follow" id="followLabel" style="display:none">FOLLOW</div>
+    <div class="tiles" id="tiles"></div>
+    <div class="showcase" id="showcase" style="display:none">
+      <div class="sc-label" id="scLabel"></div>
+      <div class="sc-logo" id="scLogo"></div>
+    </div>
+  </div>
+
+  <div class="ticker" id="ticker">
+    <div class="badge" id="tickerBadge">RIVALRY</div>
+    <div class="items" id="tickerItems"></div>
+    <div class="stream" id="streamLine" style="display:none"></div>
+  </div>
+
+  <div class="lower3" id="lower3">
+    <div class="bar"></div>
+    <div class="body">
+      <div class="l3-title" id="l3Title"></div>
+      <div class="l3-sub" id="l3Sub"></div>
+    </div>
+  </div>
+
+  <div class="wipe" id="wipe">
+    <div class="p p2"></div>
+    <div class="p p1"></div>
+    <div class="wlogo"></div>
+  </div>
+</div>
+
+<script src="../shared/rivalry-geometry.js"></script>
+<script src="../sdk/rivalry-fit.js"></script>
+<script src="../sdk/rivalry-overlay-sdk.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var stage = $("stage");
+
+  // Geometry from the shared constant, stamped before first paint so the CSS
+  // never carries a second copy of the numbers.
+  var G = window.RivalryGeometry;
+  if (G) {
+    stage.style.setProperty("--rail", G.RAIL_WIDTH + "px");
+    stage.style.setProperty("--ticker", G.TICKER_HEIGHT + "px");
+  }
+
+  RivalryFit(".rv-stage");
+
+  /* ---- socials: known networks get their mark, unknown get a letter tile */
+  var ICONS = {
+    discord: '<svg viewBox="0 0 24 24"><path d="M19.3 5.3A16.9 16.9 0 0 0 15.2 4l-.2.4a15.6 15.6 0 0 1 3.8 1.9A12.7 12.7 0 0 0 5.2 6.3a15.6 15.6 0 0 1 3.8-1.9L8.8 4a16.9 16.9 0 0 0-4.1 1.3A17.6 17.6 0 0 0 1.6 17a17 17 0 0 0 5.2 2.6l.4-.6a10.7 10.7 0 0 1-1.7-.8l.4-.3a12.2 12.2 0 0 0 12.2 0l.4.3c-.5.3-1.1.6-1.7.8l.4.6A17 17 0 0 0 22.4 17a17.6 17.6 0 0 0-3.1-11.7ZM8.7 14.8c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg>',
+    x: '<svg viewBox="0 0 24 24"><path d="M17.5 3h3.1l-6.8 7.8L21.8 21h-6.3l-4.9-6.4L5 21H1.9l7.3-8.3L2.2 3h6.4l4.4 5.9L17.5 3Zm-1.1 16h1.7L7.7 4.7H5.9L16.4 19Z"/></svg>',
+    twitter: '<svg viewBox="0 0 24 24"><path d="M17.5 3h3.1l-6.8 7.8L21.8 21h-6.3l-4.9-6.4L5 21H1.9l7.3-8.3L2.2 3h6.4l4.4 5.9L17.5 3Zm-1.1 16h1.7L7.7 4.7H5.9L16.4 19Z"/></svg>',
+    twitch: '<svg viewBox="0 0 24 24"><path d="M4.3 2 2.5 6.4v14.2h4.9V23h2.7l2.4-2.4h3.7l5-5V2H4.3Zm15.1 12.7-2.9 2.9h-4.5l-2.4 2.4v-2.4H5.9V3.8h13.5v10.9ZM16.7 7v5.3h-1.8V7h1.8Zm-4.9 0v5.3H10V7h1.8Z"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24"><path d="M23 7.6a2.9 2.9 0 0 0-2-2C19.2 5 12 5 12 5s-7.2 0-9 .5a2.9 2.9 0 0 0-2 2A30.6 30.6 0 0 0 .5 12c0 1.5.2 3 .5 4.4a2.9 2.9 0 0 0 2 2c1.8.6 9 .6 9 .6s7.2 0 9-.5a2.9 2.9 0 0 0 2-2c.3-1.5.5-3 .5-4.5s-.2-3-.5-4.4ZM9.7 15.6V8.4l6 3.6-6 3.6Z"/></svg>',
+  };
+
+  var TICKER_CYCLE_MS = 6000;
+  var tickerIdx = 0;
+  var tickerTimer = null;
+
+  function el(tag, cls, text) {
+    var d = document.createElement(tag);
+    if (cls) d.className = cls;
+    if (text !== undefined) d.textContent = text;
+    return d;
+  }
+
+  function renderSocials(socials) {
+    var tiles = $("tiles");
+    tiles.innerHTML = "";
+    var list = Array.isArray(socials) ? socials.filter(function (s) { return s && (s.network || s.handle); }) : [];
+    $("followLabel").style.display = list.length ? "" : "none";
+    list.slice(0, 4).forEach(function (s) {
+      var t = el("div", "tile");
+      var key = String(s.network || "").toLowerCase();
+      if (ICONS[key]) t.innerHTML = ICONS[key];
+      else t.textContent = (s.network || s.handle || "?").slice(0, 1).toUpperCase();
+      t.title = s.handle || s.network || "";
+      tiles.appendChild(t);
+    });
+  }
+
+  function renderShowcase(sc) {
+    var host = $("showcase");
+    if (!sc || (!sc.name && !sc.logo)) { host.style.display = "none"; return; }
+    host.style.display = "";
+    $("scLabel").textContent = (sc.label || "SHOWCASE").toUpperCase();
+    var logo = $("scLogo");
+    if (sc.logo) {
+      logo.textContent = "";
+      logo.style.backgroundImage = "url('" + String(sc.logo).replace(/'/g, "%27") + "')";
+    } else {
+      logo.style.backgroundImage = "";
+      logo.textContent = (sc.name || "?").slice(0, 2).toUpperCase();
+    }
+    logo.title = sc.name || "";
+  }
+
+  /* ---- ticker: three sources, one item list --------------------------------
+     1. the schedule (live series + what is next), derived automatically
+     2. team records for the loaded series
+     3. the producer's manual lines plus typed items (unknown types skipped,
+        so future item kinds are a no-op here instead of a break)           */
+  function buildTickerItems(c) {
+    var items = [];
+    var sched = c.schedule || {};
+    var series = Array.isArray(sched.series) ? sched.series : [];
+    var active = typeof sched.activeIndex === "number" ? sched.activeIndex : -1;
+
+    var nameA = c.teamA && c.teamA.name, nameB = c.teamB && c.teamB.name;
+    if (active >= 0 && series[active] && nameA && nameB) {
+      var s = c.series || { a: 0, b: 0 };
+      items.push({ kind: "live", a: nameA, b: nameB, score: s.a + "-" + s.b, bestOf: c.bestOf });
+    }
+    series.forEach(function (e, i) {
+      if (i <= active) return;
+      var a = e.teamA && e.teamA.name, b = e.teamB && e.teamB.name;
+      if (!a && !b) return;
+      items.push({
+        kind: i === active + 1 ? "next" : "later",
+        a: a || "TBD", b: b || "TBD",
+        time: e.startTimeDisplay || "",
+      });
+    });
+    if (c.teamA && c.teamA.record && c.teamB && c.teamB.record && nameA && nameB) {
+      items.push({ kind: "records", a: nameA, ra: c.teamA.record, b: nameB, rb: c.teamB.record });
+    }
+    var t = c.ticker || {};
+    (Array.isArray(t.manualLines) ? t.manualLines : []).forEach(function (line) {
+      if (line && line.trim()) items.push({ kind: "text", text: line.trim() });
+    });
+    (Array.isArray(t.items) ? t.items : []).forEach(function (it) {
+      if (it && it.type === "text" && it.text) items.push({ kind: "text", text: it.text });
+      // unknown item types: deliberately skipped, additive contract
+    });
+    if (!items.length) {
+      items.push({ kind: "text", text: (c.eventTitle || (c.brand && c.brand.leagueName) || "RIVALRY") });
+    }
+    return items;
+  }
+
+  function renderTickerItem(host, it) {
+    var d = el("div", "t-item");
+    if (it.kind === "live") {
+      d.appendChild(el("span", "live-dot"));
+      d.appendChild(el("span", "k", "LIVE NOW"));
+      d.appendChild(document.createTextNode(it.a));
+      d.appendChild(el("span", "vs", "vs"));
+      d.appendChild(document.createTextNode(it.b));
+      d.appendChild(el("span", "k", it.score + (it.bestOf ? "  BO" + it.bestOf : "")));
+    } else if (it.kind === "next" || it.kind === "later") {
+      d.appendChild(el("span", "k", it.kind === "next" ? "UP NEXT" : "TONIGHT"));
+      d.appendChild(document.createTextNode(it.a));
+      d.appendChild(el("span", "vs", "vs"));
+      d.appendChild(document.createTextNode(it.b));
+      if (it.time) d.appendChild(el("span", "k", it.time));
+    } else if (it.kind === "records") {
+      d.appendChild(el("span", "k", "RECORDS"));
+      d.appendChild(document.createTextNode(it.a + " "));
+      d.appendChild(el("span", "rec", it.ra));
+      d.appendChild(el("span", "vs", "•"));
+      d.appendChild(document.createTextNode(it.b + " "));
+      d.appendChild(el("span", "rec", it.rb));
+    } else {
+      d.appendChild(document.createTextNode(it.text || ""));
+    }
+    host.appendChild(d);
+    return d;
+  }
+
+  function renderTicker(c) {
+    var host = $("tickerItems");
+    host.innerHTML = "";
+    buildTickerItems(c).forEach(function (it) { renderTickerItem(host, it); });
+    if (tickerIdx >= host.children.length) tickerIdx = 0;
+    cycleTicker(true);
+    if (!tickerTimer) tickerTimer = setInterval(cycleTicker, TICKER_CYCLE_MS);
+  }
+
+  function cycleTicker(hold) {
+    var kids = $("tickerItems").children;
+    if (!kids.length) return;
+    if (!hold) tickerIdx = (tickerIdx + 1) % kids.length;
+    for (var i = 0; i < kids.length; i++) kids[i].classList.toggle("on", i === tickerIdx);
+  }
+
+  /* ---- lower third ---------------------------------------------------------
+     Retained-state safe via age, not flags: the panel stamps shownAt (epoch
+     ms, same machine so no clock skew) when the producer calls it. A timed
+     lower third shows only for its REMAINING time, so the bus replaying
+     retained state to a fresh page can never resurrect one that already ran
+     out. A held one (durationSec 0) survives a browser-source refresh, which
+     is what a producer wants mid-segment, but ages out after HOLD_REPLAY_MAX
+     so yesterday's hold never haunts tonight. */
+  var HOLD_REPLAY_MAX_S = 300;
+  var l3Timer = null;
+  var l3LastShownAt = 0;
+  function renderLowerThird(lt) {
+    var host = $("lower3");
+    if (!lt || !lt.visible || !lt.shownAt) {
+      l3LastShownAt = 0;
+      clearTimeout(l3Timer);
+      host.classList.remove("on");
+      return;
+    }
+    var ageS = (Date.now() - Number(lt.shownAt)) / 1000;
+    var hold = Number(lt.durationSec) || 0;
+    var expired = hold > 0 ? ageS >= hold : ageS >= HOLD_REPLAY_MAX_S;
+    if (expired) {
+      clearTimeout(l3Timer);
+      host.classList.remove("on");
+      return;
+    }
+    if (lt.shownAt === l3LastShownAt) return; // merge repeat of the same call
+    l3LastShownAt = lt.shownAt;
+    $("l3Title").textContent = lt.title || "";
+    $("l3Sub").textContent = lt.subtitle || "";
+    host.className = "lower3 on kind-" + (lt.kind || "caster");
+    clearTimeout(l3Timer);
+    if (hold > 0) {
+      var remainingMs = Math.max(0, hold - ageS) * 1000;
+      l3Timer = setTimeout(function () { host.classList.remove("on"); }, remainingMs);
+    }
+  }
+
+  /* ---- wipe ---- */
+  function runWipe() {
+    var w = $("wipe");
+    w.classList.remove("run");
+    void w.offsetWidth;
+    w.classList.add("run");
+    setTimeout(function () { w.classList.remove("run"); }, 1600);
+  }
+
+  /* ---- render from control state ---- */
+  function render(c) {
+    var ch = c.chrome || {};
+    var league = ch.leagueName || (c.brand && c.brand.leagueName) || "RIVALRY";
+    $("leagueName").textContent = league.toUpperCase();
+    $("tickerBadge").textContent = league.toUpperCase();
+
+    var ev = c.schedule && c.schedule.event ? c.schedule.event : {};
+    var meta = [ch.seasonName || ev.season, ch.circuitName || ev.circuit, ev.tier]
+      .filter(Boolean).join(" • ");
+    $("eventMeta").textContent = meta.toUpperCase();
+
+    var stream = ch.streamLine || "";
+    $("streamLine").textContent = stream.toUpperCase();
+    $("streamLine").style.display = stream ? "" : "none";
+
+    renderSocials(ch.socials);
+    renderShowcase(ch.showcase);
+    renderTicker(c);
+    renderLowerThird(c.lowerThird);
+  }
+
+  var ov = RivalryOverlay.connect({ game: false });
+  ov.onControl(render);
+  ov.onBus("chrome-wipe", runWipe);
+})();
+</script>
+</body>
+</html>
