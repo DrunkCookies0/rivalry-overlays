@@ -296,8 +296,14 @@ npm run dist:beta     # beta installer -> dist-beta\
 
 ## 6.8 Handing out (and taking back) access keys
 
-The packaged app serves overlay scenes only to someone holding a valid access
-key. Everything is driven from this repo - there is no service to run.
+> **RETIRED 2026-08-11.** The access-key system was removed: the league API key
+> plus the match-only gate is the product's entitlement now. This section stays
+> as the record of how the RCV1 system worked while it existed; the key CLIs,
+> license modules, revocation list and activation UI are gone from the tree
+> (git history has them if it ever needs to come back).
+
+The packaged app served overlay scenes only to someone holding a valid access
+key. Everything was driven from this repo - there was no service to run.
 
 ```bash
 npm run key:issue -- --name "Moldybanana"          # mint one, send them the line it prints

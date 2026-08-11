@@ -3,7 +3,7 @@
 This is the checklist the producer runs on their own machine the first time they install RIVALRY Casterverse. It proves the whole chain works on a machine Alex has never touched, before the first real broadcast depends on it.
 
 - Who runs it: the producer, alone, on their own Windows machine.
-- What it needs: the installer, your two keys (access key and league API key), OBS, and Rocket League. Nothing else. No repo, no npm, no developer tools.
+- What it needs: the installer, your league API key, OBS, and Rocket League. Nothing else. No repo, no npm, no developer tools.
 - How long: well under an hour, including one exhibition match.
 - If any step's "Expected" does not happen and the "If not" line does not fix it: run the Export diagnostics step at the bottom, send the file to Alex, and stop there. Nothing later in the list will go better than the step that just failed.
 
@@ -15,8 +15,7 @@ Keep PRODUCER-SETUP.md open next to this; it explains each screen in more detail
 
 Done by Alex on the dev machine before anything ships to the producer:
 
-- [ ] Issue the producer's personal access key: `npm run key:issue -- --name "<producer name>"`
-- [ ] Send the producer: the installer, their access key (starts with `RCV1.`), their league API key (starts with `rv_`), PRODUCER-SETUP.md, and this checklist.
+- [ ] Send the producer: the installer, their league API key (starts with `rv_`), PRODUCER-SETUP.md, and this checklist.
 
 Everything below is the producer's script.
 
@@ -34,13 +33,11 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **If not:** if the blue screen has no "More info" link, or the app never opens, take a photo of the screen and call Alex.
 
-### 2. Activate
+### 2. First launch
 
-- [ ] The app shows **"Enter your access key"**. Paste your `RCV1.` key (copy and paste, do not retype) and click **ACTIVATE**.
+- [ ] The app opens straight onto the 3-step setup wizard (no activation screen — access keys were retired in favor of the league key + match gate).
 
-  **Expected:** a green **"Activated for"** message with your name, and the 3-step setup wizard appears.
-
-  **If not:** read the refusal message exactly as written, then call Alex with it. Do not keep retrying variations of the key.
+  **If not:** if anything else appears first, take a screenshot and call Alex.
 
 ### 3. Wizard step 1: Rocket League
 
@@ -75,7 +72,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
   **Expected:** status reads **"Key OK"** plus a masked key, and the real league schedule appears with circuit and "when" filter chips.
 
   **If not:** the status line tells you what is wrong. What each message means:
-  - **"That's your Casterverse access key. This box wants the league API key (starts with rv_)."** You pasted the `RCV1.` key. Paste the `rv_` one instead.
+  - **"That's an old Casterverse access key (retired — no longer needed)..."** You pasted a retired `RCV1.` key. Paste the `rv_` league key instead.
   - **"No key saved. Paste your league API key above."** The save did not take. Paste the key and click **Save key** again.
   - **"Key rejected by the league site. Check it and save again."** The `rv_` key itself is wrong. Re-copy it from where Alex sent it, save again. Still rejected: call Alex, the key may need reissuing.
   - **"Can't reach the league site. Check your internet connection."** Your machine is offline or the league site is down. Check that a normal website loads. If the internet is fine, the league site is the problem: call Alex. A match that was already loaded keeps broadcasting from cache; only loading a new one needs the site back.
@@ -125,9 +122,9 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
 - [ ] Right-click the tray icon, **Quit**. Confirm the tray icon is gone, then start RIVALRY Casterverse again from the Start menu.
 
-  **Expected:** the app comes back with no wizard and no activation screen, and everything is exactly as you left it: the schedule, both series, which series was on air, team names, logos, casters, all of it. The overlays in OBS reconnect on their own.
+  **Expected:** the app comes back with no wizard, and everything is exactly as you left it: the schedule, both series, which series was on air, team names, logos, casters, all of it. The overlays in OBS reconnect on their own.
 
-  **If not:** if the wizard or the activation screen reappears, or any typed value is gone, that is exactly the kind of bug this checklist exists to catch. Export diagnostics and send to Alex before touching anything else.
+  **If not:** if the wizard reappears, or any typed value is gone, that is exactly the kind of bug this checklist exists to catch. Export diagnostics and send to Alex before touching anything else.
 
 ### 13. Export diagnostics
 

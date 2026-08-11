@@ -63,9 +63,6 @@ function createApiRouter(ctx) {
         connected: !!(obs.status && obs.status.connected),
         error: (obs.status && obs.status.error) || null,
       },
-      // Access key: booleans + who it is issued to, never the key itself.
-      // Read-only here; activating goes over the Origin-guarded control bus.
-      license: ctx.getLicenseStatus ? ctx.getLicenseStatus() : { valid: true, required: false },
       // The match lock: whether a league match is loaded (the packaged app
       // serves no scene without one) and which. Names only, never logo bytes.
       match: ctx.getMatchLock && ctx.getMatchLock() ? ctx.getMatchLock().status() : { locked: false },
@@ -365,7 +362,7 @@ function createApiRouter(ctx) {
   // Everything a remote debugging session needs in a single JSON the producer
   // can send instead of describing symptoms: build, environment, RL/OBS/league
   // state, the overlay signature scan, and the recent log tail. NO SECRETS:
-  // the league key appears masked, the access key as its public status only.
+  // the league key appears masked, never in full.
 
   function buildDiagnostics() {
     const os = require("os");
@@ -409,7 +406,6 @@ function createApiRouter(ctx) {
       // Which match the broadcast is locked to (or that none is — the single
       // most likely reason a producer reports "my scenes are blank").
       match: ctx.getMatchLock && ctx.getMatchLock() ? ctx.getMatchLock().status() : { locked: false },
-      license: ctx.getLicenseStatus ? ctx.getLicenseStatus() : null,
       overlays: reg
         ? {
             gateActive: ctx.gateActive ? ctx.gateActive() : null,

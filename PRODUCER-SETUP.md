@@ -8,22 +8,14 @@ If anything in here does not go the way the document says it will, stop and call
 
 ## What you received
 
-You should have three things:
+You should have two things:
 
 - [ ] The installer: `RIVALRY-Casterverse-Setup-<version>.exe` (or the Beta variant, which installs side by side with the regular one)
-- [ ] Your personal access key. It starts with `RCV1.` and was issued to you by name. Treat it like a password.
 - [ ] This document.
 
-You will also need a **league API key** (starts with `rv_`) before your first broadcast. It comes from the league site and is a different key from your access key. More on that below.
+You will also need a **league API key** (starts with `rv_`) before your first broadcast. It comes from the league site; treat it like a password. More on that below.
 
-**The two keys, side by side, because mixing them up is the most common mistake:**
-
-| Key | Starts with | What it does | Where it goes |
-|---|---|---|---|
-| Casterverse access key | `RCV1.` | Unlocks the app itself | The activation screen, once, right after install |
-| League API key | `rv_` | Lets Match mode read the league schedule | The "Find your match" card in the control panel |
-
-They look nothing alike, and the app will tell you if you paste one into the other's box.
+**One key, one box:** the league API key starts with `rv_` and goes in the **Load your match** card in the control panel. (If you were ever issued an old `RCV1.` access key: those are retired, the app no longer asks for one, and it will say so if you paste one in the wrong box.)
 
 ---
 
@@ -37,17 +29,6 @@ They look nothing alike, and the app will tell you if you paste one into the oth
    **Expected result:** the app opens on its own, and a RIVALRY icon appears in your system tray (bottom-right corner of the taskbar, you may need to click the little up arrow to see it).
 
 The app lives in that tray icon. Closing its window does not quit it; the tray menu has **Quit** when you really want it gone.
-
----
-
-## Activate
-
-1. The first thing the app shows is a screen titled **"Enter your access key"**.
-   **Expected result:** one text box and an **ACTIVATE** button. Nothing else is available yet, and that is on purpose. Until you activate, every overlay page shows an activation notice instead of scenes.
-2. Paste your access key (the one starting with `RCV1.`) into the box and click **ACTIVATE**.
-   **Expected result:** a green message saying **"Activated for"** followed by your name, and the setup wizard appears. You will never see the activation screen again on this machine.
-
-If the key is refused, read the message it gives you, then call Alex. Do not retype the key by hand; copy and paste it.
 
 ---
 

@@ -88,20 +88,6 @@
   </div>
   <div class="sub">Load your league match, line up the night, and drive every scene in real time.</div>
 
-  <!-- Access key. Hidden entirely once activated (and in builds that don't
-       enforce it) — a producer mid-show should never see licensing chrome. -->
-  <div class="card full" id="licenseCard" style="display:none;margin-bottom:18px;border-left:3px solid var(--warn);">
-    <h2>Activate RIVALRY Casterverse</h2>
-    <div class="muted-note" style="margin-bottom:8px;">
-      Overlay scenes stay off until this copy is activated with the access key you were issued.
-    </div>
-    <div class="row" style="gap:8px;align-items:flex-end;">
-      <div style="flex:2"><label>Access key <span class="muted-note">— starts with RCV1, issued to you by RIVALRY</span></label><input type="text" id="licenseKey" placeholder="RCV1.…" spellcheck="false" autocomplete="off" /></div>
-      <button class="mini" id="licenseActivate" type="button">Activate</button>
-      <div id="licenseStatus" class="muted-note" style="align-self:center;flex:2;">checking…</div>
-    </div>
-  </div>
-
   <!-- Match-first: loading a real league match IS the way into a broadcast.
        There is no manual mode — the app serves no scene without a loaded
        match, and once loaded it is cached, so a league outage mid-show
@@ -943,8 +929,6 @@ connect = function(){
       } else if (m && m.type === "rl-status") {
         rlLive = !!(m.payload && m.payload.connected);
         setStatus();
-      } else if (m && m.type === "license-status") {
-        renderLicense(m.payload);
       } else if (m && m.type === "match-status") {
         // Another panel (or the main process) changed the lock: mirror it.
         // No push — the actor that changed the lock pushes.
@@ -1052,39 +1036,6 @@ async function renderScenes(){
 }
 $("refreshScenes").addEventListener("click", renderScenes);
 
-// ---- League match mode ------------------------------------------------------
-// Match mode reveals the league card: key -> match list -> one click fills the
-// same manual fields (names, logos via the local /league/logo proxy, series,
-// event/round) and pushes. Everything stays hand-editable; best-of / seeds /
-// records are not in the league API yet and stay operator-entered.
-// ---- Access key -----------------------------------------------------------
-// The card only exists for installs that need activating. Once a key is in,
-// this disappears for good; there is no reason to show licensing chrome to
-// someone who is about to go live.
-function renderLicense(l){
-  const card = $("licenseCard"), el = $("licenseStatus");
-  if (!l) return;
-  const blocked = !!(l.required && !l.valid);
-  card.style.display = blocked ? "" : "none";
-  if (!blocked) return;
-  if (l.rejected) { el.style.color = "#f1c40f"; el.textContent = l.rejected; }
-  else { el.style.color = ""; el.textContent = l.reason || "Not activated."; }
-}
-$("licenseActivate").addEventListener("click", () => {
-  if (!(connected && ws.readyState === ws.OPEN)) return;
-  const key = $("licenseKey").value.trim();
-  if (!key) { $("licenseStatus").textContent = "Paste your key first."; return; }
-  $("licenseStatus").style.color = ""; $("licenseStatus").textContent = "checking…";
-  ws.send(JSON.stringify({ type: "license-key", payload: { key } }));
-  $("licenseKey").value = "";
-});
-// Seed from /status.json: license-status is only broadcast on change, so a
-// panel opened later needs the current answer up front.
-(async function initLicense(){
-  try { renderLicense((await (await fetch("/status.json", { cache: "no-store" })).json()).license); }
-  catch { /* app not reachable; the connection banner already says so */ }
-})();
-
 // ---- The match lock, rendered ----------------------------------------------
 // One strip above the finder: which match is on air, refresh it, end it.
 // Team cards mirror the same state. All identity rendering funnels through
@@ -1112,7 +1063,7 @@ function renderMatchLock(){
 
 function leagueErrorText(err){
   if (err === "no-key") return "No key saved. Paste your league API key above.";
-  if (err === "access-key-here") return "That's your Casterverse access key. This box wants the league API key (starts with rv_).";
+  if (err === "access-key-here") return "That's an old Casterverse access key (retired — no longer needed). This box wants the league API key (starts with rv_).";
   if (err === "http-401") return "Key rejected by the league site. Check it and save again.";
   if (err === "http-404") return "The league site doesn't know that match any more (completed or removed). Search again, or run the series manually.";
   if (err === "network") return "Can't reach the league site. Check your internet connection.";
@@ -1135,12 +1086,12 @@ $("leagueSaveKey").addEventListener("click", () => {
   if (!(connected && ws.readyState === ws.OPEN)) return;
   const key = $("leagueKey").value.trim();
   const el = $("leagueStatus");
-  // The app has two keys and they look nothing alike, so say which one this is
-  // rather than storing it and reporting the league's 401 back as "your key was
-  // rejected" — that sends people off re-checking a key that was never at fault.
+  // Retired access keys (RCV1.) are still in producers' password managers.
+  // Name the mistake rather than storing it and reporting the league's 401
+  // back as "your key was rejected".
   if (key.startsWith("RCV1.")) {
     el.style.color = "#f1c40f";
-    el.textContent = "That's your Casterverse access key. This box wants the league API key (starts with rv_).";
+    el.textContent = "That's an old Casterverse access key (retired — no longer needed). This box wants the league API key (starts with rv_).";
     return;
   }
   el.style.color = "";

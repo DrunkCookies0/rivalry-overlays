@@ -12,7 +12,7 @@ Full walkthrough with expected results at every step: [PRODUCER-SETUP.md](PRODUC
 
 1. **Install.** Download `RIVALRY-Casterverse-Setup-<version>.exe` from [Releases](../../releases) and run it.
 2. **Get past SmartScreen.** Windows shows "Windows protected your PC". Click **More info**, then **Run anyway**. This is expected: the installer is unsigned, and the warning appears for every producer on first install.
-3. **Activate.** The app opens on an activation gate. Enter the access key Alex issued you (it looks like `RCV1.<payload>.<signature>`). Keys are personal, do not share them; a shared key can be revoked remotely.
+3. **Set up.** The app opens on a three-step wizard (Rocket League feed, OBS, control panel dock). No activation step: your league API key plus a real league match is what unlocks a broadcast.
 4. **Run the setup wizard.** It opens automatically on first launch:
 
 | Step | What the app does | What you do |
@@ -148,7 +148,7 @@ The tray gains a **Dev: serve overlay from local folder** toggle when the app ru
 
 ### The overlay kit
 
-The kit under `overlays/` (SDK, template, data contract, signing CLIs) is internal tooling for building RIVALRY's own scenes; it is not currently open to third-party designers. Every shipped scene is Ed25519-signed and the packaged app serves only approved scenes, in addition to requiring access-key activation.
+The kit under `overlays/` (SDK, template, data contract, signing CLIs) is internal tooling for building RIVALRY's own scenes; it is not currently open to third-party designers. Every shipped scene is Ed25519-signed and the packaged app serves only approved scenes.
 
 ### Build, release, CI
 
