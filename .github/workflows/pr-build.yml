@@ -41,6 +41,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # The proof gate, on the SAME Windows checkout electron-builder packs.
+      # This is exactly where the CRLF signature-voiding class of bug lives
+      # (see .gitattributes): a local LF pass does not prove a packaged pass.
+      - name: Run unit tests
+        run: npm test
+
       - name: Compute build version
         id: ver
         shell: bash

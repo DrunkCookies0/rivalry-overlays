@@ -74,7 +74,14 @@ const BADGE_SELECTOR = "#rivalry-preview-badge";
 
 // Console/page errors that are known-acceptable noise. Empty on purpose:
 // add a string (substring match) or RegExp ONLY with a comment saying why.
-const CONSOLE_ERROR_ALLOWLIST = [];
+const CONSOLE_ERROR_ALLOWLIST = [
+  // Google Fonts' CDN intermittently 404s a woff2 (proven by the roaming
+  // console-clean failures of 2026-08-12, all naming fonts.gstatic.com once
+  // the harness started recording URLs). The scenes have local font-stack
+  // fallbacks, and this gate proves OUR code, not Google's CDN. The real
+  // v1.0 fix is self-hosting the fonts; until then, don't fail on it.
+  /Failed to load resource.*\[https:\/\/fonts\.(gstatic|googleapis)\.com/,
+];
 
 // One key element per scene that must be VISIBLE once mock data settles.
 // Selectors were derived from each overlays/rivalry-*/index.html.
@@ -339,7 +346,13 @@ async function openPage(browser, url, { initScript, viewport } = {}) {
   const page = await context.newPage();
   const errors = [];
   page.on("console", (msg) => {
-    if (msg.type() === "error") errors.push(msg.text());
+    // "Failed to load resource" console text carries no URL; pull it from the
+    // message location so a 404 names the resource instead of being anonymous.
+    if (msg.type() === "error") {
+      const loc = msg.location && msg.location();
+      const url = loc && loc.url ? ` [${loc.url}]` : "";
+      errors.push(msg.text() + url);
+    }
   });
   page.on("pageerror", (err) =>
     errors.push("pageerror: " + (err && err.message ? err.message : String(err)))
@@ -530,6 +543,9 @@ async function checkControlPanel(browser, registryCount) {
   await runCheck("control.html | scenes card renders registry rows", async () => {
     const opened = await openPage(browser, `${BASE}/control/control.html`);
     try {
+      // The scenes card lives on the Setup tab (the default Show view is
+      // match + schedule only); switch tabs the way a producer would.
+      await opened.page.locator("#tabSetup").click();
       // renderScenes() fills #sceneList with .scene-row elements from
       // /overlays/registry.json (see control/control.html).
       await opened.page
@@ -638,6 +654,24 @@ async function main() {
       if (stale.length) throw new Error(`SCENE_CHECKS has unknown scene(s): ${stale.join(", ")}`);
       if (regIds.length === 0) throw new Error("registry returned zero overlays");
       return `${regIds.length} scenes`;
+    });
+
+    // HTTP hardening regressions, against the real running server:
+    // 1. Dot-segment traversal must be canonicalized BEFORE the gates, so
+    //    keys can never be reached through an approved scene's folder.
+    // 2. Malformed percent-encoding must be a 400, never an uncaught throw
+    //    (which would take down the whole broadcast stack).
+    await runCheck("http | traversal cannot reach overlay keys", async () => {
+      const r = await httpGet(`${BASE}/overlays/rivalry-gameplay/..%2Fkeys/rivalry-overlay-public.pem`);
+      if (r.status === 200) throw new Error("keys served through dot-segment traversal");
+      return `status ${r.status}`;
+    });
+    await runCheck("http | malformed percent-encoding is a 400, server survives", async () => {
+      const r = await httpGet(`${BASE}/%zz`);
+      if (r.status !== 400) throw new Error(`expected 400, got ${r.status}`);
+      const after = await httpGet(`${BASE}/status.json`);
+      if (after.status !== 200) throw new Error("server did not survive the bad request");
+      return "400, then /status.json still 200";
     });
 
     browser = await chromium.launch();
