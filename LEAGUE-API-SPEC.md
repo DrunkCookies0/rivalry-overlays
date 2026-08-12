@@ -102,7 +102,7 @@ Cynical will expose each user's **linked accounts** (platform IDs + display name
 ### ~~P2 - Teams (standalone)~~ - DROPPED
 Cut per Cynical: the roster already carries everything a team needs, so a standalone `GET /teams/:id` is redundant.
 
-**Non-RV matches: supported via manual mode.** The baseline scenes are **general-purpose**. For a non-RV match the producer just enters team names/logos/seeds/etc. in the control panel (no API). RV matches get the same scenes auto-filled from the API. The overlays are not RV-locked.
+**Non-RV matches: not supported.** (Superseded: at the time this was written, non-RV matches were supported via manual control-panel entry. Manual mode has since been removed; the app is match-only, so team identity comes exclusively from a locked league match and non-league matches cannot be broadcast.)
 
 ### ~~P3 - Replay upload~~ - DEFERRED (no reliable auto-capture)
 There's no reliable way to auto-save `.replay` files anymore (Alex, 2026-06-17), so an auto-upload endpoint has little value right now. Park it as a **future feature** if Psyonix restores auto-save. (`POST /api/v1/matches/:id/replays`, route key `matchId`, would wire onto the existing parse pipeline when revisited.)
@@ -139,7 +139,7 @@ The post-game results scene (box score: goals / assists / saves / shots / demos 
 | P2 | `title` + `badges` on player | Not modeled yet; operator-entered for now |
 | P2 | Per-player linked accounts | Cynical will expose; optional soft binding aid only |
 | P3 | `GET /matches/:id/stats` | Future - post-game scene uses LIVE feed; this adds richer replay stats later |
-| ~~P2~~ | ~~`GET /teams/:id`~~ | Dropped (roster suffices; non-RV uses manual mode) |
+| ~~P2~~ | ~~`GET /teams/:id`~~ | Dropped (roster suffices; non-RV matches are not supported, match-only) |
 | ~~P3~~ | ~~`POST /matches/:id/replays`~~ | Deferred - no reliable replay auto-capture; revisit if Psyonix restores |
 
 ---
@@ -155,6 +155,6 @@ The post-game results scene (box score: goals / assists / saves / shots / demos 
 7. **Teams standalone** - dropped (roster suffices).
 
 ### Decisions (Alex, 2026-06-17)
-- **Non-RV match support: YES, via manual mode.** Baseline scenes are general-purpose - non-RV = manual control-panel entry, RV = API auto-fill. Not RV-locked.
+- **Non-RV match support: YES, via manual mode.** (Superseded: manual mode was later removed by the match-only pivot, so non-league matches are no longer supported.)
 - **Integrity / alt-detection: DROPPED.** Not viable overlay-side; not pursuing server-side either.
 - **Replay auto-capture: DROPPED for now.** No reliable RL auto-save; future feature only if Psyonix adds it. Post-game stats come from the live feed instead, so the post-game scene is not blocked.

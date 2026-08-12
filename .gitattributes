@@ -13,9 +13,9 @@ overlays/**/*.json  text eol=lf
 overlays/**/*.svg   text eol=lf
 overlays/keys/*.pem text eol=lf
 
-# The access-key public key is not hashed, but keeping it LF everywhere means a
-# fingerprint printed on Windows CI matches one printed locally.
-config/*.pem        text eol=lf
+# Binary art served from /assets/ (shared by scenes): never convert.
+assets/*.webp       binary
+assets/*.png        binary
 
 # Common binaries a designer might drop into an overlay folder: never convert.
 overlays/**/*.png   binary

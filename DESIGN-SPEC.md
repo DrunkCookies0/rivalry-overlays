@@ -26,8 +26,8 @@ The overlay reads colors from CSS variables in [`overlays/rivalry-gameplay/index
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `--blue` | `#2f7dff` | Team A accent (overridden live by control panel) |
-| `--red` | `#e6324f` | Team B accent (overridden live by control panel) |
+| `--blue` | `#2f7dff` | Team A accent (overridden live from the loaded league match) |
+| `--red` | `#e6324f` | Team B accent (overridden live from the loaded league match) |
 | `--panel` | `rgba(10,13,18,.94)` | Default panel fill (scorebar, statbar) |
 | `--panel-solid` | `#0a0d12` | Solid panel fill (event title strip) |
 | `--bar` | `#0c1118` | Inner bar fill |
@@ -62,12 +62,12 @@ The overlay reads colors from CSS variables in [`overlays/rivalry-gameplay/index
 | Height | **62px** |
 | Width | Variable (~840px total at default settings) |
 | Layout | `[Team A Logo + Name] [Score A] [Clock] [Score B] [Logo + Name Team B]` |
-| Logos | **42 x 42 px**, providable as URLs in the control panel |
+| Logos | **42 x 42 px**, filled from the locked league match (served via the app's local logo proxy) |
 | Team-name font | 26px, **800 weight**, UPPERCASE, 0.5px letter-spacing |
 | Score font | 38px, **800 weight**, white on team color |
 | Clock font | 30px, **800 weight**, dark text on light panel (`#f4f7fb` bg) |
 | OT clock | Renders in `--red` with a `+` prefix |
-| Designer hooks | Team logos (URL field), team colors (color picker), scorebar background (`--panel`) |
+| Designer hooks | Team logos and colors (from the loaded league match), scorebar background (`--panel`) |
 
 ### 3. Series subbar (below scorebar)
 

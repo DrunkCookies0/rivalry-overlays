@@ -3,7 +3,7 @@
  * as production, just published as prereleases under the 'beta' channel.
  *
  * Reverted from Squirrel.Windows because electron-updater doesn't support
- * Squirrel — see the comment in electron-builder.js for the full reasoning.
+ * Squirrel — see the comment in electron-builder.prod.js for the full reasoning.
  *
  * Side-by-side install (different appId / productName / install dir /
  * userData) keeps the beta out of the production app's way. Each PR push
@@ -20,7 +20,6 @@ module.exports = {
   files: [
     "main.js",
     "bridge/**/*",
-    "overlay/**/*",
     "control/**/*",
     "config/**/*",
     "assets/**/*",
@@ -28,9 +27,6 @@ module.exports = {
     "overlays/**/*",
     "!overlays/keys/*-private.pem", // NEVER ship the signing private key
     "!overlays/_template/**/*", // authoring starter, not a real scene
-    "!overlays/_prototype-*.html", // throwaway design galleries
-    "!overlays/_prototype-assets/**/*", // screenshots backing the galleries
-    "!overlay/_prototype-*.html", // legacy-folder prototypes, same rule
     "!overlays/**/*.md", // authoring docs (CONTRACT / MANIFEST-SPEC / README)
   ],
   extraMetadata: {

@@ -80,15 +80,18 @@ A useful community reference: https://github.com/zomlit/rocket-league-stats-api
 Project root (the repo root of `DrunkCookies0/rivalry-overlays`):
 
 > **Update:** the app is now multi-scene. The current scenes live in
-> `overlays/`, one signed folder per scene (7 scenes plus the chrome frame),
+> `overlays/`, one signed folder per scene: 17 shipped scenes, 9 in the house
+> "Kinetic Bold" look (including the chrome frame and the dark-launched
+> standings scene) plus 8 in Moldybanana's "SC26" look (`rivalry-sc26-*`),
 > with a shared SDK (`overlays/sdk/`), a designer template
 > (`overlays/_template/`), an Ed25519 signing gate enforced at serve time, and
 > a first-run setup wizard at `control/setup.html`. The `overlay/overlay.html`
-> described below is a legacy fallback kept so pre-migration OBS sources keep
-> working; new work happens in `overlays/`.
+> described below has been removed from the repo; all work happens in
+> `overlays/`.
 
-- `package.json` - dependencies (`ws`, dev `electron`, `electron-builder`), npm scripts, and
-  the electron-builder Windows/NSIS config (installer name, icon, files list).
+- `package.json` - dependencies (`ws`, dev `electron`, `electron-builder`) and npm scripts.
+  The electron-builder Windows/NSIS config (installer name, icon, files list) lives in
+  `electron-builder.prod.js` and `electron-builder.beta.js`, not in `package.json`.
 - `main.js` - Electron main process. On ready it: writes the ini (`runSetup`), starts the
   bridge (`startBridge`), starts the replay collector, starts the local web server on 49080,
   opens the control panel window, and creates the system tray. Closing the window hides to
@@ -109,7 +112,9 @@ Project root (the repo root of `DrunkCookies0/rivalry-overlays`):
   and writes a `.json` sidecar (event, teams, game number, timestamp) for future match-page
   upload. Gets team/event context by subscribing to the control relay (49777). Ignores
   replays that existed before launch (only collects the current session).
-- `overlay/overlay.html` - the OBS Browser Source. Single self-contained file (CSS + JS).
+- `overlay/overlay.html` - REMOVED from the repo (the gameplay scene now lives at
+  `overlays/rivalry-gameplay/index.html`). Historically it was the OBS Browser Source, a
+  single self-contained file (CSS + JS).
   Connects to the game feed (49124) and control relay (49777). Renders: top scorebar (event
   title strip, team names/logos, colored scores, white clock, region tags, segmented series
   pips), per-player boost tags down each side (blue left / red right) with the spectated
@@ -117,10 +122,12 @@ Project root (the repo root of `DrunkCookies0/rivalry-overlays`):
   a radial boost gauge (bottom right), the custom goal banner, and the stinger wipe. Goal
   sequence is event-driven (see section 6).
 - `control/control.html` - the control panel, also usable as an OBS Custom Browser Dock.
-  Sets team names, logos (URL), accent colors, region/seed tags, best-of, series score,
-  event title, and the goal-sequence toggle + banner text template. Pushes state live over
-  the relay (49777). Responsive so it works docked narrow. Has an "Add to OBS" card with the
-  overlay URL and a copy button.
+  Two tabs: **Show** (find and load the league match, broadcast schedule, series score) and
+  **Setup** (league API key, chrome and ticker, lower third, casters, player titles, scenes
+  list, OBS integration). Team identity (names, logos, records, rosters) comes exclusively
+  from the locked league match; there is no manual team entry. Operator-owned fields
+  (best-of, seeds, series score, casters) stay editable. Pushes state live over the relay
+  (49777). Responsive so it works docked narrow.
 - `config/DefaultStatsAPI.ini` - reference copy of the snippet the app writes.
 - `assets/` - `tray.png` (system tray icon), `rivalry-logo.svg` (RV monogram, used by the
   stinger), `rivalry-wordmark.svg` (used in the control panel header).
@@ -153,9 +160,11 @@ npm start             # run the app against a real Rocket League
 npm run dist          # produces dist\RIVALRY-Casterverse-Setup-<version>.exe
 ```
 
-OBS setup: add a Browser Source at `http://localhost:49080/overlay/overlay.html`
-(1920x1080), and a Custom Browser Dock at `http://localhost:49080/control/control.html`.
-The app must be running for both.
+OBS setup: run the setup wizard's **SET UP OBS FOR ME** (or import the downloadable
+scene collection); it wires every scene as a 1920x1080 Browser Source at
+`http://localhost:49080/overlays/<id>/index.html` (for example
+`/overlays/rivalry-gameplay/index.html`; the panel's Scenes card has copy-URL buttons).
+Add a Custom Browser Dock at `http://localhost:49080/`. The app must be running for both.
 
 ---
 
@@ -206,11 +215,12 @@ The app must be running for both.
 
 ## 7. Theming / customization quick reference
 
-- Team colors, names, logos, tags, series, event title, and goal banner text are all set
-  live in the control panel (no code change).
-- Overlay visual style lives in the `<style>` block of `overlay/overlay.html` (CSS variables
-  at the top: `--blue`, `--red`, `--panel`, `--gold`, etc.). Team accent colors are also
-  driven by the control panel via CSS variables.
+- Team names, logos, and colors come from the locked league match (match-only; no manual
+  team entry). Operator-owned fields (best-of, seeds, series score, casters, event title)
+  are set live in the control panel (no code change).
+- Overlay visual style lives in the `<style>` block of `overlays/rivalry-gameplay/index.html`
+  (CSS variables at the top: `--blue`, `--red`, `--panel`, `--gold`, etc.). Team accent
+  colors are driven by the loaded match via CSS variables.
 - The stinger uses `assets/rivalry-logo.svg`; swap that file to rebrand it.
 - App/installer icon is `build/icon.ico`; tray icon is `assets/tray.png`.
 
@@ -224,10 +234,10 @@ names were inferred and should be confirmed against a real spectated match. The 
 to do that is to log the raw frames once (the bridge already frames every message; add a
 `fs.appendFile` of each frame to a file, spectate a real match, then inspect).
 
-1. Demos: `overlay/overlay.html` `onStatfeed()` looks for the demolition under a few likely
+1. Demos: the gameplay scene's (`overlays/rivalry-gameplay/index.html`) `onStatfeed()` looks for the demolition under a few likely
    field names (`Attacker.Name`, `Victim.Name`, `MainTarget.Name`). Confirm the real
    `StatfeedEvent` shape and tighten if needed.
-2. Spectated player: `overlay/overlay.html` `getTargetName()` checks several likely
+2. Spectated player: the gameplay scene's `getTargetName()` checks several likely
    locations (`data.Target`, `Game.Target`, `Spectated`, `Spectator.PlayerName`, etc.).
    This drives the stat feed bar and the radial boost gauge. Confirm the real field and
    simplify. If it is wrong, the stat bar/gauge may show the wrong or no player.
@@ -294,7 +304,9 @@ of bot matches. Highlights of what each patch did:
 - **v0.5.1** - Goal speed unit fix (GoalSpeed is KPH, not UU/s - was displaying ~2 MPH);
   README feature list expanded.
 - **v0.5.2** - Resilience patch from live-capture audit. Critical fixes:
-  - Real RL replay event names (`ReplayPlayback*`, not the never-emitted `GoalReplay*`)
+  - Switched the replay handlers to `ReplayPlayback*` event names, believed real at the
+    time. Later live capture proved the opposite: `GoalReplay*` are the real names and
+    `ReplayPlayback*` never fire; corrected in v0.6.2 (see section 6)
   - `GoalScored` 100ms per-scorer dedup that preserves `GoalSpeed`
   - `StatfeedEvent` Demolition 1000ms dedup
   - WS disconnect tears down the goal sequence

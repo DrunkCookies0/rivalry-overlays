@@ -29,12 +29,13 @@ tag will be the first production release, and that is when the auto-updater in
 
 ## 2. How the auto-updater actually works
 
-Code lives in [main.js:158-169](main.js#L158-L169) (`setupAutoUpdate()`).
+Code lives in `setupAutoUpdate()` in [main.js](main.js).
 
 - Runs ONLY when `app.isPackaged === true`. `npm start` / `npm run mock` skip
   it silently, no log, no error. This is intentional (no update feed in dev).
-- Uses `electron-updater` with the `github` provider from `package.json`
-  (`owner: DrunkCookies0`, `repo: rivalry-overlays`, `releaseType: release`).
+- Uses `electron-updater` with the `github` provider from
+  `electron-builder.prod.js` (`owner: DrunkCookies0`, `repo: rivalry-overlays`,
+  `releaseType: release`).
   On launch it fetches `https://github.com/DrunkCookies0/rivalry-overlays/releases/latest`,
   reads `latest.yml`, compares its `version` field to the installed app's
   `package.json` version.
@@ -89,8 +90,8 @@ mismatches cause confusing "no update found" / "update available" loops.
 
 ## 4. Versioning going forward (semver)
 
-`package.json` is currently `1.0.0`. Bump it BEFORE tagging. The tag is just
-`v<that-version>`.
+Check the current `version` in `package.json` and bump it BEFORE tagging. The
+tag is just `v<that-version>`.
 
 | Change kind                                     | Bump   | Example                |
 | ----------------------------------------------- | ------ | ---------------------- |
@@ -324,11 +325,12 @@ withdrawn key ids. Publishing it is a `git push` - installs fetch it from the
 repo's raw URL on launch and every 6 hours.
 
 Because the list is signed with the same private key as the access keys, it
-cannot be forged or edited by whoever hosts it. That means it can live anywhere:
+cannot be forged or edited by whoever hosts it. That means it could live anywhere:
 the repo (default, free, nothing to run), a static file on a self-hosted box, an
-object store. To move it, change `REVOCATION_URL` in [main.js](main.js) - or set
-`RIVALRY_REVOCATION_URL` for a one-off test. **You do not need to run a server**;
-a service would add an outage mode to a broadcast tool for no benefit.
+object store. Moving it meant changing the `REVOCATION_URL` constant in main.js
+(removed with the retirement), or setting `RIVALRY_REVOCATION_URL` for a one-off
+test. **You did not need to run a server**; a service would add an outage mode to
+a broadcast tool for no benefit.
 
 Design notes worth not undoing:
 
@@ -342,9 +344,9 @@ Design notes worth not undoing:
 - **Three sources, newest wins:** the copy that shipped in the build, the last
   one successfully fetched (cached in userData), and a fresh fetch.
 
-`keys/issued-keys.json` is the record of who holds which key id. It is
-gitignored (real names) and it is what `key:list` and `key:revoke` read - back it
-up alongside the private key. See also section 8.
+`keys/issued-keys.json` was the record of who holds which key id. It was
+gitignored (real names) and it was what `key:list` and `key:revoke` read - back
+it up alongside the private key if the system ever comes back.
 
 ---
 
@@ -358,7 +360,7 @@ up alongside the private key. See also section 8.
 - [ ] **Code signing.** Currently unsigned. SmartScreen will warn on first run
   ("More info" -> "Run anyway"). Acceptable for an indie tool. To remove:
   buy a code-signing cert and add `win.certificateFile` /
-  `certificatePassword` to `build` in `package.json`. Skip unless casters
+  `certificatePassword` to `electron-builder.prod.js`. Skip unless casters
   complain.
 - [ ] **Set up a CHANGELOG.md** before v1.0.0 so the first release has real
   notes, not a default GitHub blob.

@@ -138,7 +138,6 @@ npm install
 | `npm run dev:bridge` | Bridge only, with mock data on the WebSocket ports |
 | `npm run pack` | Unpacked build in `dist\win-unpacked\` for quick local testing |
 | `npm run dist` | Build the NSIS installer (Windows machine required) |
-| `npm run key:issue` / `key:list` / `key:revoke` / `key:verify` | Access-key toolchain (see RELEASE-HANDOFF.md section 6.8) |
 
 `npm test` and `npm run verify:render` are the proof gate before any push.
 

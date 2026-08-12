@@ -19,7 +19,7 @@ broadcasts on the control bus (see `overlays/CONTRACT.md`), so importing is
   },
   "series": [
     {
-      "matchId": "68a1f0c4e2b7431d9c001001",  // league match id, or "" for a manual pairing
+      "matchId": "68a1f0c4e2b7431d9c001001",  // league match id, REQUIRED (see rule 1)
       "teamA": { "name": "FROST",  "logo": "", "tag": "", "seed": "", "record": "4-1" },
       "teamB": { "name": "EMBER",  "logo": "", "tag": "", "seed": "", "record": "3-2" },
       "bestOf": 5,                        // odd int; operator-owned, not in the league API
@@ -33,10 +33,12 @@ broadcasts on the control bus (see `overlays/CONTRACT.md`), so importing is
 
 ## Rules an importer must follow
 
-1. **`matchId` wins.** When present, the app re-resolves teams, records and
-   logos from the league API at load time (via the local logo proxy), so stale
-   exported names or logos never reach air. The inline `teamA`/`teamB` are the
-   fallback when the API is unreachable or `matchId` is empty.
+1. **`matchId` is required.** The schedule holds league matches only; there is
+   no manual-pairing fallback. An entry without a `matchId` is invalid and the
+   panel drops it. At load time the app re-resolves teams, records and logos
+   from the league API (via the local logo proxy), so stale exported names or
+   logos never reach air. The inline `teamA`/`teamB` are display fallback only
+   for when the API is unreachable.
 2. **`startTimeIso` is the ordering key.** `startTimeDisplay` is presentation
    only; if it is missing, the panel derives it from the ISO value in the
    producer's locale.

@@ -1,7 +1,8 @@
 # RIVALRY Casterverse - Path to Perfect
 
 > Strategy notes from June 2026, partly superseded: v1.0 is private-and-direct
-> distribution, the league API is wired, and post-game plus manual mode shipped.
+> distribution, the league API is wired, and post-game shipped. Manual mode
+> shipped at the time but has since been removed by the match-only pivot.
 > Kept for the BARL analysis.
 
 ## Context
@@ -65,7 +66,7 @@ BARL is a thin local Electron shell whose entire UI is a Firebase-hosted SPA, in
 
 8. **CSS theme system (borrowed from BARL, done local-first).** Why: BARL's single best idea and a natural paid-pack surface. Ship free community themes locally; gate pro design packs behind the paid service. Push raw CSS over the existing 49777 control bus (BARL's `header_data` + checksum pattern). Keep it fully local, no hosted dependency. Effort: med.
 
-9. **Manual-override / no-RL operator mode + in-panel preview.** Why: caster hand-sets names/scores/series for pre-show, technical difficulties, demos; preview without OBS open. Both are cheap and genuinely useful (borrowed from BARL). Effort: low-med.
+9. **Manual-override / no-RL operator mode + in-panel preview.** SUPERSEDED AND REJECTED by the match-only decision: team identity comes exclusively from the locked league match, and a manual operator mode will not be built. (Original rationale, kept for the record: caster hand-sets names/scores/series for pre-show, technical difficulties, demos; preview without OBS open; borrowed from BARL.)
 
 10. **Design audit.** Unify easing (ease-out for all enter/exit), verify OT/clinch state colors cannot collide with team colors (add neutral fallback below 3:1 contrast), bump goal-banner dwell from 3000ms toward 3500-4000ms. Effort: low-med.
 
@@ -87,7 +88,7 @@ BARL is a thin local Electron shell whose entire UI is a Firebase-hosted SPA, in
 - `overlays/rivalry-gameplay/index.html` - timing constants (kickoff delays, STINGER_LEAD), OT detector, goal-sequence handlers, WS reconnect, renderBoost, stat-pop map.
 - `bridge/rl-bridge.js` - TCP framing, synthetic event derivation, dual WS servers, ini writer (PacketSendRate).
 - `main.js` - OBS auto-switch, control bus, electron-updater.
-- Control panel (for P2-8/9 theme + manual-override + preview).
+- Control panel (for the P2-8 theme system; P2-9 was rejected by the match-only decision).
 
 ## Sources
 

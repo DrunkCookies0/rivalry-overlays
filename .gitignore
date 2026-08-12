@@ -18,6 +18,7 @@ Moldy_Overlays/
 # Overlay signing — public key is committed, private key never is
 overlays/keys/*-private.pem
 
-# Casterverse access keys — the public key ships (config/), the private key and
-# the record of who holds a key never leave this machine
+# Retired RCV1 access-key material (system removed 2026-08-11). The folder may
+# still hold the old private key and issuance records on dev machines; it never
+# leaves this machine and nothing reads it any more.
 keys/

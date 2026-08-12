@@ -1,7 +1,7 @@
 {
   "name": "rivalry-casterverse",
   "productName": "RIVALRY Casterverse",
-  "version": "0.6.12",
+  "version": "0.6.13",
   "private": true,
   "description": "RIVALRY Casterverse - Rocket League broadcast suite. Bridges Rocket League's official Stats API into the browser and serves OBS overlay scenes + a producer control panel. Ships as a Windows installer.",
   "main": "main.js",

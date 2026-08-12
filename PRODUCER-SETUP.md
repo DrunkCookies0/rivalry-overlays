@@ -15,7 +15,7 @@ You should have two things:
 
 You will also need a **league API key** (starts with `rv_`) before your first broadcast. It comes from the league site; treat it like a password. More on that below.
 
-**One key, one box:** the league API key starts with `rv_` and goes in the **Load your match** card in the control panel. (If you were ever issued an old `RCV1.` access key: those are retired, the app no longer asks for one, and it will say so if you paste one in the wrong box.)
+**One key, one box:** the league API key starts with `rv_` and goes in the **League API key** card on the control panel's **Setup** tab. (If you were ever issued an old `RCV1.` access key: those are retired, the app no longer asks for one, and it will say so if you paste one in the wrong box.)
 
 ---
 
@@ -91,9 +91,9 @@ The control panel is laid out top to bottom in the order you use it on a match n
 
 ### Before the stream
 
-1. In the **Load your match** card, paste your league API key (starts with `rv_`) and click **Save key**. You only do this once, it is remembered.
+1. On the **Setup** tab, in the **League API key** card, paste your league API key (starts with `rv_`) and click **Save key**. You only do this once, it is remembered.
    **Expected result:** the status reads **"Key OK"** followed by the masked key.
-2. Click **Find matches** (optionally type a team name first to narrow it).
+2. Switch to the **Show** tab and, in the **Load your match** card, click **Find matches** (optionally type a team name first to narrow it).
    **Expected result:** tonight's real schedule appears, with circuit and "when" filter chips you can click to narrow the list.
 3. In the **Broadcast schedule** card, fill in **Season**, **Circuit**, and **Tier** once for the night.
 4. For each series on tonight's slate, in schedule order: find it in the match list and click **Add to queue** (or **Use now** for the one starting first).
@@ -102,11 +102,11 @@ The control panel is laid out top to bottom in the order you use it on a match n
    **Expected result:** the banner at the top of the match card shows the on-air pairing, and the Team A / Team B cards show names, logos, and records from the league; the series score resets to 0-0.
 6. Set **Best of** and the seeds by hand. The league data does not carry those, so they are always typed.
 7. Team names and logos are locked to the loaded match (that is the point). Records are editable if the league's number looks off. Then click **PUSH TO OVERLAY**.
-8. In the **Casters** card: set the VDO.Ninja room name, click **Generate caster links**, and send each caster their personal link. Their cams appear on the Casters scene, no accounts or installs on their end.
+8. In the **Casters** card (on the **Setup** tab): set the VDO.Ninja room name, click **Generate caster links**, and send each caster their personal link. Their cams appear on the Casters scene, no accounts or installs on their end.
 
 ### During the stream
 
-Use the scene deck buttons in the **OBS integration** card (or click scenes in OBS directly, same thing). A typical night:
+Use the scene deck buttons in the **OBS integration** card on the **Setup** tab (or click scenes in OBS directly, same thing). A typical night:
 
 1. **Starting Soon** while you wait for the hour.
 2. **Casters** for the desk open.

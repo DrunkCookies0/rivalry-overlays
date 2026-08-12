@@ -67,7 +67,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
 ### 6. League key and find matches
 
-- [ ] In the control panel's **Load your match** card, paste your league API key (starts with `rv_`), click **Save key**, then click **Find matches**.
+- [ ] In the control panel, open the **Setup** tab and, in the **League API key** card, paste your league API key (starts with `rv_`) and click **Save key**. Then switch back to the **Show** tab and click **Find matches** in the **Load your match** card.
 
   **Expected:** status reads **"Key OK"** plus a masked key, and the real league schedule appears with circuit and "when" filter chips.
 

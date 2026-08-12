@@ -26,7 +26,6 @@ module.exports = {
   files: [
     "main.js",
     "bridge/**/*",
-    "overlay/**/*",
     "control/**/*",
     "config/**/*",
     "assets/**/*",
@@ -34,9 +33,6 @@ module.exports = {
     "overlays/**/*",
     "!overlays/keys/*-private.pem", // NEVER ship the signing private key
     "!overlays/_template/**/*", // authoring starter, not a real scene
-    "!overlays/_prototype-*.html", // throwaway design galleries
-    "!overlays/_prototype-assets/**/*", // screenshots backing the galleries
-    "!overlay/_prototype-*.html", // legacy-folder prototypes, same rule
     "!overlays/**/*.md", // authoring docs (CONTRACT / MANIFEST-SPEC / README)
   ],
   // CI sets BUILD_SHA so the tray + control panel show "v0.2.2 (a3b9c1d)"
