@@ -6,7 +6,7 @@
 <title>RIVALRY Control Panel</title>
 <style>
   :root{ --rivalry:#e7274a; --accent:#30c0f6; --bg:#0e1218; --panel:#171f29;
-    --ink:#eef3f8; --muted:#8aa0b6; --warn:#f1c40f; }
+    --ink:#eef3f8; --muted:#8aa0b6; }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);color:var(--ink);
     font-family:'Segoe UI',Roboto,Arial,sans-serif;padding:22px;}
@@ -20,10 +20,9 @@
   .card{background:var(--panel);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:16px;}
   .card h2{font-size:13px;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px;color:var(--muted);}
   label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px;}
-  input[type=text],input[type=number],textarea,select{width:100%;padding:8px 10px;border-radius:6px;
+  input[type=text],input[type=number],input[type=password],textarea,select{width:100%;padding:8px 10px;border-radius:6px;
     border:1px solid rgba(255,255,255,.1);background:#0b0f14;color:var(--ink);font-size:14px;}
   textarea{font-family:inherit;resize:vertical;}
-  input[type=color]{width:48px;height:32px;border:none;background:none;}
   .row{display:flex;align-items:center;gap:10px;}
   .series{display:flex;align-items:center;gap:8px;margin-top:6px;}
   button{cursor:pointer;border:none;border-radius:6px;padding:8px 12px;font-weight:700;font-size:14px;}
@@ -35,10 +34,19 @@
   .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#c0392b;margin-right:5px;}
   .dot.ok{background:#2ecc71;}
   .muted-note{font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;}
-  .seg{display:inline-flex;border:1px solid rgba(255,255,255,.12);border-radius:6px;overflow:hidden;}
-  .seg-btn{background:#1b2531;color:var(--ink);border-radius:0;padding:7px 12px;font-size:13px;font-weight:600;}
-  .seg-btn.on{background:var(--rivalry);color:#fff;}
-  .seg-btn:disabled{opacity:.45;cursor:not-allowed;}
+  /* Show / Setup tabs: the default view is show-night only (find the match,
+     line up the schedule, drive the series); everything set-once lives in
+     Setup, one click away. */
+  .tabs{display:flex;gap:6px;margin-bottom:16px;}
+  .tab-btn{background:#1b2531;color:var(--muted);padding:9px 22px;font-size:13px;font-weight:700;
+    letter-spacing:1px;text-transform:uppercase;border-radius:8px 8px 0 0;}
+  .tab-btn.on{background:var(--panel);color:var(--ink);box-shadow:inset 0 2px 0 var(--rivalry);}
+  details.adv{margin-top:12px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;}
+  details.adv summary{cursor:pointer;font-size:11px;letter-spacing:1px;text-transform:uppercase;
+    color:var(--muted);user-select:none;}
+  details.adv summary:hover{color:var(--ink);}
+  body[data-view="show"] .v-setup{display:none;}
+  body[data-view="setup"] .v-show{display:none;}
   .scene-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid rgba(255,255,255,.05);flex-wrap:wrap;}
   .scene-row .nm{font-weight:700;min-width:130px;}
   .scene-row .pill{font-size:10px;letter-spacing:.5px;text-transform:uppercase;padding:2px 7px;border-radius:10px;}
@@ -63,7 +71,6 @@
   .match-row.soon .vs{color:var(--accent);}
   .logo-prev{width:30px;height:30px;object-fit:contain;background:#0b0f14;border-radius:4px;
     border:1px solid rgba(255,255,255,.1);display:none;}
-  .logo-drop{outline:2px dashed var(--accent);outline-offset:-2px;}
   a.plain{color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;text-decoration:none;}
   a.plain:hover{color:var(--ink);}
   .row{flex-wrap:wrap;}
@@ -78,7 +85,7 @@
   }
 </style>
 </head>
-<body>
+<body data-view="show">
   <div class="brand">
     <img class="wordmark" src="../assets/rivalry-wordmark.svg" alt="RIVALRY" />
     <span>Control Panel</span>
@@ -88,11 +95,16 @@
   </div>
   <div class="sub">Load your league match, line up the night, and drive every scene in real time.</div>
 
+  <div class="tabs">
+    <button type="button" class="tab-btn on" id="tabShow">Show</button>
+    <button type="button" class="tab-btn" id="tabSetup">Setup</button>
+  </div>
+
   <!-- Match-first: loading a real league match IS the way into a broadcast.
        There is no manual mode — the app serves no scene without a loaded
        match, and once loaded it is cached, so a league outage mid-show
        changes nothing. -->
-  <div class="card full" id="leagueCard" style="margin-bottom:18px;border-left:3px solid var(--accent);">
+  <div class="card full v-show" id="leagueCard" style="margin-bottom:18px;border-left:3px solid var(--accent);">
     <h2>Load your match <span class="muted-note">(required — scenes stay dark until a league match is loaded)</span></h2>
     <!-- The loaded match: the single source of team identity. -->
     <div id="lockBanner" class="row" style="display:none;gap:8px;align-items:center;margin-bottom:10px;
@@ -103,11 +115,7 @@
       <button class="mini" id="leagueRefresh" type="button">Refresh from league</button>
       <button class="mini" id="lockEnd" type="button" style="background:#3a2430;color:#f1a0b0;">End broadcast</button>
     </div>
-    <div class="row" style="gap:8px;align-items:flex-end;">
-      <div style="flex:2"><label>League API key <span class="muted-note">— starts with rv_, from the league site</span></label><input type="password" id="leagueKey" placeholder="rv_…" /></div>
-      <button class="mini" id="leagueSaveKey" type="button">Save key</button>
-      <div id="leagueStatus" class="muted-note" style="align-self:center;flex:2;">checking…</div>
-    </div>
+    <div id="leagueStatus" class="muted-note">checking…</div>
     <div class="row" style="gap:8px;margin-top:12px;align-items:flex-end;">
       <div style="flex:2"><label>Search by team</label><input type="text" id="leagueSearch" placeholder="team name, then Enter" autocomplete="off" /></div>
       <button class="mini" id="leagueLoad" type="button">Find matches</button>
@@ -138,7 +146,7 @@
     </div>
   </div>
 
-  <div class="card full" id="queueCard" style="margin-bottom:18px;">
+  <div class="card full v-show" id="queueCard" style="margin-bottom:18px;">
     <h2>Broadcast schedule <span class="muted-note">(line up the night's series, then load each one when it starts)</span></h2>
     <div class="row" style="gap:10px;margin-bottom:10px;">
       <div style="flex:2"><label>Season <span class="muted-note">— set once per night</span></label><input type="text" id="evSeason" placeholder="SUMMER CIRCUIT 2026" /></div>
@@ -147,6 +155,7 @@
     </div>
     <div class="row" style="gap:8px;margin-bottom:8px;">
       <button class="mini" id="queueNext" type="button">Load next series</button>
+      <span id="queueStatus" class="muted-note"></span>
       <div style="flex:1"></div>
       <button class="mini" id="queueClear" type="button">Clear schedule</button>
     </div>
@@ -158,7 +167,16 @@
     </div>
   </div>
 
-  <div class="card full" id="chromeCard" style="margin-bottom:18px;">
+  <div class="card full v-setup" id="keyCard" style="margin-bottom:18px;border-left:3px solid var(--accent);">
+    <h2>League API key <span class="muted-note">(set once — the key that loads matches from the league)</span></h2>
+    <div class="row" style="gap:8px;align-items:flex-end;">
+      <div style="flex:2"><label>Key <span class="muted-note">— starts with rv_, from the league site</span></label><input type="password" id="leagueKey" placeholder="rv_…" /></div>
+      <button class="mini" id="leagueSaveKey" type="button">Save key</button>
+      <div id="leagueKeyStatus" class="muted-note" style="align-self:center;flex:2;"></div>
+    </div>
+  </div>
+
+  <div class="card full v-setup" id="chromeCard" style="margin-bottom:18px;">
     <h2>Chrome &amp; ticker <span class="muted-note">(the always-on frame: set once per event)</span></h2>
     <div class="row" style="gap:10px;">
       <div style="flex:2"><label>Stream line (ticker, bottom right)</label><input type="text" id="chStream" placeholder="STREAM • TWITCH.TV/RIVALRY" /></div>
@@ -181,7 +199,7 @@
     </div>
   </div>
 
-  <div class="card full" id="lowerThirdCard" style="margin-bottom:18px;">
+  <div class="card full v-setup" id="lowerThirdCard" style="margin-bottom:18px;">
     <h2>Lower third <span class="muted-note">(producer-called; shows over every scene via the chrome)</span></h2>
     <div class="row" style="gap:10px;align-items:flex-end;">
       <div style="flex:2"><label>Title</label><input type="text" id="l3Title" placeholder='ALEX "COOKIES" TOLL' /></div>
@@ -205,16 +223,14 @@
          from the league and are not hand-editable. What is editable here is
          match-night state the league doesn't carry: seed, record correction,
          and the series score the operator drives all night. -->
-    <div class="card">
+    <div class="card v-show">
       <h2>Team A (Blue)</h2>
       <div class="row" style="gap:10px;align-items:center;margin:6px 0 4px;">
         <img class="logo-prev" id="lockLogoA" alt="" style="width:44px;height:44px;" />
         <b id="lockNameA" style="font-size:17px;">— load a match —</b>
       </div>
-      <div class="row" style="gap:10px;">
-        <div style="flex:1"><label>Seed</label><input type="text" id="seedA" placeholder="#1" /></div>
-        <div style="flex:1"><label>Record <span class="muted-note">(from the league)</span></label><input type="text" id="recordA" placeholder="12-3" /></div>
-      </div>
+      <label>Record <span class="muted-note">(from the league)</span></label>
+      <input type="text" id="recordA" placeholder="12-3" />
       <label>Series games won</label>
       <div class="series stepper">
         <button data-team="a" data-d="-1">-</button>
@@ -223,16 +239,14 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card v-show">
       <h2>Team B (Orange)</h2>
       <div class="row" style="gap:10px;align-items:center;margin:6px 0 4px;">
         <img class="logo-prev" id="lockLogoB" alt="" style="width:44px;height:44px;" />
         <b id="lockNameB" style="font-size:17px;">— load a match —</b>
       </div>
-      <div class="row" style="gap:10px;">
-        <div style="flex:1"><label>Seed</label><input type="text" id="seedB" placeholder="#4" /></div>
-        <div style="flex:1"><label>Record <span class="muted-note">(from the league)</span></label><input type="text" id="recordB" placeholder="9-6" /></div>
-      </div>
+      <label>Record <span class="muted-note">(from the league)</span></label>
+      <input type="text" id="recordB" placeholder="9-6" />
       <label>Series games won</label>
       <div class="series stepper">
         <button data-team="b" data-d="-1">-</button>
@@ -241,7 +255,7 @@
       </div>
     </div>
 
-    <div class="card full">
+    <div class="card full v-show">
       <h2>Series</h2>
       <div class="row">
         <div style="flex:1">
@@ -267,17 +281,20 @@
         <button class="mini" id="swapTeams" type="button">Swap teams A / B</button>
         <button class="mini" id="resetSeries" type="button">Reset series 0-0</button>
       </div>
+      <details class="adv">
+        <summary>Advanced: seeds</summary>
+        <div class="row" style="gap:10px;">
+          <div style="flex:1"><label>Team A seed <span class="muted-note">(not league data — shown on preview scenes when set)</span></label><input type="text" id="seedA" placeholder="#1" /></div>
+          <div style="flex:1"><label>Team B seed</label><input type="text" id="seedB" placeholder="#4" /></div>
+        </div>
+      </details>
     </div>
 
-    <div class="card full">
+    <div class="card full v-setup">
       <h2>Casters <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(1-3 casters, blank rows hide)</span></h2>
-      <div class="muted-note" style="line-height:1.65;margin-bottom:12px;">
-        <b style="color:var(--ink)">Getting caster cameras on screen, two ways:</b><br>
-        <b style="color:var(--ink)">Remote casters / dedicated producer:</b> use VDO.Ninja below. Set one room, click Generate,
-        and send each caster their personal link. Their camera shows up framed on the Casters overlay automatically,
-        no accounts or software for them to install.<br>
-        <b style="color:var(--ink)">Solo (you cast and produce):</b> open your own generated link in a browser tab to feed your camera,
-        or add your webcam in OBS as a Video Capture Device source placed over the Casters overlay.
+      <div class="muted-note" style="margin-bottom:12px;">
+        Set a VDO.Ninja room, click Generate, send each caster their link — their camera lands on the
+        Casters overlay automatically. Full walkthrough (including solo casting): see the Setup guide.
       </div>
       <div class="row" style="gap:8px;align-items:flex-end;margin-bottom:8px;">
         <div style="flex:2"><label>VDO.Ninja room (one per event)</label><input type="text" id="vdoRoom" placeholder="rivalry-s1-gf" /></div>
@@ -308,8 +325,10 @@
          broadcast schedule (the series after the one on air), which itself
          only holds real league matches. -->
 
-    <div class="card full">
+    <div class="card full v-setup">
       <h2>Player Titles <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(name must match the in-game name exactly; shows on that player's goal banner)</span></h2>
+      <details class="adv" style="margin-top:0;border-top:none;padding-top:0;">
+      <summary>Titles and badges per player (optional)</summary>
       <div class="row" style="gap:10px;">
         <div style="flex:2"><label>Player 1 — in-game name</label><input type="text" id="pName0" placeholder="HEATER" /></div>
         <div style="flex:3"><label>Title</label><input type="text" id="pTitle0" placeholder="TEAM FROST • CAPTAIN" /></div>
@@ -340,9 +359,10 @@
         <div style="flex:3"><label>Title</label><input type="text" id="pTitle5" placeholder="" /></div>
         <div style="flex:3"><label>Badges</label><input type="text" id="pBadges5" placeholder="" /></div>
       </div>
+      </details>
     </div>
 
-    <div class="card full" id="scenesCard" style="border-left:3px solid var(--rivalry);">
+    <div class="card full v-setup" id="scenesCard" style="border-left:3px solid var(--rivalry);">
       <h2>Overlays / Scenes <span class="muted-note">(add each as an OBS Browser Source, 1920 × 1080)</span></h2>
       <div class="row" style="gap:8px;margin-bottom:6px;align-items:center;">
         <div class="chips" id="lookChips" title="Which overlay look the OBS scene build uses"></div>
@@ -356,7 +376,7 @@
       </div>
     </div>
 
-    <div class="card full">
+    <div class="card full v-setup">
       <h2>OBS integration <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(optional)</span></h2>
       <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:2px 0 10px;">
         <input type="checkbox" id="obsEnabled" style="width:auto;" />
@@ -380,36 +400,40 @@
       </div>
       <div id="obsSetupResult" class="muted-note" style="margin-top:8px;"></div>
       <div class="muted-note" style="margin-top:8px;">
-        One click builds a new <b style="color:var(--ink)">RIVALRY Casterverse</b> collection in OBS with all 7 scenes and sources wired. Your other collections are left alone.
+        One click builds a <b style="color:var(--ink)">RIVALRY Casterverse</b> collection in OBS with every scene wired; your other collections are left alone.
         No OBS WebSocket? <a href="/obs/scene-collection.json" download="rivalry-casterverse.json" style="color:var(--accent);">Download the scene collection</a> and import it (OBS: Scene Collection menu, Import).
       </div>
       <div class="muted-note" style="margin-top:12px;">Scene deck, click to switch OBS live (needs the scene collection built + OBS connected). Switches run under the branded wipe:</div>
       <div class="row" id="sceneDeck" style="gap:6px;margin-top:6px;"></div>
-      <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:14px 0 10px;">
-        <input type="checkbox" id="obsAutoSwitch" style="width:auto;" />
-        <span style="color:var(--ink);font-size:13px;">Auto-switch OBS scenes on game events (replay, post-match)</span>
-      </label>
-      <div class="row" style="gap:10px;">
-        <div style="flex:1;">
-          <label>Live scene</label>
-          <input type="text" id="obsSceneLive" placeholder="RIVALRY - Live" />
+      <details class="adv">
+        <summary>Advanced: auto-switch on game events</summary>
+        <label class="row" style="cursor:pointer;align-items:center;gap:8px;margin:10px 0;">
+          <input type="checkbox" id="obsAutoSwitch" style="width:auto;" />
+          <span style="color:var(--ink);font-size:13px;">Auto-switch OBS scenes on game events (replay, post-match)</span>
+        </label>
+        <div class="row" style="gap:10px;">
+          <div style="flex:1;">
+            <label>Live scene</label>
+            <input type="text" id="obsSceneLive" placeholder="RIVALRY - Live" />
+          </div>
+          <div style="flex:1;">
+            <label>Goal scene</label>
+            <input type="text" id="obsSceneGoal" placeholder="(hides RL's text)" />
+          </div>
+          <div style="flex:1;">
+            <label>Replay scene</label>
+            <input type="text" id="obsSceneReplay" placeholder="(optional)" />
+          </div>
+          <div style="flex:1;">
+            <label>Post-match scene</label>
+            <input type="text" id="obsScenePostMatch" placeholder="(optional)" />
+          </div>
         </div>
-        <div style="flex:1;">
-          <label>Goal scene</label>
-          <input type="text" id="obsSceneGoal" placeholder="(hides RL's text)" />
+        <div style="font-size:12px;color:var(--muted);margin-top:8px;">
+          Scene names must match exactly; the one-click build uses the names shown as placeholders. Leave blank to skip a trigger.
+          The Goal scene should be graphics-only (no game capture) so RL's in-game "X Scored" text never reaches the broadcast.
         </div>
-        <div style="flex:1;">
-          <label>Replay scene</label>
-          <input type="text" id="obsSceneReplay" placeholder="(optional)" />
-        </div>
-        <div style="flex:1;">
-          <label>Post-match scene</label>
-          <input type="text" id="obsScenePostMatch" placeholder="(optional)" />
-        </div>
-      </div>
-      <div style="font-size:12px;color:var(--muted);margin-top:8px;">
-        Scene names must match exactly. Leave blank to skip auto-switching on a trigger. The Goal scene should be a graphics-only scene (no game capture) so RL's in-game "X Scored" text is never composited into the broadcast.
-      </div>
+      </details>
     </div>
 
     <div class="full">
@@ -462,12 +486,17 @@ fetch("/version").then(r => r.json()).then(meta => {
   if (meta && meta.label) $("buildLabel").textContent = meta.label;
 }).catch(() => {});
 
-function connect(){
-  ws = new WebSocket(CONTROL_WS);
-  ws.onopen = () => { connected = true; setStatus(); push(); };
-  ws.onclose = () => { connected = false; setStatus(); setTimeout(connect, 1500); };
-  ws.onerror = () => ws.close();
+// Show / Setup tabs. Show is the whole show-night surface: find the match,
+// line up the schedule, drive the series. Setup holds everything set-once.
+// All cards stay in the DOM either way, so state and pushes are unaffected.
+function setView(view){
+  document.body.dataset.view = view;
+  $("tabShow").classList.toggle("on", view === "show");
+  $("tabSetup").classList.toggle("on", view === "setup");
 }
+$("tabShow").addEventListener("click", () => setView("show"));
+$("tabSetup").addEventListener("click", () => setView("setup"));
+
 let rlLive = null; // last rl-status from the bridge; null until the first one arrives
 function setStatus(){
   $("dot").className = "dot" + (connected ? " ok" : "");
@@ -576,6 +605,10 @@ function payload(){
       // Which series is on air. Without this the "on air" marker was lost on
       // every app restart while the queue itself survived.
       queueActive: state.queueActive,
+      // Which lock side displays as Team A. Without this a dock reload after
+      // "Swap teams" kept the swapped seeds/records/series but forgot the
+      // swap itself, pairing scores with the wrong team on the next push.
+      swapped: state.swapped,
       schedule: gatherSchedule(),
       chrome: gatherChrome(),
       ticker: gatherTicker(),
@@ -622,6 +655,12 @@ let l3PanelTimer = null;
 function l3UpdateStatus(){
   const lt = state.lowerThird;
   if (!lt.visible) { $("l3Status").textContent = ""; return; }
+  if (!connected) {
+    // push() no-ops while the bus is down; claiming "On air" here would be a
+    // lie the producer only discovers on the stream itself.
+    $("l3Status").textContent = "NOT on air — bridge offline.";
+    return;
+  }
   $("l3Status").textContent = lt.durationSec > 0
     ? "On air, auto-hides after " + lt.durationSec + "s."
     : "On air, holding until Hide.";
@@ -674,11 +713,23 @@ async function queueLoad(i){
 }
 function queueNext(){
   if (!state.queue.length) return;
-  let idx = state.queue.findIndex(e => e.id === state.queueActive);
-  queueLoad(idx < 0 ? 0 : Math.min(idx + 1, state.queue.length - 1));
+  const idx = state.queue.findIndex(e => e.id === state.queueActive);
+  if (idx >= 0 && idx + 1 >= state.queue.length){
+    // Re-loading the on-air series would re-lock it and zero its score; a
+    // stray click after the final series must be a no-op, not a reset.
+    const el = $("queueStatus");
+    el.textContent = "That was the last series of the night.";
+    setTimeout(() => { el.textContent = ""; }, 4000);
+    return;
+  }
+  queueLoad(idx < 0 ? 0 : idx + 1);
 }
 function renderQueue(){
   const host = $("queueList");
+  // Remember what was last painted: hydration runs on EVERY control message
+  // (each keystroke in a second panel), and rebuilding the list via innerHTML
+  // each time is wasted layout when the queue hasn't changed.
+  renderQueue._key = JSON.stringify([state.queue, state.queueActive]);
   host.innerHTML = "";
   if (!state.queue.length){
     host.innerHTML = '<span class="muted-note">Nothing lined up yet. Find your matches above and Add to queue.</span>';
@@ -718,6 +769,14 @@ $("queueClear").addEventListener("click", () => { state.queue = []; state.queueA
 function push(){
   if (connected && ws.readyState === ws.OPEN) ws.send(JSON.stringify(payload()));
 }
+// Typed input rides a short debounce: every keystroke used to serialize and
+// fan the full state out to every overlay client. Buttons and steppers still
+// push immediately (they should feel instant on air).
+let pushTimer = null;
+function pushSoon(){
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(push, 150);
+}
 
 // steppers — cap wins at the win threshold for the current bestOf
 // (BO5 caps at 3, BO7 at 4). Once a team has clinched (hit the threshold),
@@ -752,26 +811,26 @@ $("bestOf").addEventListener("input", () => {
     }
   });
 });
-// push on any field change
+// push on any field change (debounced — these are all typed fields)
 ["bestOf","eventTitle",
  "seedA","recordA","seedB","recordB","round","startTime",
  "evSeason","evCircuit","evTier",
  "chStream","chScLabel","chScName","chScLogo","tickerLines"]
-  .forEach(id => $(id).addEventListener("input", push));
-for (let i = 0; i < 3; i++) ["chSocNet","chSocHandle"].forEach(p => $(p+i).addEventListener("input", push));
-for (let i = 0; i < 3; i++) ["casterName","casterRole","casterHandle","casterStream"].forEach(p => $(p+i).addEventListener("input", push));
-for (let i = 0; i < 6; i++) ["pName","pTitle","pBadges"].forEach(p => $(p+i).addEventListener("input", push));
+  .forEach(id => $(id).addEventListener("input", pushSoon));
+for (let i = 0; i < 3; i++) ["chSocNet","chSocHandle"].forEach(p => $(p+i).addEventListener("input", pushSoon));
+for (let i = 0; i < 3; i++) ["casterName","casterRole","casterHandle","casterStream"].forEach(p => $(p+i).addEventListener("input", pushSoon));
+for (let i = 0; i < 6; i++) ["pName","pTitle","pBadges"].forEach(p => $(p+i).addEventListener("input", pushSoon));
 $("apply").addEventListener("click", push);
 
 // ---- OBS integration card -------------------------------------------------
-// Bridge sends `obs-status` updates whenever settings change or the OBS
-// connection state changes. We mirror its `settings` into the inputs so a
-// fresh control-panel window hydrates correctly.
+// The main process hydrates every fresh client with `obs-status` (settings
+// with the password MASKED as passwordSet, plus live connection status) and
+// pushes again on every status flip. The panel never pushes on open — only on
+// producer edits — so opening a dock can no longer clobber saved settings.
 function readObsForm(){
-  return {
+  const form = {
     enabled: $("obsEnabled").checked,
     url: $("obsWsUrl").value.trim() || "ws://localhost:4455",
-    password: $("obsWsPassword").value,
     autoSwitchEnabled: $("obsAutoSwitch").checked,
     sceneMap: {
       live: $("obsSceneLive").value.trim(),
@@ -780,10 +839,20 @@ function readObsForm(){
       postMatch: $("obsScenePostMatch").value.trim(),
     },
   };
+  // The password key is OMITTED unless the producer typed one: the server
+  // merges shallowly, so an absent key preserves the saved password and an
+  // empty field can never wipe it.
+  if ($("obsWsPassword").value) form.password = $("obsWsPassword").value;
+  return form;
 }
+let obsPushTimer = null;
 function pushObsSettings(){
   if (!connected || ws.readyState !== ws.OPEN) return;
   ws.send(JSON.stringify({ type: "obs-settings", payload: readObsForm() }));
+}
+function pushObsSettingsSoon(){
+  clearTimeout(obsPushTimer);
+  obsPushTimer = setTimeout(pushObsSettings, 300);
 }
 function renderObsStatus(s){
   const st = s && s.status;
@@ -793,39 +862,54 @@ function renderObsStatus(s){
   if (st && st.error) { $("obsStatus").textContent = "error: " + st.error; return; }
   $("obsStatus").textContent = "connecting...";
 }
+// Checkbox state is only mirrored when the element isn't focused, same rule
+// as setVal: hydration must never fight the producer's hands.
+function setChecked(id, v){
+  const el = $(id);
+  if (el && el !== document.activeElement) el.checked = !!v;
+}
 function hydrateObsForm(settings){
   if (!settings) return;
   if (typeof settings.preferredSet === "string" && settings.preferredSet !== preferredSet){
     preferredSet = settings.preferredSet;
     renderLookChips();
   }
-  $("obsEnabled").checked = !!settings.enabled;
-  if (typeof settings.url === "string") $("obsWsUrl").value = settings.url;
-  if (typeof settings.password === "string") $("obsWsPassword").value = settings.password;
-  $("obsAutoSwitch").checked = !!settings.autoSwitchEnabled;
+  setChecked("obsEnabled", settings.enabled);
+  if (typeof settings.url === "string") setVal("obsWsUrl", settings.url);
+  // The password itself never rides the bus; show that one is saved.
+  $("obsWsPassword").placeholder = settings.passwordSet ? "(saved — type to replace)" : "from OBS";
+  setChecked("obsAutoSwitch", settings.autoSwitchEnabled);
   const map = settings.sceneMap || {};
-  if (typeof map.live === "string") $("obsSceneLive").value = map.live;
-  if (typeof map.goal === "string") $("obsSceneGoal").value = map.goal;
-  if (typeof map.replay === "string") $("obsSceneReplay").value = map.replay;
-  if (typeof map.postMatch === "string") $("obsScenePostMatch").value = map.postMatch;
+  if (typeof map.live === "string") setVal("obsSceneLive", map.live);
+  if (typeof map.goal === "string") setVal("obsSceneGoal", map.goal);
+  if (typeof map.replay === "string") setVal("obsSceneReplay", map.replay);
+  if (typeof map.postMatch === "string") setVal("obsScenePostMatch", map.postMatch);
 }
-["obsEnabled","obsWsUrl","obsWsPassword","obsAutoSwitch","obsSceneLive","obsSceneGoal","obsSceneReplay","obsScenePostMatch"]
-  .forEach(id => {
-    const el = $(id);
-    el.addEventListener("change", pushObsSettings);
-    el.addEventListener("input", pushObsSettings);
-  });
+// Checkboxes push immediately on change; typed fields ride the debounce (a
+// per-keystroke push used to redial the OBS socket against partial passwords).
+["obsEnabled","obsAutoSwitch"].forEach(id => $(id).addEventListener("change", pushObsSettings));
+["obsWsUrl","obsWsPassword","obsSceneLive","obsSceneGoal","obsSceneReplay","obsScenePostMatch"]
+  .forEach(id => $(id).addEventListener("input", pushObsSettingsSoon));
 $("obsTest").addEventListener("click", () => {
-  // Force a settings reapply (triggers reconnect) by re-pushing the form.
-  pushObsSettings();
+  if (!(connected && ws.readyState === ws.OPEN)) {
+    $("obsStatus").textContent = "bridge offline — start RIVALRY Casterverse";
+    return;
+  }
+  // Ask the main process to drop and redial with the saved settings; the
+  // resulting obs-status push updates the label with the live outcome.
+  $("obsStatus").textContent = "testing...";
+  ws.send(JSON.stringify({ type: "obs-settings", payload: { ...readObsForm(), forceReconnect: true } }));
 });
 $("obsSetupScenes").addEventListener("click", () => {
-  if (connected && ws.readyState === ws.OPEN) {
-    const el = $("obsSetupResult");
-    el.style.color = "var(--muted)";
-    el.textContent = "Building the RIVALRY Casterverse collection in OBS...";
-    ws.send(JSON.stringify({ type: "obs-action", payload: { action: "setup-scenes" } }));
+  const el = $("obsSetupResult");
+  if (!(connected && ws.readyState === ws.OPEN)) {
+    el.style.color = "#f1c40f";
+    el.textContent = "Bridge offline — start RIVALRY Casterverse first.";
+    return;
   }
+  el.style.color = "var(--muted)";
+  el.textContent = "Building the RIVALRY Casterverse collection in OBS...";
+  ws.send(JSON.stringify({ type: "obs-action", payload: { action: "setup-scenes" } }));
 });
 
 // ---- Hydration: restore panel fields from the retained control state -------
@@ -882,6 +966,10 @@ function hydrateControlForm(p){
     }
   }
   if (p.ticker && Array.isArray(p.ticker.manualLines)) setVal("tickerLines", p.ticker.manualLines.join("\n"));
+  if (typeof p.swapped === "boolean" && p.swapped !== state.swapped){
+    state.swapped = p.swapped;
+    renderMatchLock();
+  }
   if (p.standings) state.standings = p.standings;
   if (p.lowerThird){
     // Mirror the call state so a reopened panel doesn't clobber a live lower
@@ -892,15 +980,17 @@ function hydrateControlForm(p){
     if (p.lowerThird.kind && $("l3Kind") !== document.activeElement) $("l3Kind").value = p.lowerThird.kind;
     l3UpdateStatus();
   }
-  renderQueue();
+  if (JSON.stringify([state.queue, state.queueActive]) !== renderQueue._key) renderQueue();
 }
 
-// Override the basic connect() above to hydrate from retained state, push
-// obs-settings on open, and receive obs-status / rl-status broadcasts.
-connect = function(){
+// Connect: hydrate from retained state and receive obs-status / rl-status
+// broadcasts. Opening the panel pushes NOTHING on its own — the main process
+// hydrates OBS settings at us (a push here once clobbered the saved OBS
+// password with the form's empty defaults on every dock reload).
+function connect(){
   ws = new WebSocket(CONTROL_WS);
   ws.onopen = () => {
-    connected = true; setStatus(); pushObsSettings();
+    connected = true; setStatus();
     // Give the bridge a beat to replay retained state; only seed defaults if
     // nothing arrived (true first run). An immediate push() here used to
     // overwrite the restored state with the HTML defaults.
@@ -926,6 +1016,12 @@ connect = function(){
           el.style.color = "#f1c40f";
           el.textContent = "Could not build scenes: " + (r.error || "unknown error") + ". Is OBS connected?";
         }
+      } else if (m && m.type === "obs-action-result" && m.payload && m.payload.action === "switch" && !m.payload.ok) {
+        // A deck cut that silently didn't happen is worse than an error: say
+        // why (OBS down mid-show reads as "the panel is broken" otherwise).
+        const el = $("obsSetupResult");
+        el.style.color = "#f1c40f";
+        el.textContent = "Scene switch failed: " + (m.payload.error || "unknown error");
       } else if (m && m.type === "rl-status") {
         rlLive = !!(m.payload && m.payload.connected);
         setStatus();
@@ -1062,10 +1158,10 @@ function renderMatchLock(){
 }
 
 function leagueErrorText(err){
-  if (err === "no-key") return "No key saved. Paste your league API key above.";
+  if (err === "no-key") return "No key saved. Add your league API key in Setup.";
   if (err === "access-key-here") return "That's an old Casterverse access key (retired — no longer needed). This box wants the league API key (starts with rv_).";
-  if (err === "http-401") return "Key rejected by the league site. Check it and save again.";
-  if (err === "http-404") return "The league site doesn't know that match any more (completed or removed). Search again, or run the series manually.";
+  if (err === "http-401") return "Key rejected by the league site. Check it in Setup and save again.";
+  if (err === "http-404") return "The league site doesn't know that match any more (completed or removed). Search again and load a current match — the one on air keeps running from cache.";
   if (err === "network") return "Can't reach the league site. Check your internet connection.";
   return "League error: " + err;
 }
@@ -1078,14 +1174,18 @@ async function refreshLeagueStatus(){
     // fixture and is exactly how the dark-launched path gets exercised.
     if (s.ok || s.mock) probeStandings();
     if (s.mock) { el.textContent = "Using built-in sample matches (mock mode)."; return; }
-    if (!s.configured) { el.textContent = "No key saved. Paste your league API key above."; return; }
+    if (!s.configured) { el.textContent = "No key saved. Add your league API key in Setup."; return; }
     el.textContent = s.ok ? ("Key OK " + (s.keyMask || "")) : leagueErrorText(s.error);
   } catch { el.textContent = "App not reachable."; }
 }
 $("leagueSaveKey").addEventListener("click", () => {
-  if (!(connected && ws.readyState === ws.OPEN)) return;
+  const el = $("leagueKeyStatus");
+  if (!(connected && ws.readyState === ws.OPEN)) {
+    el.style.color = "#f1c40f";
+    el.textContent = "Bridge offline — start RIVALRY Casterverse first.";
+    return;
+  }
   const key = $("leagueKey").value.trim();
-  const el = $("leagueStatus");
   // Retired access keys (RCV1.) are still in producers' password managers.
   // Name the mistake rather than storing it and reporting the league's 401
   // back as "your key was rejected".
@@ -1095,9 +1195,10 @@ $("leagueSaveKey").addEventListener("click", () => {
     return;
   }
   el.style.color = "";
+  el.textContent = "saving...";
   ws.send(JSON.stringify({ type: "league-settings", payload: { apiKey: key } }));
   $("leagueKey").value = "";
-  setTimeout(refreshLeagueStatus, 500);
+  setTimeout(async () => { await refreshLeagueStatus(); el.textContent = $("leagueStatus").textContent; }, 500);
 });
 /* ---- match finder ----------------------------------------------------------
  * The league API can only text-search team names, so the app pulls the
@@ -1271,6 +1372,10 @@ $("leagueSearch").addEventListener("keydown", (e) => { if (e.key === "Enter") lo
  * true when locked. A failed lock never touches the current one. */
 async function useLeagueMatch(matchId){
   const el = $("leagueActive");
+  // Re-locking the match already on air is a REFRESH: it re-pulls league data
+  // (records, logos, rosters) but must not touch tonight's operator state.
+  // Refreshing a 2-1 series used to reset it to 0-0 on air.
+  const isRefresh = !!(state.match && state.match.locked && state.match.matchId === matchId);
   el.textContent = "loading match from the league...";
   try {
     const r = await (await fetch("/league/lock", {
@@ -1281,27 +1386,36 @@ async function useLeagueMatch(matchId){
     if (!r.ok) { el.textContent = leagueErrorText(r.error); return false; }
     const d = r.data || {};
     state.match = r.status || null;
-    state.swapped = false;
     const ta = (d.teams && d.teams[0]) || {}, tb = (d.teams && d.teams[1]) || {};
-    // Records come from the league; they land in the (editable) inputs so the
-    // operator can correct them, and payload() falls back to the lock's value
-    // when the input is blank.
-    $("recordA").value = ta.record || ""; $("recordB").value = tb.record || "";
-    $("seedA").value = ""; $("seedB").value = "";
-    // Series score is tonight's count, which the league doesn't track: a
-    // freshly locked match always starts 0-0 and the operator drives it.
-    state.series.a = 0; state.series.b = 0;
-    $("seriesA").textContent = "0"; $("seriesB").textContent = "0";
-    if (d.event && d.event.composedTitle) $("eventTitle").value = d.event.composedTitle.toUpperCase();
-    if (d.event && d.event.roundLabel) $("round").value = d.event.roundLabel.toUpperCase();
+    if (!isRefresh){
+      state.swapped = false;
+      // Records come from the league; they land in the (editable) inputs so the
+      // operator can correct them, and payload() falls back to the lock's value
+      // when the input is blank.
+      $("recordA").value = ta.record || ""; $("recordB").value = tb.record || "";
+      $("seedA").value = ""; $("seedB").value = "";
+      // Series score is tonight's count, which the league doesn't track: a
+      // freshly locked match always starts 0-0 and the operator drives it.
+      state.series.a = 0; state.series.b = 0;
+      $("seriesA").textContent = "0"; $("seriesB").textContent = "0";
+      if (d.event && d.event.composedTitle) $("eventTitle").value = d.event.composedTitle.toUpperCase();
+      if (d.event && d.event.roundLabel) $("round").value = d.event.roundLabel.toUpperCase();
+      if (d.scheduledDate) $("startTime").value = new Date(d.scheduledDate).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    } else {
+      // Refresh: update league-owned records in place (respecting a focused
+      // field and the swap), leave seeds/series/titles/times alone.
+      const recA = state.swapped ? tb.record : ta.record;
+      const recB = state.swapped ? ta.record : tb.record;
+      if (recA) setVal("recordA", recA);
+      if (recB) setVal("recordB", recB);
+    }
     // Seed the once-per-night event fields from the match, but never clobber
     // what the producer already typed.
     if (d.event){
       if (!$("evSeason").value.trim() && d.event.season) $("evSeason").value = d.event.season.toUpperCase();
       if (!$("evCircuit").value.trim() && d.event.circuitShort) $("evCircuit").value = d.event.circuitShort.toUpperCase();
     }
-    if (d.scheduledDate) $("startTime").value = new Date(d.scheduledDate).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    fillPlayerNames(d);
+    fillPlayerNames(d, isRefresh);
     renderMatchLock();
     el.textContent = "";
     push();
@@ -1322,13 +1436,17 @@ $("lockEnd").addEventListener("click", async () => {
 });
 
 /* Roster names into the goal-banner rows: team A takes slots 0-2, team B 3-5,
- * so a 2v2 leaves a visible gap rather than interleaving the teams. All six are
- * cleared first — loading a different match must not leave last match's players
- * behind. Titles are only overwritten when the league actually has a role for
- * that player, so hand-typed titles survive a refresh. */
-function fillPlayerNames(d){
+ * so a 2v2 leaves a visible gap rather than interleaving the teams. All six
+ * names are cleared first — loading a different match must not leave last
+ * match's players behind. Titles/badges: kept on a refresh of the SAME match
+ * (hand-typed titles survive), cleared when a different match loads (last
+ * match's "TEAM FROST • CAPTAIN" must not land on tonight's players). */
+function fillPlayerNames(d, isRefresh){
   const teams = (d && d.teams) || [];
-  for (let i = 0; i < 6; i++) $("pName" + i).value = "";
+  for (let i = 0; i < 6; i++){
+    $("pName" + i).value = "";
+    if (!isRefresh){ $("pTitle" + i).value = ""; $("pBadges" + i).value = ""; }
+  }
   teams.forEach((team, side) => {
     if (!team || !Array.isArray(team.players)) return;
     team.players.slice(0, 3).forEach((p, i) => {

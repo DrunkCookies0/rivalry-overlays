@@ -250,9 +250,10 @@
     <div class="card">
       <h2>The control panel</h2>
       <p class="lede">
-        The control panel is where you run the show: team names and logos, series score, casters,
-        the schedule, and scene switching. Everything you change pushes to the overlay instantly.
-        Two ways to use it:
+        The control panel is where you run the show: save your league API key (Setup tab, once),
+        find and load your league match — team names, logos and rosters come with it — then drive
+        the series score, casters, schedule and scene switching. Everything pushes to the overlay
+        instantly. Two ways to use it:
       </p>
       <div class="opt-grid">
         <div class="opt rec">
@@ -503,6 +504,7 @@ function renderObs() {
  * one-click "build scenes" action and receives the result, same protocol the
  * control panel uses. Served from the app origin so the bridge allows it. */
 let cbus = null, cbusReady = false;
+let savedObsUrl = ""; // hydrated from obs-status; "" until the first push
 function connectBus() {
   try { cbus = new WebSocket("ws://localhost:49777"); } catch (e) { return; }
   cbus.onopen = () => { cbusReady = true; };
@@ -510,6 +512,13 @@ function connectBus() {
   cbus.onerror = () => { try { cbus.close(); } catch (e) {} };
   cbus.onmessage = (e) => {
     let m; try { m = JSON.parse(e.data); } catch (err) { return; }
+    if (m.type === "obs-status" && m.payload && m.payload.settings) {
+      // Remember the saved OBS URL: auto-setup may have discovered a
+      // non-default port, and the manual Connect below must not clobber it
+      // back to 4455.
+      if (typeof m.payload.settings.url === "string") savedObsUrl = m.payload.settings.url;
+      return;
+    }
     if (m.type === "obs-setup-progress" && m.payload) {
       applySetupStep(m.payload);
       return;
@@ -579,8 +588,13 @@ $("obsAuto").addEventListener("click", () => {
 $("obsConnect").addEventListener("click", () => {
   if (!cbusReady) { $("obsBuildResult").textContent = "App link not ready yet, give it a second."; return; }
   // Shallow-merged in main.js, so we only touch the connection fields and leave
-  // any existing scene-map/auto-switch settings alone.
-  cbus.send(JSON.stringify({ type: "obs-settings", payload: { enabled: true, url: "ws://localhost:4455", password: $("obsPass").value } }));
+  // any existing scene-map/auto-switch settings alone. Keep a URL auto-setup
+  // already discovered (possibly a non-default port) instead of forcing 4455,
+  // and omit the password key entirely when the field is empty so a saved
+  // password survives.
+  const connPayload = { enabled: true, url: savedObsUrl || "ws://localhost:4455" };
+  if ($("obsPass").value) connPayload.password = $("obsPass").value;
+  cbus.send(JSON.stringify({ type: "obs-settings", payload: connPayload }));
   const el = $("obsBuildResult"); el.style.color = "var(--muted)"; delete el.dataset.done;
   el.textContent = "Connecting to OBS...";
 });
@@ -625,7 +639,12 @@ $("skipFinish").addEventListener("click", () => { location.href = "/control/cont
 renderStepper();
 connectBus();
 poll();
-setInterval(poll, 1000);
+// 1 Hz while the wizard is actually on screen; a hidden tab left open all
+// night doesn't need to hit /status.json every second.
+setInterval(() => { if (document.visibilityState === "visible") poll(); }, 1000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") poll();
+});
 </script>
 </body>
 </html>
