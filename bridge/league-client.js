@@ -214,6 +214,22 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
   const matchCache = new Map();
   const logoCache = new Map();
 
+  // The app runs for days; without pruning, every match ever browsed (and its
+  // logo Buffers, tens of KB each) stays resident forever. Expired entries are
+  // dropped on read, and inserts evict the oldest past a small cap.
+  const CACHE_MAX_ENTRIES = 64;
+  function cacheGet(map, key) {
+    const hit = map.get(key);
+    if (!hit) return null;
+    if (Date.now() - hit.fetchedAt >= CACHE_TTL_MS) { map.delete(key); return null; }
+    return hit;
+  }
+  function cacheSet(map, key, value) {
+    map.delete(key); // re-insert -> newest position in Map iteration order
+    map.set(key, value);
+    while (map.size > CACHE_MAX_ENTRIES) map.delete(map.keys().next().value);
+  }
+
   // Re-read settings on EVERY call (late-bound: see header).
   function settings() {
     const current = typeof getSettings === "function" ? getSettings() : null;
@@ -360,6 +376,12 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
   const PAGE_SIZE = 100;      // API maximum
   const MAX_PAGES = 5;        // 500 matches; a season is far smaller
 
+  // The unfiltered sweep is up to 5 sequential API round trips; the panel can
+  // trigger it repeatedly (open finder, clear search, refresh). One short-TTL
+  // slot amortizes that to a burst per half-minute without staling the finder.
+  let listCache = null; // { fetchedAt, maxPages, result }
+  const LIST_CACHE_TTL_MS = 30 * 1000;
+
   async function listMatches({ search = "", maxPages = MAX_PAGES } = {}) {
     const s = settings();
     if (isMock(s)) {
@@ -374,6 +396,10 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
     }
 
     const term = String(search || "").trim();
+    if (!term && listCache && listCache.maxPages === maxPages &&
+        Date.now() - listCache.fetchedAt < LIST_CACHE_TTL_MS) {
+      return listCache.result;
+    }
     const out = [];
     let total = 0;
     let truncated = false;
@@ -395,22 +421,22 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
       if (page >= totalPages || batch.length === 0) break;
       if (page === pageLimit && page < totalPages) truncated = true;
     }
-    return { ok: true, data: out, truncated, total };
+    const result = { ok: true, data: out, truncated, total };
+    if (!term) listCache = { fetchedAt: Date.now(), maxPages, result };
+    return result;
   }
 
   async function getMatch(id, { fresh = false } = {}) {
     const key = String(id);
     if (!fresh) {
-      const hit = matchCache.get(key);
-      if (hit && Date.now() - hit.fetchedAt < CACHE_TTL_MS) {
-        return { ok: true, data: hit.data };
-      }
+      const hit = cacheGet(matchCache, key);
+      if (hit) return { ok: true, data: hit.data };
     }
     const s = settings();
     const res = isMock(s)
       ? readFixtureJson(`match-${key}.json`)
       : await apiGet(`/api/v1/matches/${encodeURIComponent(key)}`);
-    if (res.ok) matchCache.set(key, { fetchedAt: Date.now(), data: res.data });
+    if (res.ok) cacheSet(matchCache, key, { fetchedAt: Date.now(), data: res.data });
     return res;
   }
 
@@ -423,10 +449,8 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
     }
     const cacheKey = `${matchId}:${side}`;
     if (!fresh) {
-      const hit = logoCache.get(cacheKey);
-      if (hit && Date.now() - hit.fetchedAt < CACHE_TTL_MS) {
-        return { ok: true, contentType: hit.contentType, body: hit.body };
-      }
+      const hit = cacheGet(logoCache, cacheKey);
+      if (hit) return { ok: true, contentType: hit.contentType, body: hit.body };
     }
     const match = await getMatch(matchId, { fresh });
     if (!match.ok) return match;
@@ -459,7 +483,7 @@ function createLeagueClient({ getSettings, forceMock = false } = {}) {
       const contentType = r.response.headers.get("content-type") || "image/png";
       result = { ok: true, contentType, body };
     }
-    logoCache.set(cacheKey, {
+    cacheSet(logoCache, cacheKey, {
       fetchedAt: Date.now(),
       contentType: result.contentType,
       body: result.body,

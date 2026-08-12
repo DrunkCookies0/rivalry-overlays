@@ -48,15 +48,26 @@ function createMatchLock({ userDataDir }) {
     return current;
   }
 
+  // Write-tmp-then-rename: a crash mid-write must never leave a half-written
+  // file in place. Corrupt active-match.json reads as "unlocked", which on a
+  // packaged install means the gate closes and every OBS source goes dark —
+  // the exact outage this cache exists to survive.
+  function writeAtomic(file, data) {
+    const tmp = file + ".tmp";
+    fs.writeFileSync(tmp, data);
+    fs.renameSync(tmp, file);
+  }
+
   // Lock to a match. `match` is the normalizeMatch() shape; `logos` carries
-  // the downloaded bytes ({ contentType, body } or null per side). Everything
-  // is written before the in-memory state flips, so a crash mid-write leaves
-  // either the old lock or the new one, never a lock without its logos.
+  // the downloaded bytes ({ contentType, body } or null per side). Logos land
+  // first and the JSON renames into place last, so a completed lock is always
+  // internally consistent. (A crash between the two renames can pair the old
+  // lock with new logo bytes for a moment; the next successful lock heals it.)
   function set(matchId, match, logos = {}) {
     for (const side of ["a", "b"]) {
       const logo = logos[side];
       try {
-        if (logo && logo.body) fs.writeFileSync(logoFile(side), logo.body);
+        if (logo && logo.body) writeAtomic(logoFile(side), logo.body);
         else if (fs.existsSync(logoFile(side))) fs.unlinkSync(logoFile(side));
       } catch (e) {
         console.error(`[rivalry] match-lock logo ${side} write:`, e.message);
@@ -71,7 +82,7 @@ function createMatchLock({ userDataDir }) {
         b: logos.b && logos.b.body ? { contentType: logos.b.contentType || "image/png" } : null,
       },
     };
-    fs.writeFileSync(stateFile, JSON.stringify(next, null, 2), "utf8");
+    writeAtomic(stateFile, JSON.stringify(next, null, 2));
     current = next;
     return current;
   }

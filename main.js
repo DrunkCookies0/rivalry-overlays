@@ -47,10 +47,21 @@ const { createMatchLock } = require("./bridge/match-lock");
 const portOwner = require("./bridge/port-owner");
 const appLog = require("./bridge/app-log");
 
+// Last-resort containment: one bad request or missed rejection must not take
+// down the whole broadcast stack (HTTP + both WS servers die with the
+// process). Log to the ring buffer (it lands in diagnostics) and keep going.
+process.on("uncaughtException", (e) => {
+  console.error("[rivalry] uncaught exception:", e && e.stack ? e.stack : String(e));
+});
+process.on("unhandledRejection", (e) => {
+  console.error("[rivalry] unhandled rejection:", e && e.stack ? e.stack : String(e));
+});
+
 const HTTP_PORT = 49080;
-// Gameplay overlay now lives in the multi-scene tree (overlays/rivalry-gameplay,
-// resolution-independent). The legacy /overlay/overlay.html is still served as a
-// fallback during the transition, so existing OBS sources keep working.
+// Gameplay overlay lives in the multi-scene tree (overlays/rivalry-gameplay,
+// resolution-independent). The pre-migration /overlay/overlay.html fallback
+// was removed for v1.0; an OBS source still pointing there gets a 404 and
+// should be repointed via the scene list or the one-click scene build.
 const OVERLAY_URL = `http://localhost:${HTTP_PORT}/overlays/rivalry-gameplay/index.html`;
 const CONTROL_URL = `http://localhost:${HTTP_PORT}/control/control.html`;
 const SETUP_URL = `http://localhost:${HTTP_PORT}/control/setup.html`;
@@ -135,7 +146,22 @@ if(r&&r.locked)location.reload();}catch{}},3000);</script>`;
 function startHttpServer(rootDir) {
   setHttpRoot(rootDir);
   const server = http.createServer((req, res) => {
-    let urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
+    // Malformed percent-encoding ("/%zz") throws; an uncaught throw here kills
+    // the whole broadcast stack, so it must be a 400, never an exception.
+    let urlPath;
+    try {
+      urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
+    } catch {
+      res.writeHead(400);
+      return res.end("bad request");
+    }
+    // Canonicalize BEFORE any gate reads the path. The match gate and the
+    // signing gate classify by prefix/first-segment; resolving ".." only at
+    // filesystem time would let "/control/..%2Foverlays/x" be gated as
+    // /control/ but served from /overlays/. Backslashes are folded first so
+    // Windows path joining cannot reintroduce a separator the gates never saw.
+    urlPath = path.posix.normalize(urlPath.replace(/\\/g, "/"));
+    if (!urlPath.startsWith("/")) urlPath = "/" + urlPath;
     // App API endpoints (status, setup, uploads, league proxy...) live in the
     // router; static serving + the overlay gate below stay untouched.
     if (apiRouter && apiRouter.handle(req, res, urlPath)) return;
@@ -158,7 +184,7 @@ function startHttpServer(rootDir) {
     // Match gate: no scene serves until a real league match is locked. The
     // notice polls /league/lock and reloads itself, so OBS sources come alive
     // the moment a match is loaded.
-    if (matchGateBlocks() && (urlPath.startsWith("/overlays/") || urlPath.startsWith("/overlay/"))) {
+    if (matchGateBlocks() && urlPath.startsWith("/overlays/")) {
       res.writeHead(200, { "Content-Type": MIME[".html"] });
       return res.end(matchNoticeHtml());
     }
@@ -174,7 +200,9 @@ function startHttpServer(rootDir) {
     }
     const root = httpRootDir;
     const filePath = path.normalize(path.join(root, urlPath));
-    if (!filePath.startsWith(root)) {
+    // Separator-anchored containment: a bare prefix test passes for sibling
+    // directories like "<root>-backup".
+    if (filePath !== root && !filePath.startsWith(root + path.sep)) {
       res.writeHead(403);
       return res.end("forbidden");
     }
@@ -210,18 +238,6 @@ let bridgeHandle = null;
 let apiRouter = null;
 let leagueSettings = null;
 let leagueClient = null;
-// Broadcast a masked league status on the control bus (never the key itself).
-function broadcastLeagueStatus() {
-  if (!bridgeHandle || !bridgeHandle.broadcastControl) return;
-  bridgeHandle.broadcastControl({
-    type: "league-status",
-    payload: {
-      configured: !!(leagueSettings && (leagueSettings.apiKey || leagueSettings.mock)),
-      mock: !!(leagueSettings && leagueSettings.mock),
-      keyMask: leagueSettingsStore.mask(leagueSettings ? leagueSettings.apiKey : ""),
-    },
-  });
-}
 // Last runSetup() result, surfaced through /status.json so the setup wizard
 // can show ini state instead of the old console-only logging.
 let setupInfo = { ok: false, dirFound: false, written: [], checked: [] };
@@ -232,6 +248,9 @@ function runIniSetup() {
     console.error("[rivalry] setup error:", e.message);
     setupInfo = { ok: false, dirFound: false, written: [], checked: [], error: e.message };
   }
+  // Keep the bridge's rl-status ini fields in sync with the fresh result (the
+  // bridge otherwise carries its boot-time snapshot until relaunch).
+  if (bridgeHandle && bridgeHandle.setSetupInfo) bridgeHandle.setSetupInfo(setupInfo);
   return setupInfo;
 }
 
@@ -423,7 +442,12 @@ function buildTrayMenu() {
           updateState = "checking";
           refreshTrayMenu();
           getAutoUpdater().checkForUpdates();
-        } catch (e) {}
+        } catch (e) {
+          // A throw here (updater failed to load) must not strand the state in
+          // "checking": that also disables this menu item, killing all retries.
+          updateState = "error";
+          refreshTrayMenu();
+        }
       },
     },
     {
@@ -840,12 +864,35 @@ function setupObsIntegration() {
   // default) this is a no-op and OBS is never contacted.
   obsController.applySettings(obsSettings).catch(() => {});
 
-  // Status changes -> repaint tray menu so producers can see live state.
-  obsController.on("status", () => refreshTrayMenu());
+  // The obs-status payload goes over the shared control bus. The saved
+  // password never rides along — a panel only needs to know one exists.
+  function obsStatusPayload() {
+    const { password, ...rest } = obsSettings || {};
+    return {
+      settings: { ...rest, passwordSet: !!password },
+      status: obsController.status,
+    };
+  }
+  function broadcastObsStatus() {
+    if (bridgeHandle && bridgeHandle.broadcastControl) {
+      bridgeHandle.broadcastControl({ type: "obs-status", payload: obsStatusPayload() });
+    }
+  }
+
+  // Status changes -> repaint tray + tell the panels LIVE, not only as an echo
+  // of their own edits (a dock otherwise shows "connecting..." after OBS has
+  // long connected, and "connected" after OBS quit).
+  obsController.on("status", () => { refreshTrayMenu(); broadcastObsStatus(); });
 
   // Control panel -> main process messages.
   if (bridgeHandle && bridgeHandle.events) {
-    bridgeHandle.events.on("control", (msg, sourceWs) => {
+    // Hydrate every fresh control client with settings + live status, so the
+    // panel never has to (and never does) push its HTML defaults at us.
+    bridgeHandle.events.on("control-client", (ws) => {
+      try { ws.send(JSON.stringify({ type: "obs-status", payload: obsStatusPayload() })); }
+      catch { /* client already gone */ }
+    });
+    bridgeHandle.events.on("control", (msg) => {
       if (msg && msg.type === "obs-settings" && msg.payload) {
         // Allowlist the OBS WebSocket URL to loopback so a malicious
         // control-bus message (the WS server already guards Origin, but
@@ -859,20 +906,30 @@ function setupObsIntegration() {
             }
           } catch { return; } // unparseable URL -> reject
         }
-        obsSettings = { ...obsSettings, ...msg.payload };
+        const before = obsSettings;
+        // forceReconnect is the panel's "Test connection" verb, not a setting:
+        // strip it so it never persists to disk.
+        const { forceReconnect, ...incoming } = msg.payload;
+        // Panels omit `password` entirely unless the producer typed one, so a
+        // merge never wipes the saved password with an empty field.
+        obsSettings = { ...obsSettings, ...incoming };
         obsSettingsStore.save(userDataDir, obsSettings);
-        obsController.applySettings(obsSettings).catch(() => {});
-        // Echo current settings + status back to the panel.
-        if (bridgeHandle.broadcastControl) {
-          bridgeHandle.broadcastControl({
-            type: "obs-status",
-            payload: { settings: obsSettings, status: obsController.status },
-          });
+        // Redial only when a connection-relevant field changed; re-applying on
+        // every sceneMap keystroke would tear down and redial the OBS socket.
+        const conn = (s) => `${s.enabled}|${s.url}|${s.password}`;
+        if (forceReconnect) {
+          // Drop and redial with current settings even when nothing changed
+          // (applySettings would no-op on identical settings).
+          obsController.applySettings(obsSettings)
+            .then(() => obsController.disconnect())
+            .then(() => obsController.connect())
+            .catch(() => {});
+        } else if (conn(before) !== conn(obsSettings)) {
+          obsController.applySettings(obsSettings).catch(() => {});
         }
+        broadcastObsStatus();
       } else if (msg && msg.type === "obs-action") {
         handleObsAction(msg.payload || {});
-      } else if (msg && msg.type === "obs-query") {
-        handleObsQuery(msg.payload || {}, sourceWs);
       }
     });
 
@@ -893,7 +950,17 @@ async function handleObsAction(payload) {
     }
     return;
   }
-  if (!obsController || !obsController.status.connected) return;
+  if (!obsController || !obsController.status.connected) {
+    // A silent return here leaves the panel's "Building..." (or a deck cut)
+    // firing into a void; report the miss so the UI can say why.
+    if (bridgeHandle && bridgeHandle.broadcastControl) {
+      bridgeHandle.broadcastControl({
+        type: "obs-action-result",
+        payload: { action, ok: false, error: "OBS is not connected" },
+      });
+    }
+    return;
+  }
   if (action === "setup-scenes") {
     const result = await setupObsScenes();
     // Report back so the control panel / setup wizard can confirm the one-click
@@ -910,14 +977,23 @@ async function handleObsAction(payload) {
   // under it; game-event auto-switches (onGameEventForObs) deliberately skip
   // the wipe because their timing is part of the goal sequence.
   if (action === "switch" && payload.scene) {
+    let ok = false;
     try {
       if (chromeAvailable() && bridgeHandle && bridgeHandle.broadcastControl) {
         bridgeHandle.broadcastControl({ type: "chrome-wipe", payload: {} });
         // The wipe panel fully covers the canvas ~450ms into its 1s sweep.
         await new Promise((r) => setTimeout(r, 450));
       }
-      await obsController.switchScene(payload.scene);
-    } catch (e) { /* unknown scene -> no-op */ }
+      ok = await obsController.switchScene(payload.scene);
+    } catch (e) { /* fall through to the failure report */ }
+    if (!ok && bridgeHandle && bridgeHandle.broadcastControl) {
+      // A cut that silently doesn't happen mid-show reads as "panel broken";
+      // name the scene so a renamed collection is diagnosable from the dock.
+      bridgeHandle.broadcastControl({
+        type: "obs-action-result",
+        payload: { action, ok: false, error: `OBS could not switch to "${payload.scene}"` },
+      });
+    }
   }
 }
 
@@ -928,21 +1004,6 @@ function chromeAvailable() {
   return (overlayReg.list || []).some(
     (o) => o.scene === CHROME_SCENE_TYPE && (gateActive() ? o.approved : true)
   );
-}
-
-async function handleObsQuery({ query }, sourceWs) {
-  if (!obsController || !obsController.status.connected) return;
-  if (query === "list-scenes") {
-    try {
-      const scenes = await obsController.listScenes();
-      if (sourceWs && sourceWs.readyState === sourceWs.OPEN) {
-        sourceWs.send(JSON.stringify({
-          type: "obs-scenes",
-          payload: { scenes },
-        }));
-      }
-    } catch (e) { /* ignore */ }
-  }
 }
 
 // Internal: translate game events into scene switches.
@@ -1070,8 +1131,9 @@ if (!app.requestSingleInstanceLock()) {
     // scenes and cached logos with zero network involved.
     matchLock = createMatchLock({ userDataDir: app.getPath("userData") });
     if (matchLock.isLocked()) console.log("[rivalry] match lock restored:", matchLock.get().matchId);
-    // Producer saves the league API key from the panel; persist + confirm with
-    // a masked status broadcast (the key itself is never echoed anywhere).
+    // Producer saves the league API key from the panel; persist it. The panel
+    // confirms by re-fetching GET /league/status (masked); the key itself is
+    // never echoed anywhere.
     bridgeHandle.events.on("control", (msg) => {
       if (msg && msg.type === "league-settings" && msg.payload) {
         const p = msg.payload;
@@ -1081,7 +1143,6 @@ if (!app.requestSingleInstanceLock()) {
           ...(typeof p.mock === "boolean" ? { mock: p.mock } : {}),
         };
         leagueSettingsStore.save(app.getPath("userData"), leagueSettings);
-        broadcastLeagueStatus();
       }
     });
     apiRouter = createApiRouter({

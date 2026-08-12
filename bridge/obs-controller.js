@@ -25,6 +25,10 @@ function createOBSController() {
   let connecting = false;
   let lastError = null;
   let reconnectTimer = null;
+  // Bumped on every applySettings/disconnect; an in-flight connect that
+  // resolves under an old generation must not claim "connected" against
+  // settings that have since changed.
+  let generation = 0;
 
   function setStatus(s) {
     emitter.emit("status", {
@@ -49,14 +53,24 @@ function createOBSController() {
       });
     }
     connecting = true;
+    const gen = generation;
     try {
       await obs.connect(settings.url, settings.password || undefined);
-      connected = true;
       connecting = false;
+      if (gen !== generation) {
+        // Settings changed while dialing: this connection targets the old
+        // url/password. Drop it and dial the current settings (the newer
+        // applySettings' connect() early-returned while we were in flight).
+        try { await obs.disconnect(); } catch { /* already closed */ }
+        connect();
+        return;
+      }
+      connected = true;
       lastError = null;
       setStatus();
     } catch (e) {
       connecting = false;
+      if (gen !== generation) { connect(); return; }
       connected = false;
       lastError = e && e.message ? e.message : String(e);
       setStatus();
@@ -88,13 +102,14 @@ function createOBSController() {
       settings.url === next.url &&
       settings.password === next.password &&
       settings.enabled === next.enabled;
+    if (sameTarget) { setStatus(); return; }
+    generation++; // invalidate any in-flight connect against the old target
     settings = { ...next };
     if (!next.enabled) {
       await disconnect();
       setStatus();
       return;
     }
-    if (sameTarget && connected) { setStatus(); return; }
     // Settings changed or first enable: reconnect cleanly.
     if (wasEnabled) await disconnect();
     connect();
@@ -239,7 +254,6 @@ function createOBSController() {
 
   return {
     on: emitter.on.bind(emitter),
-    off: emitter.off.bind(emitter),
     applySettings,
     connect,
     disconnect,

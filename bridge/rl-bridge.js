@@ -310,16 +310,24 @@ function startBridge(opts = {}) {
     // Hydrate the RL status too, so a freshly-opened wizard/panel doesn't sit
     // on stale defaults until the next flip.
     ws.send(JSON.stringify({ type: "rl-status", payload: { ...rlStatus } }));
+    // Let the main process hydrate this client with state the bridge doesn't
+    // own (OBS status/settings) instead of the panel pushing defaults at it.
+    events.emit("control-client", ws);
     ws.on("message", (raw) => {
       const text = raw.toString();
       let parsed = null;
-      try { parsed = JSON.parse(text); } catch { /* not JSON, just relay */ }
+      try { parsed = JSON.parse(text); } catch { /* not JSON: not relayed, not emitted */ }
       if (parsed && parsed.type === "control") {
         lastControlState = text;
         if (persistControlState) persistControlState(text);
+        // ONLY control messages relay client-to-client. Everything else on the
+        // bus (obs-settings, league-settings, obs-action...) is addressed to
+        // the main process and may carry secrets (the league API key, the OBS
+        // password); relaying those would hand them to every overlay browser
+        // source, including community-authored scenes.
+        for (const c of controlClients)
+          if (c !== ws && c.readyState === c.OPEN) c.send(text);
       }
-      for (const c of controlClients)
-        if (c !== ws && c.readyState === c.OPEN) c.send(text);
       if (parsed) events.emit("control", parsed, ws);
     });
     ws.on("close", () => controlClients.delete(ws));
@@ -351,6 +359,13 @@ function startBridge(opts = {}) {
     broadcastControl,
     events,
     getRlStatus: () => ({ ...rlStatus }),
+    // Re-stamp ini state after a successful POST /setup/rewrite-ini; without
+    // this the boot-time snapshot rides in rl-status until relaunch, while
+    // /status.json's ini block already reports the fresh truth.
+    setSetupInfo: (info) => setRlStatus({
+      iniWritten: !!(info && info.ok),
+      rlConfigDirFound: !!(info && info.dirFound),
+    }),
   };
 }
 
@@ -360,13 +375,18 @@ function connectRocketLeague(broadcastGame, setRlStatus) {
   // One deriver per RL session; resets internal state across reconnects so
   // a mid-match disconnect doesn't replay a phantom goal when scores reset.
   const derive = createSyntheticDeriver();
+  // Stateful decoder: chunk.toString() would turn a multi-byte character split
+  // across TCP chunks into U+FFFD, corrupting non-ASCII player names (and with
+  // them the deriver's per-name goal/demo attribution).
+  const { StringDecoder } = require("string_decoder");
+  const decoder = new StringDecoder("utf8");
 
   sock.connect(RL_TCP_PORT, RL_TCP_HOST, () => {
     console.log(`[rivalry] connected to Rocket League on ${RL_TCP_HOST}:${RL_TCP_PORT}`);
     setRlStatus({ connected: true });
   });
   sock.on("data", (chunk) => {
-    for (const raw of framer.push(chunk.toString())) {
+    for (const raw of framer.push(decoder.write(chunk))) {
       const env = decodeEnvelope(raw);
       if (!env) continue;
       broadcastGame(env);
@@ -485,7 +505,7 @@ function startMockFeed(broadcastGame) {
   }, 45000);
 }
 
-module.exports = { runSetup, startBridge, GAME_WS_PORT, CONTROL_WS_PORT, RL_TCP_PORT };
+module.exports = { runSetup, startBridge };
 
 // =============================================================================
 // CLI ENTRYPOINT

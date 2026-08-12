@@ -217,12 +217,18 @@ function createApiRouter(ctx) {
         for (const side of ["a", "b"]) {
           const team = data.teams[side === "a" ? 0 : 1];
           if (!team || !team.logoUrl) { logos[side] = null; continue; }
-          const logo = await client.getLogo(id, side, { fresh: true }).catch(() => null);
+          // fresh:false — the match was fetched fresh two lines up and is in
+          // cache; forcing fresh here would refetch the match once per side.
+          const logo = await client.getLogo(id, side, { fresh: false }).catch(() => null);
           logos[side] = logo && logo.ok ? { contentType: logo.contentType, body: logo.body } : null;
         }
         matchLock.set(data.matchId || id, data, logos);
         broadcastMatchStatus();
         sendJson(res, 200, { ok: true, data: withProxyLogos(data, id), status: matchLock.status() });
+      }).catch((e) => {
+        // Without this, a throw mid-lock (disk full, AV holding the lock file)
+        // is an unhandled rejection and the panel's Load spinner hangs forever.
+        sendJson(res, 500, { ok: false, error: "lock failed: " + (e && e.message ? e.message : String(e)) });
       });
       return true;
     }
