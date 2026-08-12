@@ -44,7 +44,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .scene-root[data-scene="match-preview"]{position:absolute;inset:0;overflow:hidden;font-family:var(--sc-font);color:#ffffff;background:var(--sc-ink);}
 /* SC26 season art full-bleed, exactly where the house scene painted its own
    full-bleed radial. The chrome composites on top (opaque:false). */
-.scene-root[data-scene="match-preview"] .mp-bg{position:absolute;inset:0;background-color:var(--sc-ink);background-image:url('assets/sc26-background.webp');background-size:cover;background-position:center;}
+.scene-root[data-scene="match-preview"] .mp-bg{position:absolute;inset:0;background-color:var(--sc-ink);background-image:url('../../assets/sc26-background.webp');background-size:cover;background-position:center;}
 .scene-root[data-scene="match-preview"] .mp-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.04) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(120% 100% at 50% 50%,#000 50%,transparent 100%);mask-image:radial-gradient(120% 100% at 50% 50%,#000 50%,transparent 100%);}
 .scene-root[data-scene="match-preview"] .mp-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 110px,rgba(0,240,255,.03) 110px 112px);animation:mpDrift 22s linear infinite;}
 @keyframes mpDrift{from{transform:translateX(0);}to{transform:translateX(112px);}}

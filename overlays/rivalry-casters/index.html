@@ -96,9 +96,10 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     var root = document.querySelector('.scene-root');
     var params = new URLSearchParams(location.search);
 
-    // Fixed cam rects (px on the 1920x1080 stage). The OBS cam sources are
-    // pre-placed at THESE SAME rects behind the overlay, so the two must stay in
-    // sync (mirrored in bridge/obs-collection.js CASTER_LAYOUTS).
+    // Fixed cam rects (px on the 1920x1080 stage). The producer places the OBS
+    // cam sources at these same rects behind the overlay BY HAND — nothing in
+    // the app pre-places cam sources, so this block is the single written
+    // source of truth for where the holes are.
     var LAYOUTS = {
       duo:  [ { x: 90,  y: 300, w: 853, h: 480 }, { x: 977, y: 300, w: 853, h: 480 } ],
       solo: [ { x: 360, y: 250, w: 1200, h: 675 } ],
@@ -154,8 +155,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 
     // Nameplates come from the control feed (caster names/roles); the camera
     // video comes from the OBS sources behind, not from here.
-    RivalryBind(root, RivalryOverlay.connect({ game: false })); // header: league / event / round
-    RivalryOverlay.connect({ game: false }).onControl(function (c) {
+    // ONE connect() per page: a second call would open a duplicate socket pair
+    // with its own reconnect loop for the life of the OBS source.
+    var rl = RivalryOverlay.connect({ game: false });
+    RivalryBind(root, rl); // header: league / event / round
+    rl.onControl(function (c) {
       var casters = (c && c.casters) || [];
       plates.forEach(function (p, i) {
         var caster = casters[i] || {};

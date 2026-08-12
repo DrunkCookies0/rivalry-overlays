@@ -15,9 +15,9 @@
   "description": "Always-on SC26 broadcast frame: cyan-seamed rails, lime-slab ticker, SC26 lower thirds and the cyan/lime wipe, layered above every scene.",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "a843ac9bae35a25fd521e44d60ca2d317adba3e98c486bff96c22b6897b233b9",
-    "signature": "VMANU6CWQkHKbKSUvPy/9i9611r7KtHRVtC/6tmcOyPrrmn4YOTKTsqwBbc0QEkax8MfVcrKHlDsyWJkdavCDw==",
+    "contentHash": "b193078a07512bd8035814091cc4b70bb43663ec800cf25944197c694c4cf1eb",
+    "signature": "peyXfb43zYaTae272Ti8n2Vu6sehGd1G1rBiyiCeGLKIJhGIQg8hozcm4aWnZie0vf7Qhf5OVTrtB/8+9TEyDQ==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-08-11T20:42:11.230Z"
+    "signedAt": "2026-08-12T14:12:34.048Z"
   }
 }

@@ -57,6 +57,8 @@ scene so a producer can pick one per slot.
 | `up-next` | Schedule / upcoming matches | `["control"]` |
 | `gameplay` | Live in-match overlay (scorebug, boost, stat pops) | `["game", "control"]` |
 | `postgame` | Post-match results / stats (replaces in-game screen) | `["game", "control"]` |
+| `chrome` | Always-on persistent frame (rails, ticker, lower thirds, wipe), layered over every scene | `["control"]` |
+| `standings` | Circuit standings table (dark-launched; renders once the league API serves standings) | `["control"]` |
 | `bracket` | Playoff bracket (type reserved; no shipped scene in v1.0, returns for playoffs) | `["control"]` |
 
 Most scenes are **control-only** - they never touch live RL telemetry. Only
@@ -87,8 +89,8 @@ writes a block like:
   packaged production app refuses to serve them.
 - The signing key is held only by Alex. See [README.md](README.md) for the
   review → sign → ship flow.
-- A second gate exists on top of signing: the packaged app also requires
-  access-key activation before serving any scene, independent of overlay
+- A second gate exists on top of signing: the packaged app serves scenes only
+  while a league match is locked (the match gate), independent of overlay
   signing.
 
 Verify what the app will decide, any time:

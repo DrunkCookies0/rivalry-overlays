@@ -52,7 +52,7 @@ Every message is a JSON envelope:
 
 | Event | When | Key `data` fields |
 |---|---|---|
-| `UpdateState` | continuous, ~5 Hz (every ~200 ms) | `MatchGuid`, `Players[]`, `Game{}`, `Target` |
+| `UpdateState` | continuous, ~60 Hz (`PacketSendRate=60`); scenes must budget their per-message work accordingly | `MatchGuid`, `Players[]`, `Game{}`, `Target` |
 | `GoalScored` | a goal is scored | `Scorer{Name, TeamNum}`, `GoalSpeed` |
 | `GoalReplayStart` | goal replay begins (~3.5 s after goal) | — |
 | `GoalReplayWillEnd` | replay about to end | — |
@@ -152,7 +152,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
 | `eventTitle` | free-text broadcast title |
 | `round` | sub-title / bracket round (preview, starting-soon) |
 | `startTime` | human-readable start time string |
-| `casters` | array of `{ name, role, handle, stream, avatar }` — `stream` = VDO.Ninja view link or stream ID for that caster's cam (casters scene embeds it; 1-3 casters, layout adapts) |
+| `casters` | array of `{ name, role, handle, stream, avatar }` — `stream` = VDO.Ninja view link or stream ID for that caster's cam, held for the producer's link workflow (the casters scenes do NOT embed it; they punch transparent holes and cams are placed OBS-side; 1-3 casters, layout adapts) |
 | `upNext` | array of `{ teamA, teamB, time, round }` (up-next scene) |
 | `brand` | `{ leagueName, logo }` — optional; scenes default to "RIVALRY" |
 | `bracket` | `{ rounds:[{ name, matchups:[{ teamA, teamB, scoreA, scoreB }] }], champion }` — winner = higher score. **No shipped scene consumes this in v1.0** (the bracket scene returns for playoffs); the field stays documented because the contract is additive-only |
@@ -164,7 +164,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
 | `schedule` | `{ event:{ season, circuit, tier }, activeIndex, series:[{ id, matchId, teamA, teamB, bestOf, round, startTimeIso, startTimeDisplay }] }` — the broadcast night. Drives Up Next, Starting Soon, and ticker schedule items. `startTimeIso` is the sortable truth; `startTimeDisplay` is what renders |
 | `standings` | `{ circuit:{ id, name, tier, season }, updatedAt, rows:[{ position, rosterId, name, logoUrl, wins, losses, record, gamesRecord, points, matchesPlayed, streak }] }` — circuit standings in the league's OFFICIAL order (consumers must never re-sort; `position` is authoritative). Dark-launched: only present once the league API serves standings (Ask 1 in ASKS-FOR-CYNICAL.md). `logoUrl` arrives empty from the panel until a roster-logo proxy exists |
 
-`teamA`/`teamB`/`bestOf`/`series`/`eventTitle` are the original gameplay-overlay fields; `round`/`startTime`/`casters`/`upNext`/`brand`/`bracket` were **added (v1, additive)** for the presentation scenes; `players`/`queue` arrived with the panel features that send them; `chrome`/`ticker`/`lowerThird`/`schedule` were **added (v1, additive) in the v1.0 chrome work**. Overlays ignore fields they do not consume, and a scene that lacks data for a field keeps its placeholder (lists hide empty slots). Manual entry (control panel) and the league API fill the **same** fields.
+`teamA`/`teamB`/`bestOf`/`series`/`eventTitle` are the original gameplay-overlay fields; `round`/`startTime`/`casters`/`upNext`/`brand`/`bracket` were **added (v1, additive)** for the presentation scenes; `players`/`queue` arrived with the panel features that send them; `chrome`/`ticker`/`lowerThird`/`schedule` were **added (v1, additive) in the v1.0 chrome work**. Overlays ignore fields they do not consume, and a scene that lacks data for a field keeps its placeholder (lists hide empty slots). The locked league match and the panel's operator-owned cards fill the **same** fields; per the match-first note at the top, an overlay never knows which source a value came from.
 
 Payloads may be **partial** — merge into your current state, don't replace it.
 The SDK does this merge for you.

@@ -29,7 +29,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .scene-root[data-scene="postgame"]{--sc-cyan:#00f0ff;--sc-cyan-alt:#00eeff;--sc-lime:#c6f119;--sc-ink:#0b1519;--sc-font:'Montserrat','Segoe UI',Roboto,Helvetica,Arial,sans-serif;position:absolute;inset:0;overflow:hidden;font-family:var(--sc-font);color:#ffffff;background:var(--sc-ink);}
 
 /* --- layered background: SC26 season art under the content card --- */
-.scene-root[data-scene="postgame"] .pg-bg{position:absolute;inset:0;background-image:url('assets/sc26-background.webp');background-size:cover;background-position:center;background-color:var(--sc-ink);}
+.scene-root[data-scene="postgame"] .pg-bg{position:absolute;inset:0;background-image:url('../../assets/sc26-background.webp');background-size:cover;background-position:center;background-color:var(--sc-ink);}
 .scene-root[data-scene="postgame"] .pg-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,240,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,240,255,.04) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(120% 100% at 50% 46%,#000 52%,transparent 100%);mask-image:radial-gradient(120% 100% at 50% 46%,#000 52%,transparent 100%);}
 .scene-root[data-scene="postgame"] .pg-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 108px,rgba(255,255,255,.02) 108px 110px);animation:pgDrift 22s linear infinite;}
 @keyframes pgDrift{from{transform:translateX(0);}to{transform:translateX(110px);}}
@@ -46,7 +46,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
        (same inset geometry; dark card + 5px cyan side rails + light sweep) --- */
 .scene-root[data-scene="postgame"] .pg-frame{position:absolute;inset:48px 112px 120px;display:flex;flex-direction:column;background:rgba(8,18,21,.93);border-left:5px solid var(--sc-cyan);border-right:5px solid var(--sc-cyan);box-shadow:0 0 50px rgba(0,0,0,.9);padding:34px 24px 26px;overflow:hidden;}
 .scene-root[data-scene="postgame"] .pg-frame::after{content:'';position:absolute;top:0;left:-150%;width:50%;height:100%;background:linear-gradient(to right,transparent,rgba(0,240,255,.03),transparent);transform:skewX(-20deg);animation:scSweep 6s infinite linear;pointer-events:none;}
-@keyframes scSweep{0%{left:-150%;}100%{left:150%;}}
+/* transform-only (never left): a left animation forces layout every frame in
+   a long-running OBS source. 600% of own width = the old 300%-of-frame travel. */
+@keyframes scSweep{0%{transform:translateX(0) skewX(-20deg);}100%{transform:translateX(600%) skewX(-20deg);}}
 
 /* --- header --- */
 .scene-root[data-scene="postgame"] .pg-top{display:flex;align-items:flex-start;justify-content:space-between;z-index:2;}
@@ -174,7 +176,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       <div class="pg-slab"><span class="pg-mono" data-mono="teamA.name">G</span></div>
       <div class="pg-stmeta">
         <span class="pg-name" data-field="teamA.name">GUARDIANS</span>
-        <span class="pg-tag pg-tag-win">WINNER</span>
+        <!-- Hidden until the frozen final; JS shows it on the winning side only. -->
+        <span class="pg-tag pg-tag-win" style="display:none;">WINNER</span>
       </div>
     </div>
 
@@ -187,6 +190,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     <div class="pg-st pg-st-b">
       <div class="pg-stmeta pg-stmeta-r">
         <span class="pg-name" data-field="teamB.name">SENTINELS</span>
+        <span class="pg-tag pg-tag-win" style="display:none;">WINNER</span>
       </div>
       <div class="pg-slab"><span class="pg-mono" data-mono="teamB.name">S</span></div>
     </div>
@@ -351,14 +355,32 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       mvp: mvp ? { name: mvp.x.name, team: (mvp.t === 0 ? tA : tB) } : { name: '', team: '' }
     };
   }
+  var lastApplied = '';
   function rebuild() {
     var data = frozen || build(lastGood);
+    // UpdateState arrives at ~60 Hz and this scene idles in OBS all night:
+    // skip the full re-bind when nothing changed. Frozen-ness is part of the
+    // key because the freeze itself repaints identical data (WINNER tag).
+    var key = (frozen ? 'F' : 'L') + JSON.stringify(data);
+    if (key === lastApplied) return;
+    lastApplied = key;
     RivalryBind(root, null, data);
     var rows = root.querySelectorAll('.pg-row');
     rows.forEach(function (r) { r.classList.remove('is-mvp'); });
     if (data.mvp && data.mvp.name) rows.forEach(function (r) {
       var nm = r.querySelector('[data-field$=".name"]'); if (nm && nm.textContent === data.mvp.name) r.classList.add('is-mvp');
     });
+    // WINNER rides only on the frozen final, on the side that actually won.
+    // (It used to be static markup on team A, on screen even mid-game.)
+    var win = '';
+    if (frozen) {
+      if (data.teamA.score > data.teamB.score) win = 'a';
+      else if (data.teamB.score > data.teamA.score) win = 'b';
+    }
+    var tagA = root.querySelector('.pg-st-a .pg-tag-win');
+    var tagB = root.querySelector('.pg-st-b .pg-tag-win');
+    if (tagA) tagA.style.display = win === 'a' ? '' : 'none';
+    if (tagB) tagB.style.display = win === 'b' ? '' : 'none';
   }
   rebuild();
 })();

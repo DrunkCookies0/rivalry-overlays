@@ -10,9 +10,8 @@ overlays for the RIVALRY broadcast system, while keeping a hard gate so nothing
 goes live without Alex's review.
 
 > The shipped gameplay overlay lives here too, at
-> `overlays/rivalry-gameplay/index.html`. The legacy `overlay/overlay.html` is
-> still served as a silent fallback so pre-migration OBS sources keep working,
-> but all new work happens in this directory.
+> `overlays/rivalry-gameplay/index.html`. The legacy `overlay/overlay.html`
+> has been removed from the repo; all work happens in this directory.
 
 ## What's here
 
@@ -85,7 +84,7 @@ npm run overlay:verify -- overlays/<id>     # check what the app will decide (an
 ## Scenes the system targets
 
 `starting-soon`, `brb`, `caster`, `match-preview`, `up-next`, `gameplay`,
-`postgame`, `chrome`
+`postgame`, `chrome`, `standings`
 (see [MANIFEST-SPEC.md](MANIFEST-SPEC.md)). Most are control-bus-only and far
 simpler than the live `gameplay` overlay.
 
@@ -104,5 +103,5 @@ The gate is enforced at serve time, not just via the CLIs:
   registry, and the control panel's Overlays / Scenes card lists every scene
   from it with copy-URL and preview buttons plus an approved/preview pill.
 - **Gameplay migrated:** the shipped gameplay overlay lives at
-  `overlays/rivalry-gameplay/` (the legacy `overlay/overlay.html` remains as a
-  silent fallback for old OBS sources).
+  `overlays/rivalry-gameplay/` (the legacy `overlay/overlay.html` has been
+  removed from the repo).

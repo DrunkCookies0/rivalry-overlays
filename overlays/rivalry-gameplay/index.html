@@ -997,11 +997,19 @@ let lastFocusTime = 0;
 // seen a real value for that player.
 const lastBoostByName = {};
 
+// UpdateState runs at ~60 Hz; most of these values change rarely. Skipping
+// the write when the text is already right keeps the browser source from
+// re-dirtying text nodes and layout every frame all night. Render-path only.
+function setText(el, v){
+  const s = String(v);
+  if (el.textContent !== s) el.textContent = s;
+}
+
 function onUpdateState(data){
   const game = data.Game || {};
   const teams = game.Teams || [];
-  if (teams[0]) { lastScoreA = teams[0].Score ?? 0; $("scoreA").textContent = lastScoreA; }
-  if (teams[1]) { lastScoreB = teams[1].Score ?? 0; $("scoreB").textContent = lastScoreB; }
+  if (teams[0]) { lastScoreA = teams[0].Score ?? 0; setText($("scoreA"), lastScoreA); }
+  if (teams[1]) { lastScoreB = teams[1].Score ?? 0; setText($("scoreB"), lastScoreB); }
   // Hybrid OT detector. Fast path is RL's explicit Game.IsOT — that's the
   // truth when it's set. But in bot/private/freeplay matches RL never sets it,
   // so we infer OT from a clock-direction breadcrumb: once the regulation
@@ -1057,7 +1065,7 @@ function onUpdateState(data){
   const isOT = apiOT || inferredOT;
   const clk = $("clock");
   const t = Math.round(rawTime);
-  clk.textContent = fmtClock(rawTime, isOT);
+  setText(clk, fmtClock(rawTime, isOT));
   clk.classList.toggle("ot", isOT);
   // Final 10s of regulation — show big center-screen number, including the
   // "0" frame which matches the in-game UI's hold at 0:00 while RL waits
@@ -1126,10 +1134,12 @@ function renderBoost(col, players, cls){
     // re-sends Boost on change, so an as-yet-unseen player reads 0 until the
     // first value lands (brief, since boost changes constantly in play).
     const shownBoost = hasBoost ? boost : 0;
-    tag.querySelector(".pname").textContent = p.Name || "";
-    tag.querySelector(".pboost .num").textContent = shownBoost;
-    tag.querySelector(".fill").style.width = shownBoost + "%";
-    tag.dataset.name = p.Name || "";
+    setText(tag.querySelector(".pname"), p.Name || "");
+    setText(tag.querySelector(".pboost .num"), shownBoost);
+    const fill = tag.querySelector(".fill");
+    const w = shownBoost + "%";
+    if (fill.style.width !== w) fill.style.width = w;
+    if (tag.dataset.name !== (p.Name || "")) tag.dataset.name = p.Name || "";
   });
 }
 

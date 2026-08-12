@@ -136,7 +136,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       <div class="pg-slab"><span class="pg-mono" data-mono="teamA.name">G</span></div>
       <div class="pg-stmeta">
         <span class="pg-name" data-field="teamA.name">GUARDIANS</span>
-        <span class="pg-tag pg-tag-win">WINNER</span>
+        <!-- Hidden until the frozen final; JS shows it on the winning side only. -->
+        <span class="pg-tag pg-tag-win" style="display:none;">WINNER</span>
       </div>
     </div>
 
@@ -149,6 +150,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     <div class="pg-st pg-st-b">
       <div class="pg-stmeta pg-stmeta-r">
         <span class="pg-name" data-field="teamB.name">SENTINELS</span>
+        <span class="pg-tag pg-tag-win" style="display:none;">WINNER</span>
       </div>
       <div class="pg-slab"><span class="pg-mono" data-mono="teamB.name">S</span></div>
     </div>
@@ -313,14 +315,32 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       mvp: mvp ? { name: mvp.x.name, team: (mvp.t === 0 ? tA : tB) } : { name: '', team: '' }
     };
   }
+  var lastApplied = '';
   function rebuild() {
     var data = frozen || build(lastGood);
+    // UpdateState arrives at ~60 Hz and this scene idles in OBS all night:
+    // skip the full re-bind when nothing changed. Frozen-ness is part of the
+    // key because the freeze itself repaints identical data (WINNER tag).
+    var key = (frozen ? 'F' : 'L') + JSON.stringify(data);
+    if (key === lastApplied) return;
+    lastApplied = key;
     RivalryBind(root, null, data);
     var rows = root.querySelectorAll('.pg-row');
     rows.forEach(function (r) { r.classList.remove('is-mvp'); });
     if (data.mvp && data.mvp.name) rows.forEach(function (r) {
       var nm = r.querySelector('[data-field$=".name"]'); if (nm && nm.textContent === data.mvp.name) r.classList.add('is-mvp');
     });
+    // WINNER rides only on the frozen final, on the side that actually won.
+    // (It used to be static markup on team A, on screen even mid-game.)
+    var win = '';
+    if (frozen) {
+      if (data.teamA.score > data.teamB.score) win = 'a';
+      else if (data.teamB.score > data.teamA.score) win = 'b';
+    }
+    var tagA = root.querySelector('.pg-st-a .pg-tag-win');
+    var tagB = root.querySelector('.pg-st-b .pg-tag-win');
+    if (tagA) tagA.style.display = win === 'a' ? '' : 'none';
+    if (tagB) tagB.style.display = win === 'b' ? '' : 'none';
   }
   rebuild();
 })();
