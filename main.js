@@ -39,6 +39,7 @@ const obsSettingsStore = require("./bridge/obs-settings");
 const devSettingsStore = require("./bridge/dev-settings");
 const { getMeta } = require("./bridge/app-meta");
 const overlayRegistry = require("./bridge/overlay-registry");
+const httpGuard = require("./bridge/http-guard");
 const { createApiRouter } = require("./bridge/http-api");
 const leagueSettingsStore = require("./bridge/league-settings");
 const { createLeagueClient } = require("./bridge/league-client");
@@ -70,6 +71,7 @@ const MIME = {
   ".css": "text/css",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".json": "application/json",
@@ -135,7 +137,20 @@ if(r&&r.locked)location.reload();}catch{}},3000);</script>`;
 function startHttpServer(rootDir) {
   setHttpRoot(rootDir);
   const server = http.createServer((req, res) => {
-    let urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
+    // Host + Origin + path checks run before any routing (bridge/http-guard.js).
+    if (!httpGuard.isAllowedHost(req.headers.host)) {
+      res.writeHead(403);
+      return res.end("forbidden");
+    }
+    if (!["GET", "HEAD"].includes(req.method) && !httpGuard.isAllowedOrigin(req.headers.origin, HTTP_PORT)) {
+      res.writeHead(403);
+      return res.end("forbidden");
+    }
+    let urlPath = httpGuard.normalizeUrlPath(req.url);
+    if (urlPath === null) {
+      res.writeHead(400);
+      return res.end("bad request");
+    }
     // App API endpoints (status, setup, uploads, league proxy...) live in the
     // router; static serving + the overlay gate below stay untouched.
     if (apiRouter && apiRouter.handle(req, res, urlPath)) return;
@@ -174,7 +189,7 @@ function startHttpServer(rootDir) {
     }
     const root = httpRootDir;
     const filePath = path.normalize(path.join(root, urlPath));
-    if (!filePath.startsWith(root)) {
+    if (!httpGuard.isInsideRoot(root, filePath)) {
       res.writeHead(403);
       return res.end("forbidden");
     }
