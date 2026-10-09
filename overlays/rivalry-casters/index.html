@@ -9,7 +9,10 @@
 /* Casters overlay = a GRAPHICS layer only. The decorative background is punched
    with transparent cam holes so the real camera sources (VDO.Ninja browser
    sources or a webcam Video Capture Device) sit BEHIND this overlay in OBS and
-   show through the frames. Two layouts via ?layout=duo (default) or ?layout=solo. */
+   show through the frames; the app places those sources itself. One frame per
+   cam: the panel's cam count, or one per named caster (overlays/shared/
+   rivalry-caster-cams.js, which the app reads too); ?layout=solo|duo|trio pins
+   one. */
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
 .scene-root[data-scene="caster"]{position:relative;width:1920px;height:1080px;font-family:var(--rv-font-body);color:var(--rv-ink);overflow:hidden;}
 
@@ -38,6 +41,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .scene-root[data-scene="caster"] .cs-title{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:62px;line-height:.96;margin:2px 0 0;letter-spacing:.02em;text-transform:uppercase;}
 .scene-root[data-scene="caster"] .cs-underbar{margin-top:8px;width:150px;height:4px;background:linear-gradient(90deg,var(--rv-gold),rgba(241,196,15,0));}
 .scene-root[data-scene="caster"] .cs-event{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:17px;letter-spacing:.20em;color:var(--rv-muted);text-align:right;max-width:420px;}
+/* <b> in the event title: one Exo 2 step up (800 is loaded) from the 700 line */
+.scene-root[data-scene="caster"] .cs-event b{font-weight:800;}
 
 /* Frames are absolutely positioned per layout rect (set in JS). The interior is
    fully transparent (the cam shows through); only the border chrome + nameplate
@@ -53,14 +58,18 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .scene-root[data-scene="caster"] .cs-plate::before{content:"";position:absolute;left:0;top:0;width:64px;height:4px;background:var(--rv-gold);}
 .scene-root[data-scene="caster"] .cs-name{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:30px;text-transform:uppercase;letter-spacing:.02em;line-height:1;}
 .scene-root[data-scene="caster"] .cs-role{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:13px;letter-spacing:.24em;color:var(--rv-gold);text-transform:uppercase;margin-top:4px;}
-/* Preview-only hint shown when this page is opened without cameras behind it
-   (design review, control-panel preview). Hidden on air via ?live=1 so it never
-   sits over a real cam. */
-.scene-root[data-scene="caster"] .cs-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+/* Design-time guide: "CAMERA N" in an unnamed cam hole, for lining up the OBS
+   cam sources. Opt-in only, via ?guides=1. Each cam is its own OBS source
+   UNDER this hole, so on air the label sat on top of a live camera: it used to
+   show unless ?live=1, and no URL the app builds carries that. */
+.scene-root[data-scene="caster"] .cs-hint{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
   font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:22px;letter-spacing:.3em;color:rgba(241,238,238,.22);text-transform:uppercase;}
-.scene-root[data-scene="caster"][data-live="1"] .cs-hint{display:none;}
+.scene-root[data-scene="caster"][data-guides="1"] .cs-hint{display:flex;}
 
-.scene-root[data-scene="caster"] .cs-foot{position:absolute;left:0;right:0;bottom:34px;text-align:center;
+/* bottom:120px = the chrome's 72px ticker + the 48px every scene frame keeps
+   above it. At 34px the round label sat inside the ticker band (y 1008-1080),
+   hidden on air. */
+.scene-root[data-scene="caster"] .cs-foot{position:absolute;left:0;right:0;bottom:120px;text-align:center;
   font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.28em;color:var(--rv-muted);text-transform:uppercase;}
 </style>
 </head>
@@ -91,23 +100,23 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   <script src="../sdk/rivalry-overlay-sdk.js"></script>
   <script src="../sdk/rivalry-bind.js"></script>
   <script src="../sdk/rivalry-fit.js"></script>
+  <script src="../shared/rivalry-caster-cams.js"></script>
   <script>
   (function () {
     var root = document.querySelector('.scene-root');
     var params = new URLSearchParams(location.search);
 
-    // Fixed cam rects (px on the 1920x1080 stage). The OBS cam sources are
-    // pre-placed at THESE SAME rects behind the overlay, so the two must stay in
-    // sync (mirrored in bridge/obs-collection.js CASTER_LAYOUTS).
-    var LAYOUTS = {
-      duo:  [ { x: 90,  y: 300, w: 853, h: 480 }, { x: 977, y: 300, w: 853, h: 480 } ],
-      solo: [ { x: 360, y: 250, w: 1200, h: 675 } ],
-    };
-    var layout = LAYOUTS[params.get('layout')] ? params.get('layout') : 'duo';
-    var rects = LAYOUTS[layout];
-    // ?live=1 hides the "CAMERA N" preview hint (set on the OBS browser source
-    // URL so it never paints over a real cam).
-    if (params.get('live') === '1') root.setAttribute('data-live', '1');
+    // Fixed cam rects (px on the 1920x1080 stage) per cam count, from the
+    // shared layout file: the app places each OBS cam source at the SAME rect
+    // behind this overlay (bridge/caster-cams.js), so a cam always lines up
+    // with its hole. ?layout=solo|duo|trio pins a count whatever the payload
+    // says; the app reads the pin off this source's URL.
+    var Cams = window.RivalryCasterCams;
+    var RECTS = Cams.RECTS['rivalry-casters'];
+    var PINS = { solo: 1, duo: 2, trio: 3 };
+    var pinned = Object.prototype.hasOwnProperty.call(PINS, params.get('layout')) ? PINS[params.get('layout')] : 0;
+    // ?guides=1 shows the "CAMERA N" design-time labels (see .cs-hint).
+    if (params.get('guides') === '1') root.setAttribute('data-guides', '1');
 
     // Punch transparent holes through ALL the decorative art at each cam rect,
     // so the camera sources behind this overlay in OBS show through cleanly.
@@ -121,47 +130,70 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     // equally opaque and mask nothing at all. That is exactly what this overlay
     // did before — the mask looked right in the source and was a silent no-op,
     // leaving the grid texture and gold seam painted across the casters' faces.
-    (function maskHoles() {
+    //
+    // Each hole follows the frame's .rv-cut outline (top-right and bottom-left
+    // corners cut by --rv-cut): a plain rectangle let the cam show square
+    // corners past the frame's diagonal cuts.
+    var deco = document.getElementById('csDeco');
+    var cut = parseFloat(getComputedStyle(root).getPropertyValue('--rv-cut')) || 18;
+    function maskHoles(rects) {
       var d = 'M0 0H1920V1080H0Z';
       rects.forEach(function (r) {
-        d += 'M' + r.x + ' ' + r.y + 'H' + (r.x + r.w) + 'V' + (r.y + r.h) + 'H' + r.x + 'Z';
+        var x2 = r.x + r.w, y2 = r.y + r.h;
+        d += 'M' + r.x + ' ' + r.y + 'H' + (x2 - cut) + 'L' + x2 + ' ' + (r.y + cut) + 'V' + y2 +
+          'H' + (r.x + cut) + 'L' + r.x + ' ' + (y2 - cut) + 'Z';
       });
       var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080">' +
         '<path fill="#fff" fill-rule="evenodd" d="' + d + '"/></svg>';
       var uri = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
-      var deco = document.getElementById('csDeco');
       deco.style.webkitMaskImage = uri; deco.style.maskImage = uri;
       deco.style.webkitMaskSize = '1920px 1080px'; deco.style.maskSize = '1920px 1080px';
       deco.style.webkitMaskRepeat = 'no-repeat'; deco.style.maskRepeat = 'no-repeat';
-    })();
+    }
 
-    // Build a frame (border chrome + nameplate) at each rect.
+    // Build a frame (border chrome + nameplate) at each rect for n cams and
+    // punch the matching holes. Rebuilds only when the count changes.
     var frames = document.getElementById('csFrames');
-    var plates = rects.map(function (r, i) {
-      var f = document.createElement('div');
-      f.className = 'cs-frame rv-cut';
-      f.style.left = r.x + 'px'; f.style.top = r.y + 'px'; f.style.width = r.w + 'px'; f.style.height = r.h + 'px';
-      var hint = document.createElement('div'); hint.className = 'cs-hint'; hint.textContent = 'Camera ' + (i + 1);
-      f.appendChild(hint);
-      var plate = document.createElement('div'); plate.className = 'cs-plate';
-      var nm = document.createElement('span'); nm.className = 'cs-name';
-      var role = document.createElement('span'); role.className = 'cs-role';
-      plate.appendChild(nm); plate.appendChild(role);
-      f.appendChild(plate);
-      frames.appendChild(f);
-      return { nm: nm, role: role, hint: hint };
-    });
+    var plates = [], current = 0;
+    function build(n) {
+      if (n === current) return;
+      current = n;
+      var rects = RECTS[n];
+      maskHoles(rects);
+      frames.innerHTML = '';
+      plates = rects.map(function (r, i) {
+        var f = document.createElement('div');
+        f.className = 'cs-frame rv-cut';
+        f.style.left = r.x + 'px'; f.style.top = r.y + 'px'; f.style.width = r.w + 'px'; f.style.height = r.h + 'px';
+        var hint = document.createElement('div'); hint.className = 'cs-hint'; hint.textContent = 'Camera ' + (i + 1);
+        f.appendChild(hint);
+        var plate = document.createElement('div'); plate.className = 'cs-plate';
+        var nm = document.createElement('span'); nm.className = 'cs-name';
+        var role = document.createElement('span'); role.className = 'cs-role';
+        plate.appendChild(nm); plate.appendChild(role);
+        f.appendChild(plate);
+        frames.appendChild(f);
+        return { plate: plate, nm: nm, role: role, hint: hint };
+      });
+    }
 
     // Nameplates come from the control feed (caster names/roles); the camera
-    // video comes from the OBS sources behind, not from here.
-    RivalryBind(root, RivalryOverlay.connect({ game: false })); // header: league / event / round
-    RivalryOverlay.connect({ game: false }).onControl(function (c) {
-      var casters = (c && c.casters) || [];
+    // video comes from the OBS sources behind, not from here. ONE connect() per
+    // page: a second call opens a duplicate control socket with its own
+    // reconnect loop and its own copy of the state.
+    var rl = RivalryOverlay.connect({ game: false });
+    RivalryBind(root, rl); // header: league / event / round
+    rl.onControl(function (c) {
+      // One frame per cam; casters sharing a cam share its plate ("A & B").
+      var n = pinned || Cams.camCount(c, 'rivalry-casters');
+      build(n);
+      var slots = Cams.slots(c, n);
       plates.forEach(function (p, i) {
-        var caster = casters[i] || {};
-        p.nm.textContent = caster.name || '';
-        p.role.textContent = caster.role || '';
-        p.hint.style.display = caster.name ? 'none' : ''; // once named, drop the placeholder label
+        var slot = slots[i];
+        p.nm.textContent = slot.name;
+        p.role.textContent = slot.role;
+        p.plate.style.display = slot.name ? '' : 'none'; // never an empty bar over a cam
+        p.hint.style.display = slot.name ? 'none' : ''; // once named, drop the guide label
       });
     });
     RivalryFit('.rv-stage');

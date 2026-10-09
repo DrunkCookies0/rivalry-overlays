@@ -78,8 +78,9 @@ test("the gameplay scene ships a game capture under the overlay, scaled to fill"
   const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");
   assert.ok(live, "expected a RIVALRY - Live scene");
   assert.equal(live.settings.items.length, 2, "overlay + game capture");
-  // Array order is front-to-back: overlay on top (index 0), capture behind (1).
-  const [top, bottom] = live.settings.items;
+  // Array order is back-to-front (OBS appends each loaded item on top, libobs
+  // obs-scene.c): capture behind (index 0), overlay on top (1).
+  const [bottom, top] = live.settings.items;
   assert.equal(byUuid.get(top.source_uuid).id, "browser_source");
   const cap = byUuid.get(bottom.source_uuid);
   assert.equal(cap.id, "game_capture");
@@ -110,13 +111,40 @@ test("every scene carries the main-canvas uuid so OBS does not drop it", () => {
   }
 });
 
-test("scene items carry OBS 31 canvas-relative coordinates", () => {
-  for (const scene of scenesOf(build())) {
-    const item = scene.settings.items[0];
-    assert.deepEqual(item.pos_rel, { x: -1.7777777910232544, y: -1 });
-    assert.deepEqual(item.scale_rel, { x: 1, y: 1 });
-    assert.deepEqual(item.bounds_rel, { x: 0, y: 0 });
+// libobs pos_to_absolute / size_to_absolute on the 1920x1080 reference: what
+// OBS 31 turns *_rel into on load, because it reads them IN PREFERENCE to
+// pos/bounds (scene_load_item). A placeholder here lands the item at 0,0, 0x0.
+const absPos = (r) => ({ x: (r.x * 1080 + 1920) / 2, y: (r.y * 1080 + 1080) / 2 });
+const absSize = (r) => ({ x: (r.x * 1080) / 2, y: (r.y * 1080) / 2 });
+const close = (a, b) => Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
+
+test("every item's OBS 31 relative coordinates decode to its real position and size", () => {
+  const control = { casters: [C("ALEX", "alexcam"), C("SAM", "samcam")] };
+  for (const col of [build(), buildSceneCollection({ overlays: fixtureWithChrome(), baseUrl: BASE, control })]) {
+    for (const scene of scenesOf(col)) {
+      for (const item of scene.settings.items) {
+        assert.deepEqual(item.scale_rel, { x: 1, y: 1 });
+        assert.deepEqual(item.scale_ref, { x: 1920, y: 1080 });
+        assert.ok(close(absPos(item.pos_rel), item.pos), `${scene.name} / ${item.name}: pos_rel ${JSON.stringify(item.pos_rel)} vs pos ${JSON.stringify(item.pos)}`);
+        assert.ok(close(absSize(item.bounds_rel), item.bounds), `${scene.name} / ${item.name}: bounds_rel vs bounds`);
+      }
+    }
   }
+});
+
+test("caster cams and the game capture decode to their holes, not 0,0 at 0x0", () => {
+  const control = { casters: [C("ALEX", "alexcam"), C("SAM", "samcam")] };
+  const col = buildSceneCollection({ overlays: fixtureWithChrome(), baseUrl: BASE, control });
+  for (const [n, r] of RECTS["rivalry-casters"][2].entries()) {
+    const it = castersScene(col).find((x) => x.src.name === "Caster Cam " + (n + 1)).it;
+    assert.ok(close(absPos(it.pos_rel), { x: r.x, y: r.y }));
+    assert.ok(close(absSize(it.bounds_rel), { x: r.w, y: r.h }));
+  }
+  const cap = scenesOf(col).find((s) => s.name === "RIVALRY - Live").settings.items[0];
+  assert.ok(close(absSize(cap.bounds_rel), { x: SAFE_AREA.width, y: SAFE_AREA.height }));
+  assert.ok(close(absPos(cap.pos_rel), { x: SAFE_AREA.x, y: SAFE_AREA.y }));
+  const overlay = scenesOf(col).find((s) => s.name === "RIVALRY - Live").settings.items[1];
+  assert.ok(close(overlay.pos_rel, { x: -16 / 9, y: -1 }), "overlays stay at the top-left corner");
 });
 
 test("the first scene in broadcast order is the current program scene", () => {
@@ -137,7 +165,7 @@ test("scene order follows OBS_SCENE_NAMES key order, unmapped scenes last", () =
 
 test("browser sources carry 1080p60 settings and baseUrl-joined urls", () => {
   const col = build();
-  const browsers = browsersOf(col);
+  const browsers = browsersOf(col).filter((b) => !b.name.startsWith("Caster Cam "));
   assert.equal(browsers.length, fixture().length);
   for (const b of browsers) {
     assert.equal(b.settings.width, 1920);
@@ -236,7 +264,7 @@ test("opaque scenes never get the chrome pinned on top", () => {
   const col = buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "sc26" });
   const chromeSrc = browsersOf(col).find((b) => b.name === CHROME_SOURCE_NAME);
   const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");
-  assert.equal(live.settings.items[0].source_uuid, chromeSrc.uuid, "transparent scene keeps the chrome");
+  assert.equal(live.settings.items.at(-1).source_uuid, chromeSrc.uuid, "transparent scene keeps the chrome");
   const brb = scenesOf(col).find((s) => s.name === "RIVALRY - BRB");
   assert.ok(
     !brb.settings.items.some((i) => i.source_uuid === chromeSrc.uuid),
@@ -289,7 +317,7 @@ test("chrome never becomes a scene; every scene gets it as the TOP item", () => 
   const chromeSrc = browsersOf(col).find((b) => b.name === CHROME_SOURCE_NAME);
   assert.ok(chromeSrc, "one shared chrome browser source");
   for (const scene of scenes) {
-    const top = scene.settings.items[0]; // index 0 renders in front
+    const top = scene.settings.items.at(-1); // the last item renders in front
     assert.equal(top.source_uuid, chromeSrc.uuid, `chrome not on top of "${scene.name}"`);
     assert.equal(top.locked, true);
     assert.equal(top.bounds_type, 0, "chrome is authored at canvas size, no bounds scaling");
@@ -302,8 +330,8 @@ test("with the chrome present, the game capture scales into the safe area", () =
   const col = buildSceneCollection({ overlays: fixtureWithChrome(), baseUrl: BASE });
   const byUuid = new Map(col.sources.filter((s) => s.id !== "scene").map((s) => [s.uuid, s]));
   const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");
-  assert.equal(live.settings.items.length, 3, "chrome + overlay + capture");
-  const capItem = live.settings.items[2];
+  assert.equal(live.settings.items.length, 3, "capture + overlay + chrome");
+  const capItem = live.settings.items[0];
   assert.equal(byUuid.get(capItem.source_uuid).id, "game_capture");
   assert.equal(capItem.bounds_type, 2);
   assert.deepEqual(capItem.bounds, { x: SAFE_AREA.width, y: SAFE_AREA.height });
@@ -330,6 +358,76 @@ test("without a chrome overlay the collection keeps the pre-chrome shape", () =>
   const col = build();
   const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");
   assert.equal(live.settings.items.length, 2, "overlay + capture, no chrome");
-  assert.deepEqual(live.settings.items[1].bounds, { x: 1920, y: 1080 }, "capture fills the canvas");
+  assert.deepEqual(live.settings.items[0].bounds, { x: 1920, y: 1080 }, "capture fills the canvas");
   assert.ok(!browsersOf(col).some((b) => b.name === CHROME_SOURCE_NAME));
+});
+
+// ---------------------------------------------------------------------------
+// Caster cams in the importable collection
+// ---------------------------------------------------------------------------
+
+const { RECTS } = require("../overlays/shared/rivalry-caster-cams");
+const C = (name, stream = "") => ({ name, role: "", handle: "", stream, avatar: "" });
+
+function castersScene(col) {
+  const byUuid = new Map(col.sources.filter((s) => s.id !== "scene").map((s) => [s.uuid, s]));
+  const scene = scenesOf(col).find((s) => s.name === "RIVALRY - Casters");
+  return scene.settings.items.map((it) => ({ it, src: byUuid.get(it.source_uuid) }));
+}
+
+test("the Casters scene ships a cam per caster under the overlay, in its holes", () => {
+  const control = { casters: [C("ALEX", "alexcam"), C("SAM", "https://vdo.ninja/?view=sam")] };
+  const col = buildSceneCollection({ overlays: fixtureWithChrome(), baseUrl: BASE, control });
+  const items = castersScene(col);
+  const names = items.map((x) => x.src.name);
+  assert.deepEqual(names, ["Caster Cam 1", "Caster Cam 2", "RIVALRY Casters Overlay", CHROME_SOURCE_NAME], "cams at the back, chrome in front");
+  for (const n of [0, 1]) {
+    const { it, src } = items[n];
+    const r = RECTS["rivalry-casters"][2][n];
+    assert.deepEqual(it.pos, { x: r.x, y: r.y });
+    assert.deepEqual(it.bounds, { x: r.w, y: r.h });
+    assert.equal(it.bounds_type, 2);
+    assert.equal(it.visible, true);
+    assert.equal(src.settings.shutdown, false);
+  }
+  assert.equal(items[0].src.settings.url, "https://vdo.ninja/?view=alexcam&cleanoutput&autostart");
+  assert.equal(items[1].src.settings.url, "https://vdo.ninja/?view=sam");
+});
+
+test("one cam picked: a single cam in the solo hole", () => {
+  const control = { casterCams: 1, casters: [C("ALEX", "deskcam"), C("SAM")] };
+  const items = castersScene(buildSceneCollection({ overlays: fixture(), baseUrl: BASE, control }));
+  const cams = items.filter((x) => x.src.name.startsWith("Caster Cam "));
+  assert.equal(cams.length, 1);
+  assert.deepEqual(cams[0].it.bounds, { x: RECTS["rivalry-casters"][1][0].w, y: RECTS["rivalry-casters"][1][0].h });
+});
+
+test("cams with no feed yet are placed but hidden, ready for a link", () => {
+  const items = castersScene(build()); // no control state at all: the designed two-cam look
+  const cams = items.filter((x) => x.src.name.startsWith("Caster Cam "));
+  assert.equal(cams.length, 2);
+  assert.ok(cams.every((x) => x.it.visible === false && x.src.settings.url === ""));
+});
+
+test("a casters overlay without known cam geometry gets no cams", () => {
+  const overlays = [entry({ folder: "community-casters", name: "Community Casters", scene: "caster" })];
+  const col = buildSceneCollection({ overlays, baseUrl: BASE, control: { casters: [C("A", "a")] } });
+  assert.ok(!browsersOf(col).some((b) => b.name.startsWith("Caster Cam ")));
+});
+
+test("the SC26 casters overlay gets its own hole geometry", () => {
+  const overlays = [{ ...entry({ folder: "rivalry-sc26-casters", name: "SC26 Casters", scene: "caster" }), set: "sc26", opaque: true }];
+  const control = { casters: [C("A", "a"), C("B", "b"), C("C", "c")] };
+  const items = castersScene(buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "sc26", control }));
+  const cams = items.filter((x) => x.src.name.startsWith("Caster Cam "));
+  assert.deepEqual(cams.map((x) => x.it.pos), RECTS["rivalry-sc26-casters"][3].map((r) => ({ x: r.x, y: r.y })));
+});
+
+test("a caster sharing a cam rides a hidden spare source, so they are still heard", () => {
+  const control = { casterCams: 1, casters: [C("ALEX", "alexcam"), C("SAM", "samcam")] };
+  const items = castersScene(buildSceneCollection({ overlays: fixture(), baseUrl: BASE, control }));
+  const spare = items.find((x) => x.src.name === "Caster Cam 2");
+  assert.ok(spare, "SAM's feed is in the collection");
+  assert.equal(spare.it.visible, false);
+  assert.equal(spare.src.settings.url, "https://vdo.ninja/?view=samcam&cleanoutput&autostart");
 });

@@ -917,10 +917,18 @@ const COUNTDOWN_DEBOUNCE_MS = 500;
 // override per row when it lands.
 const RV_LOGO = "../../assets/rivalry-logo.svg";
 
+// eventTitle is free text (producer-typed or the league API's title), so it is
+// escaped in full, then only bare <b>/</b> (styled by .eventbar b) is re-allowed.
+function titleHtml(s){
+  return String(s)
+    .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
+    .replace(/&lt;(\/?)b&gt;/gi, "<$1b>");
+}
+
 // Eventbar shows the operator-set event title only — match-state takeovers
 // (OVERTIME / KICKOFF) live in the state strip below the pip row.
 function updateEventBar(){
-  $("eventbar").innerHTML = control.eventTitle || "RIVALRY";
+  $("eventbar").innerHTML = titleHtml(control.eventTitle || "RIVALRY");
 }
 
 // State strip — below the pip row. OVERTIME wins over KICKOFF if both apply.

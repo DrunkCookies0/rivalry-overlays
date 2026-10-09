@@ -112,7 +112,9 @@ not to.
   it alone. The shipped overlay infers OT from a tied score + an ascending clock.
 - **`RoundStarted` is NOT ball-drop.** It's the camera cut, landing 0.8–4.6 s
   before the ball actually drops depending on scenario. Don't anchor a "GO!" to it.
-- **Demos double-fire**; dedupe by attacker+victim within a short window.
+- **Demos double-fire** (RL's native event plus the bridge's synthetic one, which has
+  no `Victim`): dedupe by attacker within ~1 s. For a running total prefer
+  `Players[].Demos` when the frame carries it; it is RL's own counter.
 
 ---
 
@@ -137,6 +139,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
     "round": "UPPER BRACKET • ROUND 1",
     "startTime": "8:00 PM ET",
     "casters": [ { "name": "ALEX 'COOKIES' TOLL", "role": "PLAY-BY-PLAY", "handle": "@cookies", "stream": "vdo-id-or-url", "avatar": "" } ],
+    "casterCams": 0,
     "upNext": [ { "teamA": "NOVA", "teamB": "ECLIPSE", "time": "9:30 ET", "round": "UB R1" } ],
     "brand": { "leagueName": "RIVALRY", "logo": "" },
     "bracket": { "rounds": [ { "name": "QUARTERFINALS", "matchups": [ { "teamA": "GUARDIANS", "teamB": "DRIFT", "scoreA": 3, "scoreB": 1 } ] } ], "champion": "" }
@@ -149,10 +152,11 @@ Listen only for `type: "control"`. Other traffic exists on this bus
 | `teamA` / `teamB` | `{ name, logo (URL, may be ""), tag, seed, record }` — `seed`/`record` used by presentation scenes |
 | `bestOf` | series length (odd number) |
 | `series` | wins so far `{ a, b }` |
-| `eventTitle` | free-text broadcast title |
+| `eventTitle` | free-text broadcast title. May carry bare `<b>...</b>` emphasis (no attributes); everything else is literal text. Render it escaped with only `<b>`/`</b>` restored (RivalryBind does this for `data-field="eventTitle"`), never as raw HTML |
 | `round` | sub-title / bracket round (preview, starting-soon) |
 | `startTime` | human-readable start time string |
-| `casters` | array of `{ name, role, handle, stream, avatar }` — `stream` = VDO.Ninja view link or stream ID for that caster's cam (casters scene embeds it; 1-3 casters, layout adapts) |
+| `casters` | array of `{ name, role, handle, stream, avatar }` — `stream` = VDO.Ninja view link or stream ID for that caster's cam. The scene does not embed it: the app loads it into an OBS browser source behind the matching cam hole (`overlays/shared/rivalry-caster-cams.js` holds the layout both sides use) |
+| `casterCams` | how many cam frames the casters scene shows: `1`-`3`, or `0`/absent for one per named caster (two before anyone is named). With fewer cams than casters, the extra casters share the last cam's name plate (`"A & B"`) and it shows the first of their feeds that is a VDO.Ninja link; the app keeps the others' feeds loaded in OBS, hidden (heard, not shown). Auto never drops `rivalry-casters` below its two designed frames, and `?layout=solo\|duo\|trio` on that scene pins the count whatever this says |
 | `upNext` | array of `{ teamA, teamB, time, round }` (up-next scene) |
 | `brand` | `{ leagueName, logo }` — optional; scenes default to "RIVALRY" |
 | `bracket` | `{ rounds:[{ name, matchups:[{ teamA, teamB, scoreA, scoreB }] }], champion }` — winner = higher score. **No shipped scene consumes this in v1.0** (the bracket scene returns for playoffs); the field stays documented because the contract is additive-only |
@@ -164,7 +168,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
 | `schedule` | `{ event:{ season, circuit, tier }, activeIndex, series:[{ id, matchId, teamA, teamB, bestOf, round, startTimeIso, startTimeDisplay }] }` — the broadcast night. Drives Up Next, Starting Soon, and ticker schedule items. `startTimeIso` is the sortable truth; `startTimeDisplay` is what renders |
 | `standings` | `{ circuit:{ id, name, tier, season }, updatedAt, rows:[{ position, rosterId, name, logoUrl, wins, losses, record, gamesRecord, points, matchesPlayed, streak }] }` — circuit standings in the league's OFFICIAL order (consumers must never re-sort; `position` is authoritative). Dark-launched: only present once the league API serves standings (Ask 1 in ASKS-FOR-CYNICAL.md). `logoUrl` arrives empty from the panel until a roster-logo proxy exists |
 
-`teamA`/`teamB`/`bestOf`/`series`/`eventTitle` are the original gameplay-overlay fields; `round`/`startTime`/`casters`/`upNext`/`brand`/`bracket` were **added (v1, additive)** for the presentation scenes; `players`/`queue` arrived with the panel features that send them; `chrome`/`ticker`/`lowerThird`/`schedule` were **added (v1, additive) in the v1.0 chrome work**. Overlays ignore fields they do not consume, and a scene that lacks data for a field keeps its placeholder (lists hide empty slots). Manual entry (control panel) and the league API fill the **same** fields.
+`teamA`/`teamB`/`bestOf`/`series`/`eventTitle` are the original gameplay-overlay fields; `round`/`startTime`/`casters`/`upNext`/`brand`/`bracket` were **added (v1, additive)** for the presentation scenes; `players`/`queue` arrived with the panel features that send them; `chrome`/`ticker`/`lowerThird`/`schedule` were **added (v1, additive) in the v1.0 chrome work**; `casterCams` was **added (v1, additive)** with app-placed caster cams. Overlays ignore fields they do not consume, and a scene that lacks data for a field keeps its placeholder (lists hide empty slots). Manual entry (control panel) and the league API fill the **same** fields.
 
 Payloads may be **partial** — merge into your current state, don't replace it.
 The SDK does this merge for you.

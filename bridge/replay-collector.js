@@ -34,6 +34,7 @@ const path = require("path");
 
 function sanitize(s, fallback) {
   const cleaned = String(s == null ? "" : s)
+    .replace(/<\/?b>/gi, "") // eventTitle's <b> emphasis (CONTRACT.md), not a stray "b...b"
     .replace(/[^A-Za-z0-9 _-]/g, "")
     .replace(/\s+/g, " ")
     .trim()
