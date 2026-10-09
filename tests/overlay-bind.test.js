@@ -102,3 +102,22 @@ test("a missing group leaves its fields alone, even under live data", () => {
   bindOnce([el], { teamA: { name: "X" } }); // no casters key at all
   assert.equal(el.textContent, "CASTER ONE");
 });
+
+test("eventTitle keeps bare <b> emphasis and renders everything else as text", () => {
+  // The title is free text (producer-typed or the league API's): an <img
+  // onerror> in it ran script in the gameplay overlay. Only bare <b>/</b>,
+  // which the gameplay eventbar has always styled, survive as markup.
+  const title = makeEl("eventTitle", "RIVALRY SEASON 1");
+  bindOnce([title], { eventTitle: 'SEASON 1 | <b>PLAYOFFS</B> <img src=x onerror="alert(1)"> & <b class=x>' });
+  assert.equal(
+    title.innerHTML,
+    "SEASON 1 | <b>PLAYOFFS</b> &lt;img src=x onerror=&quot;alert(1)&quot;&gt; &amp; &lt;b class=x&gt;"
+  );
+});
+
+test("other fields stay plain text, tags and all", () => {
+  const name = makeEl("teamA.name", "GUARDIANS");
+  bindOnce([name], { teamA: { name: "<b>X</b>" } });
+  assert.equal(name.textContent, "<b>X</b>");
+  assert.equal(name.innerHTML, undefined, "never written as HTML");
+});

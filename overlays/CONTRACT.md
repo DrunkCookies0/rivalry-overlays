@@ -112,7 +112,9 @@ not to.
   it alone. The shipped overlay infers OT from a tied score + an ascending clock.
 - **`RoundStarted` is NOT ball-drop.** It's the camera cut, landing 0.8–4.6 s
   before the ball actually drops depending on scenario. Don't anchor a "GO!" to it.
-- **Demos double-fire**; dedupe by attacker+victim within a short window.
+- **Demos double-fire** (RL's native event plus the bridge's synthetic one, which has
+  no `Victim`): dedupe by attacker within ~1 s. For a running total prefer
+  `Players[].Demos` when the frame carries it; it is RL's own counter.
 
 ---
 
@@ -149,7 +151,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
 | `teamA` / `teamB` | `{ name, logo (URL, may be ""), tag, seed, record }` — `seed`/`record` used by presentation scenes |
 | `bestOf` | series length (odd number) |
 | `series` | wins so far `{ a, b }` |
-| `eventTitle` | free-text broadcast title |
+| `eventTitle` | free-text broadcast title. May carry bare `<b>...</b>` emphasis (no attributes); everything else is literal text. Render it escaped with only `<b>`/`</b>` restored (RivalryBind does this for `data-field="eventTitle"`), never as raw HTML |
 | `round` | sub-title / bracket round (preview, starting-soon) |
 | `startTime` | human-readable start time string |
 | `casters` | array of `{ name, role, handle, stream, avatar }` — `stream` = VDO.Ninja view link or stream ID for that caster's cam (casters scene embeds it; 1-3 casters, layout adapts) |

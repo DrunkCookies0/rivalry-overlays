@@ -27,21 +27,34 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .scene-root[data-scene="up-next"] .un-brandtxt{display:flex;flex-direction:column;gap:3px;text-align:right;}
 .scene-root[data-scene="up-next"] .un-league{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:24px;letter-spacing:.14em;text-transform:uppercase;}
 .scene-root[data-scene="up-next"] .un-event{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:14px;letter-spacing:.20em;text-transform:uppercase;color:var(--rv-gold);}
+/* <b> in the event title: one Exo 2 step up (800 is loaded) from the 700 line */
+.scene-root[data-scene="up-next"] .un-event b{font-weight:800;}
 .scene-root[data-scene="up-next"] .un-list{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:22px;}
-.scene-root[data-scene="up-next"] .un-row{flex:1 1 0;display:flex;align-items:center;gap:30px;padding:0 40px;background:linear-gradient(100deg,var(--rv-surface-1),var(--rv-jet-black));box-shadow:0 14px 36px rgba(0,0,0,.45);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));border-left:8px solid var(--rv-blue);animation:unRow .6s var(--rv-ease-wipe) both;}
+/* max-height = the 3-row height: a 1- or 2-series night stays a centred row
+   instead of stretching into a near full-screen slab; 3 and 4 rows unchanged. */
+.scene-root[data-scene="up-next"] .un-row{flex:1 1 0;max-height:232px;display:flex;align-items:center;gap:30px;padding:0 40px;background:linear-gradient(100deg,var(--rv-surface-1),var(--rv-jet-black));box-shadow:0 14px 36px rgba(0,0,0,.45);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));border-left:8px solid var(--rv-blue);animation:unRow .6s var(--rv-ease-wipe) both;}
 .scene-root[data-scene="up-next"] .un-row:nth-child(1){animation-delay:.25s;}
 .scene-root[data-scene="up-next"] .un-row:nth-child(2){animation-delay:.33s;border-left-color:var(--rv-teal);}
 .scene-root[data-scene="up-next"] .un-row:nth-child(3){animation-delay:.41s;border-left-color:var(--rv-orange);}
 .scene-root[data-scene="up-next"] .un-row:nth-child(4){animation-delay:.49s;border-left-color:var(--rv-gold);}
 @keyframes unRow{from{opacity:0;transform:translateX(-36px) skewX(-3deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
 .scene-root[data-scene="up-next"] .un-idx{font-family:var(--rv-font-stat);font-weight:700;font-size:46px;color:rgba(241,196,15,.5);min-width:72px;}
-.scene-root[data-scene="up-next"] .un-tag{flex:0 0 auto;font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:16px;letter-spacing:.14em;text-transform:uppercase;color:var(--rv-jet-black);background:var(--rv-gold);padding:7px 16px;min-width:120px;text-align:center;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));}
-.scene-root[data-scene="up-next"] .un-matchup{flex:1 1 auto;display:flex;align-items:center;gap:30px;}
+/* Never shrinks: the panel queues "Season | Circuit | Round N", so the round
+   number is at the end. Team names give way first; the 50% cap + ellipsis only
+   stops a runaway label from pushing the time off the plate. */
+.scene-root[data-scene="up-next"] .un-tag{flex:0 0 auto;font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:16px;letter-spacing:.14em;text-transform:uppercase;color:var(--rv-jet-black);background:var(--rv-gold);padding:7px 16px;min-width:120px;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px));}
+/* min-width:0 lets the matchup shrink below its nowrap names, so the teams
+   ellipsize instead of pushing the time off the plate. */
+.scene-root[data-scene="up-next"] .un-matchup{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:30px;}
 .scene-root[data-scene="up-next"] .un-team{flex:1 1 0;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:56px;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--rv-white-smoke);text-shadow:0 4px 14px rgba(0,0,0,.7);}
 .scene-root[data-scene="up-next"] .un-a{text-align:right;border-bottom:4px solid var(--rv-blue);padding-bottom:4px;}
 .scene-root[data-scene="up-next"] .un-b{text-align:left;border-bottom:4px solid var(--rv-orange);padding-bottom:4px;}
 .scene-root[data-scene="up-next"] .un-vs{flex:0 0 auto;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:34px;color:var(--rv-gold);text-shadow:0 0 18px rgba(241,196,15,.4);}
 .scene-root[data-scene="up-next"] .un-time{flex:0 0 auto;font-family:var(--rv-font-stat);font-weight:700;font-size:40px;color:var(--rv-white-smoke);min-width:200px;text-align:right;letter-spacing:.02em;}
+/* Empty schedule (nothing queued, or the night's last series on air): one row
+   plate with a fixed height so the scene never airs a bare title. Shown by the
+   script below; it is not an .un-row, so the nth-child rules above are unaffected. */
+.scene-root[data-scene="up-next"] .un-empty{display:none;flex:0 0 232px;align-items:center;justify-content:center;padding:0 40px;background:linear-gradient(100deg,var(--rv-surface-1),var(--rv-jet-black));box-shadow:0 14px 36px rgba(0,0,0,.45);clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px));border-left:8px solid var(--rv-blue);animation:unRow .6s .25s var(--rv-ease-wipe) both;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:56px;line-height:1;text-transform:uppercase;white-space:nowrap;color:var(--rv-white-smoke);text-shadow:0 4px 14px rgba(0,0,0,.7);}
 </style>
 </head>
 <body>
@@ -109,6 +122,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       </div>
       <span class="un-time" data-field="upNext.3.time">11:00 ET</span>
     </div>
+    <div class="un-empty">MORE MATCHES TO BE ANNOUNCED</div>
   </section>
 </div>
     </div>
@@ -120,6 +134,22 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     // Control-only scene: subscribe to the control bus (auto-mocks on file://).
     var rl = RivalryOverlay.connect({ game: false });
     RivalryBind(document.querySelector('.scene-root'), rl);
+    // Runs after RivalryBind (handlers fire in subscription order).
+    var emptyEl = document.querySelector('.un-empty');
+    var wasEmpty = false;
+    rl.onControl(function (c) {
+      // RivalryBind hides every row whose upNext entry is blank (its slot rule),
+      // so an empty schedule (nothing queued, or the last series on air) aired a
+      // bare title: show the one-line plate instead. No upNext at all means no
+      // payload yet (the SDK fires its defaults before the bridge replay), so stay
+      // hidden. display only changes with the state, so the plate's entrance does
+      // not replay on every panel keystroke.
+      var list = Array.isArray(c.upNext) ? c.upNext.slice(0, 4) : null;
+      var isEmpty = !!list && !list.some(function (v) {
+        return v != null && v !== '' && (typeof v !== 'object' || Object.keys(v).some(function (k) { return v[k]; }));
+      });
+      if (isEmpty !== wasEmpty) { emptyEl.style.display = isEmpty ? 'flex' : ''; wasEmpty = isEmpty; }
+    });
     // Resolution-independent: scale the 1920x1080 design to fill any source size.
     // Append ?fit=cover to the source URL to fill+crop instead of letterbox on non-16:9.
     RivalryFit('.rv-stage');

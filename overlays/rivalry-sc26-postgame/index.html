@@ -58,6 +58,10 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .scene-root[data-scene="postgame"] .pg-sc-title{font-weight:900;font-style:italic;font-size:34px;line-height:1;letter-spacing:-1px;text-transform:uppercase;color:#ffffff;}
 .scene-root[data-scene="postgame"] .pg-sc-title span{color:var(--sc-lime);}
 .scene-root[data-scene="postgame"] .pg-event{font-weight:900;font-size:14px;letter-spacing:3px;text-transform:uppercase;color:var(--sc-ink);background-color:var(--sc-lime);padding:5px 18px;margin-top:2px;align-self:flex-start;transform:skewX(-10deg);}
+/* <b> in the event title: the pill is already Montserrat 900 (the only weight loaded) and ink on
+   lime leaves no colour to swap, so emphasis is the canon italic; inherit stops the UA's 700 bold
+   rendering it LIGHTER than the pill in the offline font fallback */
+.scene-root[data-scene="postgame"] .pg-event b{font-weight:inherit;font-style:italic;}
 
 .scene-root[data-scene="postgame"] .pg-headblock{display:flex;flex-direction:column;align-items:flex-end;}
 .scene-root[data-scene="postgame"] .pg-round{font-weight:900;font-size:16px;letter-spacing:.22em;text-transform:uppercase;color:var(--sc-cyan-alt);margin-bottom:6px;}
@@ -187,6 +191,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     <div class="pg-st pg-st-b">
       <div class="pg-stmeta pg-stmeta-r">
         <span class="pg-name" data-field="teamB.name">SENTINELS</span>
+        <span class="pg-tag pg-tag-win">WINNER</span>
       </div>
       <div class="pg-slab"><span class="pg-mono" data-mono="teamB.name">S</span></div>
     </div>
@@ -309,7 +314,16 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   var root = document.querySelector('.scene-root');
   var rl = RivalryOverlay.connect();            // game + control (auto-mock on file://)
   RivalryFit('.rv-stage');
-  var control = {}, lastGood = null, frozen = null, frozenGuid = null, demos = {};
+  var control = {}, lastGood = null, frozen = null, frozenGuid = null, held = null, demos = {}, lastDemo = {};
+  // The game feed has no last-state replay, so a page refreshed during the postgame never sees
+  // the final frame again. Keep the frozen result in sessionStorage: it survives an OBS source
+  // refresh but dies with the source's browser, so it never outlives OBS. Cleared by reset().
+  var SNAP = 'rivalry.postgame.final';
+  try {
+    var snap = JSON.parse(sessionStorage.getItem(SNAP) || 'null');
+    if (snap && snap.guid && snap.data && snap.data.teamA) { frozen = snap.data; frozenGuid = snap.guid; }
+  } catch (e) {}
+  var winA = root.querySelector('.pg-st-a .pg-tag-win'), winB = root.querySelector('.pg-st-b .pg-tag-win');
   rl.onControl(function (c) { control = c || {}; rebuild(); });
   // Latch the last LIVE frame; ignore the zeroed UpdateState RL streams at podium.
   // While frozen, a new MatchGuid means the next match started -> unfreeze even if
@@ -319,24 +333,50 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       if (d && d.MatchGuid && frozenGuid && d.MatchGuid !== frozenGuid) reset();
       else return;
     }
-    if (d && d.Players && d.Players.length) { lastGood = d; rebuild(); }
+    if (d && d.Players && d.Players.length && !zeroed(d)) { lastGood = d; held = null; rebuild(); }
   });
+  // The podium zero-out still lists the players, just 0-0 with every Score 0. Never latch it:
+  // a page (re)loaded after the final, or a zero-out that beats MatchEnded, would air it as a
+  // 0-0 FINAL. Pre-kickoff frames look the same and carry nothing worth showing.
+  function zeroed(d) {
+    var t = (d.Game && d.Game.Teams) || [];
+    return !(t[0] && t[0].Score) && !(t[1] && t[1].Score) && !d.Players.some(function (p) { return p.Score; });
+  }
+  // Demo tally: only the fallback for frames without Players[].Demos (see build()). Demos
+  // double-fire (RL native + bridge synthetic, ~800ms apart; CONTRACT.md quirks), so dedupe like
+  // the gameplay scene: one count per attacker within 1000ms (a first-ever demo always counts).
   rl.on('StatfeedEvent', function (d) {
     if (frozen || !d) return;
     if ((d.Type || '').toLowerCase() === 'demolition') {
       var n = (d.Attacker && d.Attacker.Name) || (d.MainTarget && d.MainTarget.Name) || (d.MainPlayer && d.MainPlayer.Name);
-      if (n) demos[n] = (demos[n] || 0) + 1;
+      var now = performance.now();
+      if (n && (lastDemo[n] == null || now - lastDemo[n] >= 1000)) { lastDemo[n] = now; demos[n] = (demos[n] || 0) + 1; }
     }
   });
-  function reset() { lastGood = null; frozen = null; frozenGuid = null; demos = {}; rebuild(); }
+  // Re-arm for the next match but keep the last final on screen until that match sends a real
+  // frame: MatchCreated lands while the postgame is usually still on program (OBS cuts back to
+  // live on CountdownBegin), and wiping it there airs an empty board through the load.
+  function reset() {
+    held = frozen || held; lastGood = null; frozen = null; frozenGuid = null; demos = {}; lastDemo = {};
+    try { sessionStorage.removeItem(SNAP); } catch (e) {}
+    rebuild();
+  }
   rl.on('MatchCreated', reset); rl.on('MatchInitialized', reset);
   rl.on('MatchEnded', freeze); rl.on('PodiumStart', freeze);   // freeze on the FIRST of the two
-  function freeze() { if (frozen || !lastGood) return; frozenGuid = lastGood.MatchGuid || null; frozen = build(lastGood); rebuild(); }
+  function freeze() {
+    if (frozen || !lastGood) return;
+    frozenGuid = lastGood.MatchGuid || null; frozen = build(lastGood); rebuild();
+    try { if (frozenGuid) sessionStorage.setItem(SNAP, JSON.stringify({ guid: frozenGuid, data: frozen })); } catch (e) {}
+  }
   function build(d) {
     d = d || { Game: { Teams: [] }, Players: [] };
     var teams = (d.Game && d.Game.Teams) || [], players = d.Players || [];
+    // Demos: RL's own Players[].Demos wins whenever the frame carries it. The bridge synthesizes
+    // demo events only from that counter's deltas (so it is present wherever they exist), it is
+    // RL's scoreboard number, it survives a mid-match reload, and it has no dedupe window to lose
+    // chained demos in. The deduped StatfeedEvent tally covers feeds without the field.
     function col(t) { return players.filter(function (p) { return p.TeamNum === t; }).map(function (p) {
-      return { name: p.Name, goals: p.Goals || 0, assists: p.Assists || 0, saves: p.Saves || 0, shots: p.Shots || 0, demos: (demos[p.Name] || p.Demos || 0), score: p.Score || 0 };
+      return { name: p.Name, goals: p.Goals || 0, assists: p.Assists || 0, saves: p.Saves || 0, shots: p.Shots || 0, demos: (typeof p.Demos === 'number' ? p.Demos : (demos[p.Name] || 0)), score: p.Score || 0 };
     }); }
     var A = col(0), B = col(1);
     var all = A.map(function (x) { return { x: x, t: 0 }; }).concat(B.map(function (x) { return { x: x, t: 1 }; }));
@@ -346,19 +386,32 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     return {
       brand: { leagueName: (control.brand && control.brand.leagueName) || 'RIVALRY' },
       event: { title: control.eventTitle || 'RIVALRY', round: control.round || '' },
-      teamA: { name: tA, score: (teams[0] && teams[0].Score) || 0, players: A },
-      teamB: { name: tB, score: (teams[1] && teams[1].Score) || 0, players: B },
+      // No frame at all (e.g. OBS restarted mid-postgame): blank tally, not an invented 0-0 FINAL.
+      teamA: { name: tA, score: teams[0] ? (teams[0].Score || 0) : '', players: A },
+      teamB: { name: tB, score: teams[1] ? (teams[1].Score || 0) : '', players: B },
       mvp: mvp ? { name: mvp.x.name, team: (mvp.t === 0 ? tA : tB) } : { name: '', team: '' }
     };
   }
   function rebuild() {
-    var data = frozen || build(lastGood);
+    var fin = frozen || (!lastGood && held);       // a decided final on screen, not the live latch
+    var data = fin || build(lastGood);
     RivalryBind(root, null, data);
+    // eventTitle may carry <b> emphasis (as on the gameplay event bar) but RivalryBind writes
+    // textContent, which aired the tags literally. Escape in full, re-allow only bare <b>/</b>.
+    root.querySelector('.pg-event').innerHTML = titleHtml(data.event.title);
     var rows = root.querySelectorAll('.pg-row');
     rows.forEach(function (r) { r.classList.remove('is-mvp'); });
     if (data.mvp && data.mvp.name) rows.forEach(function (r) {
       var nm = r.querySelector('[data-field$=".name"]'); if (nm && nm.textContent === data.mvp.name) r.classList.add('is-mvp');
     });
+    // WINNER sits under both names; show it only beneath the side that won a decided final.
+    var a = fin ? fin.teamA.score : 0, b = fin ? fin.teamB.score : 0;
+    winA.style.visibility = a > b ? '' : 'hidden';
+    winB.style.visibility = b > a ? '' : 'hidden';
+  }
+  function titleHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; })
+      .replace(/&lt;(\/?)b&gt;/gi, '<$1b>');
   }
   rebuild();
 })();

@@ -500,15 +500,18 @@ function gatherPlayers(){
   }
   return out;
 }
-// With a schedule built, Up Next comes from it automatically (the series after
-// the one on air), so advancing the night updates the Up Next scene in the same
-// push. The manual rows only feed the scene when the schedule is empty.
+// Up Next comes only from the schedule: the series after the one on air (from
+// the top when nothing is on air), so advancing the night updates the Up Next
+// scene in the same push. With no schedule, or the last series on air, this is
+// [] and the Up Next scenes show their own "more matches" line.
 function upNextFromQueue(){
   const idx = state.queue.findIndex(e => e.id === state.queueActive);
   const from = idx >= 0 ? idx + 1 : 0;
   return state.queue.slice(from, from + 4).map(e => ({
-    teamA: (e.teamA && e.teamA.name) || "",
-    teamB: (e.teamB && e.teamB.name) || "",
+    // An undecided side reads "TBD", as in the queue list: a blank name is hidden
+    // on air, leaving "VS DRIFT" with nothing left of VS.
+    teamA: (e.teamA && e.teamA.name) || "TBD",
+    teamB: (e.teamB && e.teamB.name) || "TBD",
     time: e.startTime || "",
     round: e.round || "",
   }));
