@@ -178,14 +178,27 @@ the control panel ("OBS INTEGRATION" card). Once enabled and connected:
   **SET UP OBS FOR ME**) builds the full scene collection over obs-websocket
   with no password typing: all scenes pre-wired as 1920x1080 Browser Sources,
   the chrome layered on top, and the game capture pre-scaled into the chrome's
-  interior window. Idempotent (safe to re-run; existing scenes/sources are
-  left alone).
+  interior window. Idempotent (safe to re-run; existing scenes and the
+  producer's own sources are left alone; the app's Caster Cam sources are
+  re-placed).
 - **Auto-switch toggle** (OFF by default) maps three triggers to scene names:
   - `GoalReplayStart` -> "Replay scene"
   - `GoalReplayEnd` / `CountdownBegin` / `RoundStarted` -> "Live scene"
   - First `UpdateState` after `Game.Winner` populates -> "Post-match scene"
   Unmapped (blank) triggers silently do nothing. Producers can flip the
   master toggle off mid-broadcast without losing their scene-name config.
+- **Caster cams** are app-owned: "Caster Cam 1-3" Browser Sources in
+  "RIVALRY - Casters", placed under the casters overlay's cam holes (the
+  geometry both sides read is `overlays/shared/rivalry-caster-cams.js`).
+  They follow the Casters card (feed links, cam count, shared cams) and are
+  re-placed on connect, on scene build, and when OBS switches scene
+  collection, renames a scene or deletes a source. Each sync maps them through
+  the overlay's transform (a 720p canvas, a moved overlay). A feed stays in the source
+  already playing it when cams move, so a live camera is never reloaded for a
+  layout change. Feeds of casters sharing a cam stay loaded but hidden, and a
+  feed one of the producer's own browser sources in the Casters scene already
+  plays is not loaded twice. The downloadable collection carries the same
+  cams as a snapshot.
 - **Settings persist** to `<userData>/obs-settings.json`. The connection
   starts disabled on first launch so existing installs aren't surprised.
 
@@ -193,6 +206,8 @@ Implementation:
 - [`bridge/obs-controller.js`](bridge/obs-controller.js) - obs-websocket-js
   wrapper with auto-reconnect, status events, idempotent scene templating.
 - [`bridge/obs-settings.js`](bridge/obs-settings.js) - disk persistence.
+- [`bridge/caster-cams.js`](bridge/caster-cams.js) - caster cam planning and
+  the OBS sync (frame changes at once, link edits after a pause).
 - [`bridge/rl-bridge.js`](bridge/rl-bridge.js) - now exposes `events`
   EventEmitter so the main process can observe game + control traffic.
 - [`main.js`](main.js) - wires controller lifecycle, settings load/save,

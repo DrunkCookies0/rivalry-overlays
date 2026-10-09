@@ -198,6 +198,29 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
 }
 
+/* PORT ADDITION: a cam shared by several casters joins their names
+   ("A & B"). Kept inside the 65px bar: two lines at a step-down size, then an
+   ellipsis; the joined handles shrink to one clipped line. */
+.scene-root[data-scene="caster"] .lower-third.is-shared .caster-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: 12px;
+    font-size: 1.15rem;
+    line-height: 1.1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.scene-root[data-scene="caster"] .lower-third.is-shared .caster-social {
+    flex: 0 1 auto;
+    max-width: 40%;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .scene-root[data-scene="caster"] .caster-social {
     color: #00f0ff;
     font-size: 1rem;
@@ -432,8 +455,9 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
       <!-- Caster Webcams & Lower Thirds.
            Frames are built by the script from the control feed's casters[]
            (Moldy's two hardcoded slots came from a second sheet tab): one frame
-           per named caster, 1-3 supported, blank slots never render. The
-           interiors are transparent holes — cam sources sit BEHIND in OBS. -->
+           per cam, 1-3 supported, blank caster rows never render. The
+           interiors are transparent holes; the app places the cam sources
+           BEHIND them in OBS. -->
       <div class="casters-container" id="castersContainer"></div>
 
       <!-- Integrated Next Match Bar -->
@@ -481,6 +505,7 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
   <script src="../sdk/rivalry-overlay-sdk.js"></script>
   <script src="../sdk/rivalry-bind.js"></script>
   <script src="../sdk/rivalry-fit.js"></script>
+  <script src="../shared/rivalry-caster-cams.js"></script>
   <script>
     (function () {
       "use strict";
@@ -496,9 +521,10 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
 
       // ---- caster frames (dynamic, from control.casters[]) ------------------
       // Moldy's design is two 680x382 frames; the kit contract allows 1-3
-      // casters, so frames are built per NAMED caster (blank slots hide) and
-      // three-up steps down to 553x311 via CSS. Zero casters (fresh page, no
-      // data yet) keeps the designed two-frame look as camera placeholders.
+      // cams, so frames are built per cam (overlays/shared/rivalry-caster-
+      // cams.js: the panel's cam count, or one per named caster) and three-up
+      // steps down to 553x311 via CSS. No data yet keeps the designed
+      // two-frame look as camera placeholders.
       var slots = []; // [{ frame, name, social, hint }]
 
       function buildFrames(count) {
@@ -538,8 +564,10 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
       // the flex stack changes with the frame count — the mask re-derives
       // itself from the live layout, so holes and borders can never drift
       // apart. The stack's height does not depend on the font (see
-      // .social-tag), so for a given caster count the holes always land at
-      // the same rects, which is what the OBS cam sources are placed on.
+      // .social-tag), so for a given cam count the holes always land at the
+      // same rects. The app places the OBS cam sources at those rects, as
+      // recorded in rivalry-caster-cams.js; render-verify fails if the frames
+      // here ever move off them.
       function applyMask() {
         var stage = document.querySelector('.rv-stage').getBoundingClientRect();
         if (!stage.width) return;
@@ -572,23 +600,23 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
       // record). This replaces the Google Sheets CSV fetch in the original.
       RivalryBind(root, rl);
 
-      // Caster slots: named casters only (a blank sheet row hid in Moldy's
-      // design too — his update() just never ran for missing cells).
+      // Cam slots: named casters only (a blank sheet row hid in Moldy's
+      // design too — his update() just never ran for missing cells); casters
+      // sharing a cam share its lower third ("A & B").
+      var Cams = window.RivalryCasterCams;
       rl.onControl(function (c) {
-        // A non-array casters (never sent by the panel) counts as none, not a throw.
-        var named = (Array.isArray(c && c.casters) ? c.casters : []).filter(function (cs) {
-          return cs && cs.name;
-        }).slice(0, 3);
-        var count = named.length || 2; // no data yet: designed two-frame look
+        var count = Cams.camCount(c, 'rivalry-sc26-casters');
         if (count !== slots.length) buildFrames(count);
+        var cams = Cams.slots(c, count);
         slots.forEach(function (s, i) {
-          var cs = named[i] || {};
-          s.name.textContent = cs.name || '';
+          var cam = cams[i];
+          s.name.textContent = cam.name;
           // caster.handle carries what Moldy's sheet called "social"
-          s.social.textContent = cs.handle || '';
-          s.social.style.display = cs.handle ? '' : 'none';
-          s.lt.style.display = cs.name ? '' : 'none'; // never an empty bar
-          s.hint.style.display = cs.name ? 'none' : ''; // named => cam incoming
+          s.social.textContent = cam.handle;
+          s.social.style.display = cam.handle ? '' : 'none';
+          s.lt.style.display = cam.name ? '' : 'none'; // never an empty bar
+          s.lt.classList.toggle('is-shared', cam.casters.length > 1);
+          s.hint.style.display = cam.name ? 'none' : ''; // named => cam incoming
         });
         scheduleMask();
       });

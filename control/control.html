@@ -274,11 +274,23 @@
       <div class="muted-note" style="line-height:1.65;margin-bottom:12px;">
         <b style="color:var(--ink)">Getting caster cameras on screen, two ways:</b><br>
         <b style="color:var(--ink)">Remote casters / dedicated producer:</b> use VDO.Ninja below. Set one room, click Generate,
-        and send each caster their personal link. Their camera shows up framed on the Casters overlay automatically,
-        no accounts or software for them to install.<br>
+        and send each caster their personal link. With OBS connected, the app puts each caster's camera into the Casters
+        scene itself, framed in the overlay, and keeps it in step as you edit this card. No accounts or software for them to install.<br>
         <b style="color:var(--ink)">Solo (you cast and produce):</b> open your own generated link in a browser tab to feed your camera,
-        or add your webcam in OBS as a Video Capture Device source placed over the Casters overlay.
+        or add your webcam in OBS as a Video Capture Device source placed under the Casters overlay.
       </div>
+      <div class="row" style="gap:8px;align-items:flex-end;margin-bottom:8px;">
+        <div style="flex:1;max-width:260px;"><label>Cams on screen</label>
+          <select id="casterCams">
+            <option value="0">Auto: by caster count</option>
+            <option value="1">1 cam (shared)</option>
+            <option value="2">2 cams</option>
+            <option value="3">3 cams</option>
+          </select>
+        </div>
+        <div style="flex:3"><span class="muted-note">With fewer cams than casters, the extra casters share the last cam's name plate and it shows the first of their feeds; the others' feeds stay loaded in OBS out of sight, so they're still heard. Auto keeps the house look's two frames for a lone caster: pick 1 cam for one big frame. To cut a caster's cam and sound at once, clear their link before their name: a blanked name keeps their feed loaded for 15 seconds, so retyping it doesn't reconnect them.</span></div>
+      </div>
+      <div id="camStatus" class="muted-note" style="margin-bottom:8px;"></div>
       <div class="row" style="gap:8px;align-items:flex-end;margin-bottom:8px;">
         <div style="flex:2"><label>VDO.Ninja room (one per event)</label><input type="text" id="vdoRoom" placeholder="rivalry-s1-gf" /></div>
         <button id="vdoGen" style="background:#243040;color:var(--ink);">Generate caster links</button>
@@ -572,6 +584,8 @@ function payload(){
       round: $("round").value,
       startTime: $("startTime").value,
       casters: gatherCasters(),
+      // 0 = one cam per named caster; 1-3 pins the count (CONTRACT.md).
+      casterCams: parseInt($("casterCams").value, 10) || 0,
       upNext: upNextFromQueue(),
       players: gatherPlayers(),
       // Producer rundown. Additive optional contract field; overlays ignore it.
@@ -763,6 +777,7 @@ $("bestOf").addEventListener("input", () => {
   .forEach(id => $(id).addEventListener("input", push));
 for (let i = 0; i < 3; i++) ["chSocNet","chSocHandle"].forEach(p => $(p+i).addEventListener("input", push));
 for (let i = 0; i < 3; i++) ["casterName","casterRole","casterHandle","casterStream"].forEach(p => $(p+i).addEventListener("input", push));
+$("casterCams").addEventListener("change", push);
 for (let i = 0; i < 6; i++) ["pName","pTitle","pBadges"].forEach(p => $(p+i).addEventListener("input", push));
 $("apply").addEventListener("click", push);
 
@@ -871,6 +886,7 @@ function hydrateControlForm(p){
   const cs = Array.isArray(p.casters) ? p.casters : [];
   for (let i = 0; i < 3; i++){ const c = cs[i] || {};
     setVal("casterName"+i, c.name); setVal("casterRole"+i, c.role); setVal("casterHandle"+i, c.handle); setVal("casterStream"+i, c.stream); }
+  setVal("casterCams", p.casterCams || 0);
   const pl = Array.isArray(p.players) ? p.players : [];
   for (let i = 0; i < 6; i++){ const q = pl[i] || {};
     setVal("pName"+i, q.name); setVal("pTitle"+i, q.title); setVal("pBadges"+i, (q.badges || []).join(", ")); }
@@ -930,6 +946,8 @@ connect = function(){
       } else if (m && m.type === "obs-status") {
         hydrateObsForm(m.payload && m.payload.settings);
         renderObsStatus(m.payload);
+      } else if (m && m.type === "caster-cams-status") {
+        renderCamStatus(m.payload);
       } else if (m && m.type === "obs-action-result" && m.payload && m.payload.action === "setup-scenes") {
         const r = m.payload, el = $("obsSetupResult");
         if (r.ok) {
@@ -1353,6 +1371,54 @@ function fillPlayerNames(d){
     });
   });
 }
+// ---- Caster cams in OBS: what the app last did with them (bridge/caster-cams.js)
+// Frames are numbered left to right; which "Caster Cam N" source fills a frame
+// can change as the cast changes, so the line names frames, not sources.
+function renderCamStatus(r){
+  const el = $("camStatus");
+  if (!r) { el.textContent = ""; return; }
+  const scene = '"' + (r.scene || "RIVALRY - Casters") + '"';
+  const list = (xs) => xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
+  const names = r.names || [];
+  const frame = (n) => "frame " + n + (names[n - 1] ? " (" + names[n - 1] + ")" : "");
+  const Frames = (ns) => { const t = list(ns.map(frame)); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const one = (ns, a, b) => ns.length === 1 ? a : b;
+  if (r.ok){
+    const waiting = r.waiting || [], noCaster = r.noCaster || [], hidden = r.hidden || [], heard = r.heardOnly || [], held = r.held || [];
+    const dupes = r.dupes || [], repeats = r.repeats || [], bad = r.badLinks || [], clashes = r.clashes || [], unplaced = r.unplaced || [];
+    const warn = [];
+    let t = "OBS: " + r.frames + (r.frames === 1 ? " cam frame" : " cam frames") + " in " + scene + ", " + r.live + " live.";
+    if (waiting.length) t += " " + Frames(waiting) + one(waiting, " has", " have") + " no feed yet.";
+    if (noCaster.length) t += " " + Frames(noCaster) + one(noCaster, " has", " have") + " no caster" +
+      (r.frames === 2 && names.filter(Boolean).length === 1 ? " (pick 1 cam for one big frame)." : ".");
+    if (heard.length) t += " Heard, not shown: " + list(heard) + one(heard, " (feed", " (feeds") + " loaded in OBS out of sight).";
+    if (held.length) t += " Still loaded for up to 15 seconds in case the name is being retyped: " + list(held) + ".";
+    for (const x of repeats) t += " " + Frames([x.cam]) + " has the same feed as frame " + x.of + ", so it stays empty.";
+    if (hidden.length) warn.push(Frames(hidden) + one(hidden, " is", " are") + " hidden in OBS; the app shows " + one(hidden, "it", "them") +
+      " again on the next change. To cut a caster, clear their link.");
+    for (const d of dupes) warn.push((d.cam ? "The feed for " + frame(d.cam) : d.name + "'s feed") + " is already in " + scene + " as \"" + d.source +
+      "\", so the app doesn't load it again: delete that source and the app takes over.");
+    if (bad.length) warn.push(list(bad) + (bad.length === 1 ? "'s link isn't a VDO.Ninja link, so it doesn't load." : "'s links aren't VDO.Ninja links, so they don't load."));
+    if (clashes.length) warn.push("OBS already has " + one(clashes, "a source called ", "sources called ") + list(clashes.map((n) => '"' + n + '"')) +
+      one(clashes, " that isn't a browser source", " that aren't browser sources") + ", so the app leaves " + one(clashes, "it", "them") + " alone" +
+      (unplaced.length ? " and has no source left for " + list(unplaced.map((u) => typeof u === "number" ? frame(u) : u)) : "") + one(clashes, ": rename it.", ": rename them."));
+    if (r.followed === false) warn.push("The casters overlay is rotated, flipped or in an unusual bounding box in OBS, so the cams can't follow it and sit on the plain 1920x1080 holes.");
+    el.style.color = warn.length ? "#f1c40f" : "";
+    el.textContent = warn.length ? t + " " + warn.join(" ") : t;
+    return;
+  }
+  if (r.reason === "obs-off"){
+    el.style.color = "";
+    el.textContent = "OBS connection is off (OBS card), so the app isn't placing cams live. A downloaded scene collection carries the cams as this card has them now.";
+    return;
+  }
+  el.style.color = "#f1c40f";
+  el.textContent = {
+    "obs-offline": "OBS isn't connected: the cams go in as soon as it connects (OBS card).",
+    "no-scene": "OBS has no " + scene + " scene in this scene collection. If you renamed it, rename it back and the cams follow; otherwise build the scenes (OBS card).",
+    "no-overlay": "The " + scene + " scene has no visible RIVALRY casters overlay, so the app isn't moving the cams; any already placed stay where they are.",
+  }[r.reason] || ("Couldn't place the cams in OBS: " + (r.error || r.reason || "unknown error") + ".");
+}
 // ---- VDO.Ninja caster links: room -> push links (send to casters) + auto-fill the view feeds
 function sanitizeRoom(r){ return String(r || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 40); }
 function generateVdo(){
@@ -1366,7 +1432,7 @@ function generateVdo(){
     any = true;
     const sid = room + "c" + (i + 1);
     const pushUrl = "https://vdo.ninja/?room=" + room + "&push=" + sid + "&webcam";
-    // The scene embeds this view link (its vdoSrc accepts a full vdo.ninja URL).
+    // The app loads this view link into the caster's cam source in OBS.
     $("casterStream"+i).value = "https://vdo.ninja/?room=" + room + "&view=" + sid + "&cleanoutput&autostart";
     const row = document.createElement("div"); row.className = "row"; row.style.gap = "8px"; row.style.marginBottom = "4px";
     const lbl = document.createElement("span"); lbl.className = "muted-note"; lbl.style.minWidth = "130px"; lbl.textContent = name + " — send:";

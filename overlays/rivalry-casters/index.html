@@ -9,8 +9,10 @@
 /* Casters overlay = a GRAPHICS layer only. The decorative background is punched
    with transparent cam holes so the real camera sources (VDO.Ninja browser
    sources or a webcam Video Capture Device) sit BEHIND this overlay in OBS and
-   show through the frames. Duo by default, trio once a third caster is named;
-   ?layout=solo|duo|trio pins one. */
+   show through the frames; the app places those sources itself. One frame per
+   cam: the panel's cam count, or one per named caster (overlays/shared/
+   rivalry-caster-cams.js, which the app reads too); ?layout=solo|duo|trio pins
+   one. */
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
 .scene-root[data-scene="caster"]{position:relative;width:1920px;height:1080px;font-family:var(--rv-font-body);color:var(--rv-ink);overflow:hidden;}
 
@@ -98,27 +100,21 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   <script src="../sdk/rivalry-overlay-sdk.js"></script>
   <script src="../sdk/rivalry-bind.js"></script>
   <script src="../sdk/rivalry-fit.js"></script>
+  <script src="../shared/rivalry-caster-cams.js"></script>
   <script>
   (function () {
     var root = document.querySelector('.scene-root');
     var params = new URLSearchParams(location.search);
 
-    // Fixed cam rects (px on the 1920x1080 stage), one set per layout. Nothing
-    // in the app creates the cam sources: the producer places each OBS cam
-    // source at THESE rects behind the overlay, so changing a rect means
-    // re-placing that cam in OBS. trio keeps duo's 90px side margins and y=540
-    // centre line, with three equal 16:9 frames.
-    var LAYOUTS = {
-      duo:  [ { x: 90,  y: 300, w: 853, h: 480 }, { x: 977, y: 300, w: 853, h: 480 } ],
-      solo: [ { x: 360, y: 250, w: 1200, h: 675 } ],
-      trio: [ { x: 90,  y: 383, w: 560, h: 315 }, { x: 680, y: 383, w: 560, h: 315 }, { x: 1270, y: 383, w: 560, h: 315 } ],
-    };
-    // Layout by NAMED caster count (CONTRACT: 1-3 casters). A third caster gets
-    // the trio; one or two stay on the duo, whose rects existing OBS cam
-    // placements were lined up on (solo is ?layout=solo, as it always was).
-    // ?layout=solo|duo|trio pins one layout whatever the count.
-    var BY_COUNT = ['duo', 'duo', 'duo', 'trio'];
-    var pinned = Object.prototype.hasOwnProperty.call(LAYOUTS, params.get('layout')) ? params.get('layout') : null;
+    // Fixed cam rects (px on the 1920x1080 stage) per cam count, from the
+    // shared layout file: the app places each OBS cam source at the SAME rect
+    // behind this overlay (bridge/caster-cams.js), so a cam always lines up
+    // with its hole. ?layout=solo|duo|trio pins a count whatever the payload
+    // says; the app reads the pin off this source's URL.
+    var Cams = window.RivalryCasterCams;
+    var RECTS = Cams.RECTS['rivalry-casters'];
+    var PINS = { solo: 1, duo: 2, trio: 3 };
+    var pinned = Object.prototype.hasOwnProperty.call(PINS, params.get('layout')) ? PINS[params.get('layout')] : 0;
     // ?guides=1 shows the "CAMERA N" design-time labels (see .cs-hint).
     if (params.get('guides') === '1') root.setAttribute('data-guides', '1');
 
@@ -155,14 +151,14 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       deco.style.webkitMaskRepeat = 'no-repeat'; deco.style.maskRepeat = 'no-repeat';
     }
 
-    // Build a frame (border chrome + nameplate) at each rect of a layout and
-    // punch the matching holes. Rebuilds only when the layout changes.
+    // Build a frame (border chrome + nameplate) at each rect for n cams and
+    // punch the matching holes. Rebuilds only when the count changes.
     var frames = document.getElementById('csFrames');
-    var plates = [], current = null;
-    function build(layout) {
-      if (layout === current) return;
-      current = layout;
-      var rects = LAYOUTS[layout];
+    var plates = [], current = 0;
+    function build(n) {
+      if (n === current) return;
+      current = n;
+      var rects = RECTS[n];
       maskHoles(rects);
       frames.innerHTML = '';
       plates = rects.map(function (r, i) {
@@ -188,18 +184,16 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     var rl = RivalryOverlay.connect({ game: false });
     RivalryBind(root, rl); // header: league / event / round
     rl.onControl(function (c) {
-      // Named casters only, in order: a blank row never takes a cam slot.
-      // A non-array casters (never sent by the panel) counts as none, not a throw.
-      var named = (Array.isArray(c && c.casters) ? c.casters : []).filter(function (cs) {
-        return cs && cs.name;
-      }).slice(0, 3);
-      build(pinned || BY_COUNT[named.length]);
+      // One frame per cam; casters sharing a cam share its plate ("A & B").
+      var n = pinned || Cams.camCount(c, 'rivalry-casters');
+      build(n);
+      var slots = Cams.slots(c, n);
       plates.forEach(function (p, i) {
-        var caster = named[i] || {};
-        p.nm.textContent = caster.name || '';
-        p.role.textContent = caster.role || '';
-        p.plate.style.display = caster.name ? '' : 'none'; // never an empty bar over a cam
-        p.hint.style.display = caster.name ? 'none' : ''; // once named, drop the guide label
+        var slot = slots[i];
+        p.nm.textContent = slot.name;
+        p.role.textContent = slot.role;
+        p.plate.style.display = slot.name ? '' : 'none'; // never an empty bar over a cam
+        p.hint.style.display = slot.name ? 'none' : ''; // once named, drop the guide label
       });
     });
     RivalryFit('.rv-stage');

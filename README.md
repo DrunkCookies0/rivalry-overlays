@@ -66,7 +66,7 @@ Overlays ship in visual families. **Kinetic Bold** is the house look; community 
 
 ### Caster cams
 
-Caster cams run through VDO.Ninja, free and browser-based. Set a room name in the Casters card, click **Generate caster links**, send each caster their personal push link, and their cams appear on the Casters scene.
+Caster cams run through VDO.Ninja, free and browser-based. Set a room name in the Casters card, click **Generate caster links**, and send each caster their personal push link. With OBS connected, the app puts each caster's cam into the Casters scene itself (one "Caster Cam N" browser source per cam that has a link, behind the overlay's hole) and keeps it in step as you edit the card: links, how many cams, who shares one. **Cams on screen** picks the count: Auto (one frame per caster; the house look keeps its two frames for a lone caster) or 1, 2 or 3. With one cam, two casters at one desk share it and its name plate, and a sharing caster's own feed stays loaded off screen so they are still heard. The app owns its **Caster Cam** sources and leaves the rest of the scene alone. Cams added by hand in an older version should be deleted from the Casters scene: the app won't load a feed one of them already plays, and the card names it. The downloadable scene collection carries the cams as they stand when you download it.
 
 ### Replay archive
 

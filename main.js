@@ -41,6 +41,7 @@ const { getMeta } = require("./bridge/app-meta");
 const overlayRegistry = require("./bridge/overlay-registry");
 const httpGuard = require("./bridge/http-guard");
 const { createDeckSwitcher } = require("./bridge/deck-switch");
+const { createCasterCamSync } = require("./bridge/caster-cams");
 const { createApiRouter } = require("./bridge/http-api");
 const leagueSettingsStore = require("./bridge/league-settings");
 const { createLeagueClient } = require("./bridge/league-client");
@@ -226,6 +227,8 @@ let bridgeHandle = null;
 let apiRouter = null;
 let leagueSettings = null;
 let leagueClient = null;
+let casterCamSync = null; // created with the OBS controller (setupObsIntegration)
+let lastCasterCamStatus = null; // replayed to a panel when it connects
 // Broadcast a masked league status on the control bus (never the key itself).
 function broadcastLeagueStatus() {
   if (!bridgeHandle || !bridgeHandle.broadcastControl) return;
@@ -565,7 +568,9 @@ async function setupObsScenes() {
       const ours = new Set(scenes.map((s) => s.sceneName));
       for (const name of defaults) if (!ours.has(name)) await obsController.removeScene(name);
     }
-    return { ok: true, created, collection: OBS_COLLECTION_NAME, sceneCount };
+    // Caster cams go in under the Casters overlay, fed from the Casters card.
+    const cams = casterCamSync ? await casterCamSync.syncNow() : null;
+    return { ok: true, created, collection: OBS_COLLECTION_NAME, sceneCount, cams };
   } catch (e) {
     console.error("[rivalry] OBS scene collection setup failed:", e.message);
     return { ok: false, error: e.message };
@@ -856,8 +861,40 @@ function setupObsIntegration() {
   // default) this is a no-op and OBS is never contacted.
   obsController.applySettings(obsSettings).catch(() => {});
 
-  // Status changes -> repaint tray menu so producers can see live state.
-  obsController.on("status", () => refreshTrayMenu());
+  // Caster cams: the app keeps the Casters scene's "Caster Cam N" sources in
+  // step with the Casters card (bridge/caster-cams.js). Synced after a scene
+  // build, on every OBS (re)connect, and when the control state changes.
+  casterCamSync = createCasterCamSync({
+    call: (type, data) => obsController.call(type, data),
+    isEnabled: () => !!(obsSettings && obsSettings.enabled),
+    isConnected: () => !!(obsController && obsController.status.connected),
+    getControl: () => (bridgeHandle && bridgeHandle.getControlState ? bridgeHandle.getControlState() : null),
+    sceneName: OBS_SCENE_NAMES.caster,
+    onResult: (r) => {
+      lastCasterCamStatus = r;
+      if (bridgeHandle && bridgeHandle.broadcastControl) bridgeHandle.broadcastControl({ type: "caster-cams-status", payload: r });
+    },
+  });
+
+  // Status changes -> repaint tray menu so producers can see live state. The
+  // cams re-sync on any change of connected/enabled: placed on connect, and
+  // the panel's cam line says so at once when OBS drops or is switched off.
+  let obsLink = "";
+  obsController.on("status", (s) => {
+    refreshTrayMenu();
+    const link = `${!!(s && s.connected)}|${!!(obsSettings && obsSettings.enabled)}`;
+    if (link !== obsLink) casterCamSync.request(true);
+    obsLink = link;
+  });
+  // OBS changed under the app: a collection switch, a rename, or a source
+  // removed (a Caster Cam, or the producer's copy of a feed) re-places the cams.
+  // An item shown or hidden in the Casters scene (often the app's own cams)
+  // only re-checks; elsewhere it is none of the cams' business, and a blinking
+  // item in another scene would otherwise keep pushing a pending sync back.
+  obsController.on("obs-event", (ev, data) => {
+    if (ev !== "SceneItemEnableStateChanged") casterCamSync.request(true);
+    else if (data && data.sceneName === OBS_SCENE_NAMES.caster) casterCamSync.request();
+  });
 
   // Control panel -> main process messages.
   if (bridgeHandle && bridgeHandle.events) {
@@ -889,6 +926,8 @@ function setupObsIntegration() {
         handleObsAction(msg.payload || {});
       } else if (msg && msg.type === "obs-query") {
         handleObsQuery(msg.payload || {}, sourceWs);
+      } else if (msg && msg.type === "control") {
+        casterCamSync.request(); // debounced; skipped when the cams' plan is unchanged
       }
     });
 
@@ -959,6 +998,7 @@ async function handleObsQuery({ query }, sourceWs) {
         type: "obs-status",
         payload: { settings: obsSettingsStore.publicView(obsSettings), status: obsController ? obsController.status : null },
       }));
+      if (lastCasterCamStatus) sourceWs.send(JSON.stringify({ type: "caster-cams-status", payload: lastCasterCamStatus }));
     }
     return;
   }
