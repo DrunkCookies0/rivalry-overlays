@@ -40,6 +40,7 @@ const devSettingsStore = require("./bridge/dev-settings");
 const { getMeta } = require("./bridge/app-meta");
 const overlayRegistry = require("./bridge/overlay-registry");
 const httpGuard = require("./bridge/http-guard");
+const { createDeckSwitcher } = require("./bridge/deck-switch");
 const { createApiRouter } = require("./bridge/http-api");
 const leagueSettingsStore = require("./bridge/league-settings");
 const { createLeagueClient } = require("./bridge/league-client");
@@ -923,18 +924,20 @@ async function handleObsAction(payload) {
   // full auto-switching — the producer drives the cut). With the chrome
   // present, the branded wipe covers the frame first and the switch lands
   // under it; game-event auto-switches (onGameEventForObs) deliberately skip
-  // the wipe because their timing is part of the goal sequence.
-  if (action === "switch" && payload.scene) {
-    try {
-      if (chromeAvailable() && bridgeHandle && bridgeHandle.broadcastControl) {
-        bridgeHandle.broadcastControl({ type: "chrome-wipe", payload: {} });
-        // The wipe panel fully covers the canvas ~450ms into its 1s sweep.
-        await new Promise((r) => setTimeout(r, 450));
-      }
-      await obsController.switchScene(payload.scene);
-    } catch (e) { /* unknown scene -> no-op */ }
-  }
+  // the wipe because their timing is part of the goal sequence. Clicks are
+  // serialized so a double-click never cuts on an uncovered canvas
+  // (bridge/deck-switch.js).
+  if (action === "switch" && payload.scene) deckSwitch(payload.scene);
 }
+
+const deckSwitch = createDeckSwitcher({
+  wipe: () => {
+    if (!(chromeAvailable() && bridgeHandle && bridgeHandle.broadcastControl)) return false;
+    bridgeHandle.broadcastControl({ type: "chrome-wipe", payload: {} });
+    return true;
+  },
+  switchScene: (scene) => obsController.switchScene(scene),
+});
 
 // The wipe only makes sense when the chrome overlay is actually servable
 // (present and, under the gate, approved) — otherwise a deck switch would

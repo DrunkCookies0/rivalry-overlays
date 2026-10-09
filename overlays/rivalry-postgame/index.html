@@ -277,12 +277,19 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   var control = {}, lastGood = null, frozen = null, frozenGuid = null, held = null, demos = {}, lastDemo = {};
   // The game feed has no last-state replay, so a page refreshed during the postgame never sees
   // the final frame again. Keep the frozen result in sessionStorage: it survives an OBS source
-  // refresh but dies with the source's browser, so it never outlives OBS. Cleared by reset().
+  // refresh but dies with the source's browser, so it never outlives OBS. reset() saves it again
+  // as held; the next match's first real frame clears it.
   var SNAP = 'rivalry.postgame.final';
   try {
     var snap = JSON.parse(sessionStorage.getItem(SNAP) || 'null');
-    if (snap && snap.guid && snap.data && snap.data.teamA) { frozen = snap.data; frozenGuid = snap.guid; }
+    if (snap && snap.data && snap.data.teamA) {
+      if (snap.held) held = snap.data;
+      else if (snap.guid) { frozen = snap.data; frozenGuid = snap.guid; }
+    }
   } catch (e) {}
+  function saveSnap(v) {
+    try { if (v) sessionStorage.setItem(SNAP, JSON.stringify(v)); else sessionStorage.removeItem(SNAP); } catch (e) {}
+  }
   var winA = root.querySelector('.pg-st-a .pg-tag-win'), winB = root.querySelector('.pg-st-b .pg-tag-win');
   rl.onControl(function (c) { control = c || {}; rebuild(); });
   // Latch the last LIVE frame; ignore the zeroed UpdateState RL streams at podium.
@@ -293,7 +300,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       if (d && d.MatchGuid && frozenGuid && d.MatchGuid !== frozenGuid) reset();
       else return;
     }
-    if (d && d.Players && d.Players.length && !zeroed(d)) { lastGood = d; held = null; rebuild(); }
+    if (d && d.Players && d.Players.length && !zeroed(d)) {
+      lastGood = d;
+      if (held) { held = null; saveSnap(null); }
+      rebuild();
+    }
   });
   // The podium zero-out still lists the players, just 0-0 with every Score 0. Never latch it:
   // a page (re)loaded after the final, or a zero-out that beats MatchEnded, would air it as a
@@ -315,10 +326,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   });
   // Re-arm for the next match but keep the last final on screen until that match sends a real
   // frame: MatchCreated lands while the postgame is usually still on program (OBS cuts back to
-  // live on CountdownBegin), and wiping it there airs an empty board through the load.
+  // live on CountdownBegin), and wiping it there airs an empty board through the load. The held
+  // board is saved too, so an OBS source refresh in that window restores it.
   function reset() {
     held = frozen || held; lastGood = null; frozen = null; frozenGuid = null; demos = {}; lastDemo = {};
-    try { sessionStorage.removeItem(SNAP); } catch (e) {}
+    saveSnap(held ? { held: true, data: held } : null);
     rebuild();
   }
   rl.on('MatchCreated', reset); rl.on('MatchInitialized', reset);
@@ -326,7 +338,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   function freeze() {
     if (frozen || !lastGood) return;
     frozenGuid = lastGood.MatchGuid || null; frozen = build(lastGood); rebuild();
-    try { if (frozenGuid) sessionStorage.setItem(SNAP, JSON.stringify({ guid: frozenGuid, data: frozen })); } catch (e) {}
+    if (frozenGuid) saveSnap({ guid: frozenGuid, data: frozen });
   }
   function build(d) {
     d = d || { Game: { Teams: [] }, Players: [] };

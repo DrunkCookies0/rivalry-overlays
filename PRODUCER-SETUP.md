@@ -102,7 +102,7 @@ The control panel is laid out top to bottom in the order you use it on a match n
    **Expected result:** the banner at the top of the match card shows the on-air pairing, and the Team A / Team B cards show names, logos, and records from the league; the series score resets to 0-0.
 6. Set **Best of** and the seeds by hand. The league data does not carry those, so they are always typed.
 7. Team names and logos are locked to the loaded match (that is the point). Records are editable if the league's number looks off. Then click **PUSH TO OVERLAY**.
-8. In the **Casters** card: set the VDO.Ninja room name, click **Generate caster links**, and send each caster their personal link. Their cams appear on the Casters scene, no accounts or installs on their end.
+8. In the **Casters** card: set the VDO.Ninja room name, click **Generate caster links**, and send each caster their personal link (no accounts or installs on their end). The cams do not place themselves yet: in OBS, add each caster's view link from the card as a **Browser Source** in the Casters scene, **below** the Casters overlay, and size it to that caster's frame (the overlay's frames are transparent holes). One or two casters use the two side-by-side frames; naming a third switches the house look to three smaller frames, so re-place the cams before a third caster joins on air. Adding `?guides=1` to the Casters overlay URL labels each empty frame while you line them up; take it off afterwards.
 
 ### During the stream
 

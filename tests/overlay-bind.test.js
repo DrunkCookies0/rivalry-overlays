@@ -5,7 +5,10 @@
  * producer left blank was still showing that placeholder — a 3v3 Europe match
  * broadcast "NA" region tags. Clearing every blank field instead deleted the
  * league wordmark, which the control feed never sends. The rule has to tell
- * those two apart. */
+ * those two apart.
+ *
+ * The eventTitle cases at the bottom pin the one field that is not plain text:
+ * bare <b> emphasis survives, anything else in the title stays inert. */
 
 "use strict";
 

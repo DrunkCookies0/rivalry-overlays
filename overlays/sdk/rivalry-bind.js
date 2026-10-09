@@ -5,7 +5,7 @@
  * RivalryBind(root, rl) once; it keeps the DOM in sync with the control bus
  * (and, on file://, the SDK's built-in mock) with zero per-field wiring.
  *
- *   <span data-field="teamA.name">GUARDIANS</span>      <!-- textContent -->
+ *   <span data-field="teamA.name">GUARDIANS</span>      <!-- textContent (eventTitle: bare <b> kept) -->
  *   <div  data-bg="teamA.logo"><span data-mono="teamA.name">G</span></div>
  *   <div  data-slot="upNext.2">...</div>                <!-- hidden if empty -->
  *
