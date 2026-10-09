@@ -71,6 +71,7 @@ test("detours into keys/ are denied once normalized", () => {
     "/control/..%5Coverlays%5Ckeys%5Crivalry-overlay-private.pem",
     "/control/../overlays/keys/rivalry-overlay-private.pem",
     "/assets/%2e%2e/overlays/keys/rivalry-overlay-private.pem",
+    "/overlays/sdk%2F..%2Fkeys/rivalry-overlay-private.pem",
   ]) {
     for (const gated of [true, false]) {
       assert.equal(classifyOverlayRequest(normalizeUrlPath(raw), reg, gated).kind, "deny", raw);
@@ -82,6 +83,7 @@ test("detours into an unsigned scene are denied by the production gate", () => {
   const reg = fakeRegistry();
   for (const raw of [
     "/control/..%5Coverlays%5Crivalry-unsigned%5Cindex.html",
+    "/control%2F..%2Foverlays/rivalry-unsigned/index.html", // browsers keep %2F encoded too
     "/control/../overlays/rivalry-unsigned/index.html",
   ]) {
     const urlPath = normalizeUrlPath(raw);

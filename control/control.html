@@ -767,11 +767,17 @@ $("apply").addEventListener("click", push);
 // Bridge sends `obs-status` updates whenever settings change or the OBS
 // connection state changes. We mirror its `settings` into the inputs so a
 // fresh control-panel window hydrates correctly.
+// No push until the app has answered with the saved settings: pushing the
+// blank form on connect used to overwrite them (OBS off, password and scene
+// map wiped) on every launch.
+let obsHydrated = false;
+// The saved password never comes back from the app (the bus reaches every
+// overlay page), so it is sent only once the producer types one.
+let obsPasswordDirty = false;
 function readObsForm(){
-  return {
+  const form = {
     enabled: $("obsEnabled").checked,
     url: $("obsWsUrl").value.trim() || "ws://localhost:4455",
-    password: $("obsWsPassword").value,
     autoSwitchEnabled: $("obsAutoSwitch").checked,
     sceneMap: {
       live: $("obsSceneLive").value.trim(),
@@ -780,9 +786,11 @@ function readObsForm(){
       postMatch: $("obsScenePostMatch").value.trim(),
     },
   };
+  if (obsPasswordDirty) form.password = $("obsWsPassword").value;
+  return form;
 }
 function pushObsSettings(){
-  if (!connected || ws.readyState !== ws.OPEN) return;
+  if (!obsHydrated || !connected || ws.readyState !== ws.OPEN) return;
   ws.send(JSON.stringify({ type: "obs-settings", payload: readObsForm() }));
 }
 function renderObsStatus(s){
@@ -795,13 +803,14 @@ function renderObsStatus(s){
 }
 function hydrateObsForm(settings){
   if (!settings) return;
+  obsHydrated = true;
   if (typeof settings.preferredSet === "string" && settings.preferredSet !== preferredSet){
     preferredSet = settings.preferredSet;
     renderLookChips();
   }
   $("obsEnabled").checked = !!settings.enabled;
   if (typeof settings.url === "string") $("obsWsUrl").value = settings.url;
-  if (typeof settings.password === "string") $("obsWsPassword").value = settings.password;
+  if (!obsPasswordDirty) $("obsWsPassword").placeholder = settings.hasPassword ? "saved (type to replace)" : "from OBS";
   $("obsAutoSwitch").checked = !!settings.autoSwitchEnabled;
   const map = settings.sceneMap || {};
   if (typeof map.live === "string") $("obsSceneLive").value = map.live;
@@ -812,8 +821,9 @@ function hydrateObsForm(settings){
 ["obsEnabled","obsWsUrl","obsWsPassword","obsAutoSwitch","obsSceneLive","obsSceneGoal","obsSceneReplay","obsScenePostMatch"]
   .forEach(id => {
     const el = $(id);
-    el.addEventListener("change", pushObsSettings);
-    el.addEventListener("input", pushObsSettings);
+    const onEdit = () => { if (id === "obsWsPassword") obsPasswordDirty = true; pushObsSettings(); };
+    el.addEventListener("change", onEdit);
+    el.addEventListener("input", onEdit);
   });
 $("obsTest").addEventListener("click", () => {
   // Force a settings reapply (triggers reconnect) by re-pushing the form.
@@ -895,12 +905,13 @@ function hydrateControlForm(p){
   renderQueue();
 }
 
-// Override the basic connect() above to hydrate from retained state, push
-// obs-settings on open, and receive obs-status / rl-status broadcasts.
+// Override the basic connect() above to hydrate from retained state, ask for
+// the saved obs settings on open, and receive obs-status / rl-status broadcasts.
 connect = function(){
   ws = new WebSocket(CONTROL_WS);
   ws.onopen = () => {
-    connected = true; setStatus(); pushObsSettings();
+    connected = true; setStatus();
+    ws.send(JSON.stringify({ type: "obs-query", payload: { query: "settings" } }));
     // Give the bridge a beat to replay retained state; only seed defaults if
     // nothing arrived (true first run). An immediate push() here used to
     // overwrite the restored state with the HTML defaults.

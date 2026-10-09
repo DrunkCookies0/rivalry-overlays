@@ -314,12 +314,16 @@ function startBridge(opts = {}) {
       const text = raw.toString();
       let parsed = null;
       try { parsed = JSON.parse(text); } catch { /* not JSON, just relay */ }
+      // Only control state is relayed to the other clients. Everything else a
+      // client sends (obs-settings, obs-action, league-settings) is addressed
+      // to the main process and can carry secrets (the league API key, the
+      // OBS password); every overlay page is a client of this bus too.
       if (parsed && parsed.type === "control") {
         lastControlState = text;
         if (persistControlState) persistControlState(text);
+        for (const c of controlClients)
+          if (c !== ws && c.readyState === c.OPEN) c.send(text);
       }
-      for (const c of controlClients)
-        if (c !== ws && c.readyState === c.OPEN) c.send(text);
       if (parsed) events.emit("control", parsed, ws);
     });
     ws.on("close", () => controlClients.delete(ws));

@@ -881,7 +881,7 @@ function setupObsIntegration() {
         if (bridgeHandle.broadcastControl) {
           bridgeHandle.broadcastControl({
             type: "obs-status",
-            payload: { settings: obsSettings, status: obsController.status },
+            payload: { settings: obsSettingsStore.publicView(obsSettings), status: obsController.status },
           });
         }
       } else if (msg && msg.type === "obs-action") {
@@ -946,6 +946,19 @@ function chromeAvailable() {
 }
 
 async function handleObsQuery({ query }, sourceWs) {
+  // A panel asks for the saved settings when it connects (it used to push its
+  // blank form instead, which switched OBS off and wiped the password and
+  // scene map on every launch). Answered while OBS is disconnected too: the
+  // settings are what the panel needs to reconnect it.
+  if (query === "settings") {
+    if (sourceWs && sourceWs.readyState === sourceWs.OPEN) {
+      sourceWs.send(JSON.stringify({
+        type: "obs-status",
+        payload: { settings: obsSettingsStore.publicView(obsSettings), status: obsController ? obsController.status : null },
+      }));
+    }
+    return;
+  }
   if (!obsController || !obsController.status.connected) return;
   if (query === "list-scenes") {
     try {
