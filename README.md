@@ -50,7 +50,7 @@ There is no Bracket scene in v1.0. It lives in git history and returns for playo
 
 ### Match-first (the only mode)
 
-The control panel opens on the **match finder**, and loading a real league match is the way into a broadcast: the packaged app serves no overlay scene until one is loaded. Enter your league API key once (issued from the league site, starts with `rv_`, sent in the `x-api-key` header), search for tonight's match, and load it. Loading locks the broadcast to that match and fills team names, logos, records, rosters, and event metadata across every scene at once. Logos are served through a local proxy because the upstream logo URLs expire in about 15 minutes.
+The control panel opens on the **match finder**, and loading a real league match is the way into a broadcast: the packaged app serves no overlay scene until one is loaded. Enter your league API key once (issued from the league site, starts with `rv_`, sent in the `x-api-key` header), search for tonight's match, and load it. Loading locks the broadcast to that match and fills team names, logos, records, rosters, player titles (each player's title on therivalry.gg, shown on their goal banner), and event metadata across every scene at once. Logos are served through a local proxy because the upstream logo URLs expire in about 15 minutes.
 
 **Load once, then cache.** The loaded match and its logos are cached to disk the moment they load. If the league site goes down mid-show (or the app restarts), the broadcast keeps running on the cached match; only *switching to a different match* needs the league reachable.
 

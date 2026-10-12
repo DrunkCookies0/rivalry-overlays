@@ -17,7 +17,12 @@
  *   GET  /api/v1/me               -> {message, keyName}
  *
  * Matches carry team wins/losses, so records fill themselves in; they were
- * hand-entered before because the older spec had no such field.
+ * hand-entered before because the older spec had no such field. Each roster
+ * player also carries `title` (string|null): the text of the active title that
+ * player picked on therivalry.gg. That is what the goal banner shows under a
+ * scorer's name; teamRole stays a separate field and never becomes the title.
+ * `title` comes with the rivalry-web change that added it; a site without it
+ * omits the field, which reads as "no title" (no line on the banner).
  *
  * Design notes:
  *   - createLeagueClient({ getSettings }) takes a GETTER, not a settings
@@ -77,10 +82,13 @@ function normalizePlayer(rawPlayer) {
   return {
     userId: str(p.userId),
     name: str(p.name),
-    // Live field is teamRole ("captain" etc.). Surfaced as `title` too because
-    // that is what the player-titles overlay binding already reads.
+    // role is the roster role (teamRole: "captain" or null).
+    // title is the player's active title on therivalry.gg (User.activeTitle ->
+    // Title.title, string|null; "" when they have none). It is NOT the role:
+    // the panel copies it into its Player Titles row for that player, and the
+    // goal banner shows it under the scorer's name.
     role: str(p.teamRole),
-    title: str(p.teamRole),
+    title: str(p.title).trim(),
     stats: p.stats && typeof p.stats === "object" ? p.stats : null,
   };
 }

@@ -93,6 +93,7 @@ Backend status: data exists; endpoints just need building (Cynical: fix parser i
 - The overlay shows a per-player **title** (a subtitle line) and up to **3 badges** on the goal banner. Confirmed: the website does not model these yet.
 - Eventually add, per player (on `User`, and/or overridable per `Roster` player for season-specific titles): `title: string`, `badges: string[]` (cap 3); expose in `PlayerIdentity` (§5).
 - Until then the producer sets titles manually in the control panel (already shipped overlay-side).
+- **Status (2026-10): `title` added in rivalry-web** (shows once that change is deployed). Each `/api/v1` match player carries `title: string | null`, the text of the user's active title (`User.activeTitle` -> `Title.title`), so the line above about titles not being modeled no longer holds. The panel fills Player Titles from it. Badges are still not modeled.
 
 ### P2 - Per-roster-player linked accounts (optional soft binding aid)
 Cynical will expose each user's **linked accounts** (platform IDs + display names) from `User.linkedAccounts` / `User.discordConnections`. For us this is only a **soft binding aid**: the overlay can fuzzy-match a live in-game name against a roster player's known display names to *suggest* a slot mapping, which the producer still confirms. Low value (the live feed has no IDs, so it stays name-based) but free, since Cynical exposes them anyway.
@@ -119,7 +120,7 @@ The post-game results scene (box score: goals / assists / saves / shots / demos 
 {
   "userId": "...",
   "name": "Samba",                    // Roster.players[].name (registered in-game name)
-  "title": "Team Frost - Captain",    // P2 (new, not modeled yet) - operator-entered until then
+  "title": "Season 3 Champion",       // P2 - added in rivalry-web: the user's active title on the site, or null
   "badges": ["MVP", "Top Scorer"],    // P2 (new, not modeled yet), cap 3
   "avatarUrl": "https://cdn.discordapp.com/avatars/.../...png",
   "ranks": { "1v1": 1450, "2v2": 1600, "3v3": 1720, "tracker": "https://..." },  // from UserRank
@@ -136,7 +137,7 @@ The post-game results scene (box score: goals / assists / saves / shots / demos 
 |---|---|---|
 | P1 | `GET /matches`, `GET /matches/:id` (resolved rosters) | Data exists; endpoints to be built (parser id fix -> deploy -> test) |
 | P1 | Resolved logo URLs | Done via image service (~15m expiry -> re-fetch on reload) |
-| P2 | `title` + `badges` on player | Not modeled yet; operator-entered for now |
+| P2 | `title` + `badges` on player | `title` added in rivalry-web (user's active title, string or null); `badges` not modeled, operator-entered |
 | P2 | Per-player linked accounts | Cynical will expose; optional soft binding aid only |
 | P3 | `GET /matches/:id/stats` | Future - post-game scene uses LIVE feed; this adds richer replay stats later |
 | ~~P2~~ | ~~`GET /teams/:id`~~ | Dropped (roster suffices; non-RV uses manual mode) |

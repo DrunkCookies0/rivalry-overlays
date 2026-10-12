@@ -321,10 +321,10 @@
          only holds real league matches. -->
 
     <div class="card full">
-      <h2>Player Titles <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(name must match the in-game name exactly; shows on that player's goal banner)</span></h2>
+      <h2>Player Titles <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(loading a match fills each title from that player's title on therivalry.gg; name must match the in-game name exactly; shows on that player's goal banner)</span></h2>
       <div class="row" style="gap:10px;">
         <div style="flex:2"><label>Player 1 — in-game name</label><input type="text" id="pName0" placeholder="HEATER" /></div>
-        <div style="flex:3"><label>Title</label><input type="text" id="pTitle0" placeholder="TEAM FROST • CAPTAIN" /></div>
+        <div style="flex:3"><label>Title</label><input type="text" id="pTitle0" placeholder="SEASON 3 CHAMPION" /></div>
         <div style="flex:3"><label>Badges (comma-separated, max 3)</label><input type="text" id="pBadges0" placeholder="MVP, TOP SCORER" /></div>
       </div>
       <div class="row" style="gap:10px;">
@@ -501,7 +501,8 @@ function gatherCasters(){
 }
 // Per-player goal-banner titles/badges, keyed by in-game name. Only rows with a
 // name are sent; the overlay matches the scorer to this list (case-insensitive)
-// and falls back to the league line when a scorer isn't listed.
+// and shows no line under the name when a scorer isn't listed. Loading a match
+// pre-fills each title from the player's active title on therivalry.gg.
 function gatherPlayers(){
   const out = [];
   for (let i = 0; i < 6; i++){
@@ -1354,21 +1355,24 @@ $("lockEnd").addEventListener("click", async () => {
 });
 
 /* Roster names into the goal-banner rows: team A takes slots 0-2, team B 3-5,
- * so a 2v2 leaves a visible gap rather than interleaving the teams. All six are
- * cleared first — loading a different match must not leave last match's players
- * behind. Titles are only overwritten when the league actually has a role for
- * that player, so hand-typed titles survive a refresh. */
+ * so a 2v2 leaves a visible gap rather than interleaving the teams. Each row's
+ * title is the player's active title on therivalry.gg, or blank when they have
+ * none: the site is the source, so a title never stays behind for whoever
+ * takes the row next. Badges are typed by hand, so they stay only while the
+ * row keeps the same player. Rows the roster doesn't fill are cleared. */
 function fillPlayerNames(d){
   const teams = (d && d.teams) || [];
-  for (let i = 0; i < 6; i++) $("pName" + i).value = "";
+  const rows = [null, null, null, null, null, null];
   teams.forEach((team, side) => {
     if (!team || !Array.isArray(team.players)) return;
-    team.players.slice(0, 3).forEach((p, i) => {
-      const slot = side * 3 + i;
-      if (slot > 5) return;
-      $("pName" + slot).value = p.name || "";
-      if (p.title) $("pTitle" + slot).value = p.title;
-    });
+    team.players.slice(0, 3).forEach((p, i) => { if (p && side < 2) rows[side * 3 + i] = p; });
+  });
+  rows.forEach((p, slot) => {
+    const name = (p && p.name) || "";
+    const samePlayer = !!name && $("pName" + slot).value.trim().toLowerCase() === name.trim().toLowerCase();
+    $("pName" + slot).value = name;
+    $("pTitle" + slot).value = (p && p.title) || "";
+    if (!samePlayer) $("pBadges" + slot).value = "";
   });
 }
 // ---- Caster cams in OBS: what the app last did with them (bridge/caster-cams.js)
