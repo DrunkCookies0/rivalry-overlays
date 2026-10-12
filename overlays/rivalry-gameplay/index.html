@@ -750,12 +750,12 @@ let control = {
   bestOf: 5,
   series: { a:0, b:0 },
   eventTitle: "RIVALRY",
-  // Goal-banner extras. scorerSubtitle is the default league line shown under
-  // any scorer; scorerBadges defaults to NONE so unlisted players never show
-  // placeholder badges on air. Per-player overrides come from the control
-  // panel's "Player Titles" section (control.players, matched by in-game name)
-  // or from the league API (player.subtitle / player.badges) when wired.
-  scorerSubtitle: "RIVALRY PRO LEAGUE • SEASON 1",
+  // Goal-banner extras: a line and badges under the scorer's name. Neither
+  // has a default, since a placeholder would air under every goal. They come
+  // from the control state (scorerSubtitle / scorerBadges); per player, from
+  // the panel's "Player Titles" section (control.players, matched by in-game
+  // name) or the league API (player.subtitle / player.badges) when wired.
+  scorerSubtitle: "",
   scorerBadges: [],
   // Operator-set per-player titles/badges: [{ name, title, badges:[] }].
   players: [],
