@@ -141,13 +141,16 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
     height: 311px;
 }
 
-/* PORT ADDITION: preview-only placeholder label inside the (transparent) cam
-   hole, styled in Moldy's palette. Hidden once the slot has a named caster, or
-   for every slot via ?live=1 on the source URL — mirrors rivalry-casters. */
+/* PORT ADDITION: design-time guide label inside the (transparent) cam hole,
+   styled in Moldy's palette, for lining up the OBS cam sources. Opt-in only,
+   via ?guides=1, and hidden once the slot has a named caster. Each cam is its
+   own OBS source UNDER this hole, so on air the label sat on top of a live
+   camera: it used to show unless ?live=1, and no URL the app builds carries
+   that. Mirrors rivalry-casters. */
 .scene-root[data-scene="caster"] .cam-hint {
     position: absolute;
     inset: 0;
-    display: flex;
+    display: none;
     justify-content: center;
     align-items: center;
     font-size: 1.5rem;
@@ -157,7 +160,7 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
     letter-spacing: 6px;
     color: rgba(0, 240, 255, 0.25);
 }
-.scene-root[data-scene="caster"][data-live="1"] .cam-hint { display: none; }
+.scene-root[data-scene="caster"][data-guides="1"] .cam-hint { display: flex; }
 
 .scene-root[data-scene="caster"] .lower-third {
     position: absolute;
@@ -193,6 +196,29 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
     font-style: italic;
     text-transform: uppercase; /* PORT ADDITION: replaces the .toUpperCase() in Moldy's sheet-fetch JS */
     text-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+/* PORT ADDITION: a cam shared by several casters joins their names
+   ("A & B"). Kept inside the 65px bar: two lines at a step-down size, then an
+   ellipsis; the joined handles shrink to one clipped line. */
+.scene-root[data-scene="caster"] .lower-third.is-shared .caster-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: 12px;
+    font-size: 1.15rem;
+    line-height: 1.1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.scene-root[data-scene="caster"] .lower-third.is-shared .caster-social {
+    flex: 0 1 auto;
+    max-width: 40%;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .scene-root[data-scene="caster"] .caster-social {
@@ -390,6 +416,14 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
 
 .scene-root[data-scene="caster"] .social-tag {
     font-size: 1.3rem;
+    /* PORT CHANGE: was line-height normal, i.e. the resolved font's own
+       ascent+descent. This line is the only font-sized box in the centred
+       flex stack, so a fallback font (Montserrat blocked or still loading)
+       moved every cam hole by half its height difference, and again when
+       Montserrat swapped in. 25px is Montserrat's own normal box at 1.3rem,
+       so the designed geometry is unchanged and the holes are fixed per
+       caster count. */
+    line-height: 25px;
     color: #00f0ff;
     text-transform: uppercase;
     font-style: italic;
@@ -421,8 +455,9 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
       <!-- Caster Webcams & Lower Thirds.
            Frames are built by the script from the control feed's casters[]
            (Moldy's two hardcoded slots came from a second sheet tab): one frame
-           per named caster, 1-3 supported, blank slots never render. The
-           interiors are transparent holes — cam sources sit BEHIND in OBS. -->
+           per cam, 1-3 supported, blank caster rows never render. The
+           interiors are transparent holes; the app places the cam sources
+           BEHIND them in OBS. -->
       <div class="casters-container" id="castersContainer"></div>
 
       <!-- Integrated Next Match Bar -->
@@ -470,6 +505,7 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
   <script src="../sdk/rivalry-overlay-sdk.js"></script>
   <script src="../sdk/rivalry-bind.js"></script>
   <script src="../sdk/rivalry-fit.js"></script>
+  <script src="../shared/rivalry-caster-cams.js"></script>
   <script>
     (function () {
       "use strict";
@@ -479,16 +515,16 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
       var bg = document.getElementById('scBg');
       var params = new URLSearchParams(location.search);
 
-      // ?live=1 hides the "CAMERA N" preview hints (set on the OBS browser
-      // source URL so they never paint over a real cam) — rivalry-casters
-      // convention.
-      if (params.get('live') === '1') root.setAttribute('data-live', '1');
+      // ?guides=1 shows the "CAMERA N" design-time labels (see .cam-hint) —
+      // rivalry-casters convention.
+      if (params.get('guides') === '1') root.setAttribute('data-guides', '1');
 
       // ---- caster frames (dynamic, from control.casters[]) ------------------
       // Moldy's design is two 680x382 frames; the kit contract allows 1-3
-      // casters, so frames are built per NAMED caster (blank slots hide) and
-      // three-up steps down to 553x311 via CSS. Zero casters (fresh page, no
-      // data yet) keeps the designed two-frame look as camera placeholders.
+      // cams, so frames are built per cam (overlays/shared/rivalry-caster-
+      // cams.js: the panel's cam count, or one per named caster) and three-up
+      // steps down to 553x311 via CSS. No data yet keeps the designed
+      // two-frame look as camera placeholders.
       var slots = []; // [{ frame, name, social, hint }]
 
       function buildFrames(count) {
@@ -525,9 +561,13 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
       // technique as rivalry-casters: ONE even-odd SVG path (outer 1920x1080
       // subpath + one subpath per frame), used as an alpha mask on .sc-bg.
       // Rects are MEASURED (not hardcoded) because the vertical position of
-      // the flex stack shifts when Montserrat swaps in and when the frame
-      // count changes — the mask re-derives itself from the live layout, so
-      // holes and borders can never drift apart.
+      // the flex stack changes with the frame count — the mask re-derives
+      // itself from the live layout, so holes and borders can never drift
+      // apart. The stack's height does not depend on the font (see
+      // .social-tag), so for a given cam count the holes always land at the
+      // same rects. The app places the OBS cam sources at those rects, as
+      // recorded in rivalry-caster-cams.js; render-verify fails if the frames
+      // here ever move off them.
       function applyMask() {
         var stage = document.querySelector('.rv-stage').getBoundingClientRect();
         if (!stage.width) return;
@@ -560,28 +600,29 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
       // record). This replaces the Google Sheets CSV fetch in the original.
       RivalryBind(root, rl);
 
-      // Caster slots: named casters only (a blank sheet row hid in Moldy's
-      // design too — his update() just never ran for missing cells).
+      // Cam slots: named casters only (a blank sheet row hid in Moldy's
+      // design too — his update() just never ran for missing cells); casters
+      // sharing a cam share its lower third ("A & B").
+      var Cams = window.RivalryCasterCams;
       rl.onControl(function (c) {
-        var named = ((c && c.casters) || []).filter(function (cs) {
-          return cs && cs.name;
-        }).slice(0, 3);
-        var count = named.length || 2; // no data yet: designed two-frame look
+        var count = Cams.camCount(c, 'rivalry-sc26-casters');
         if (count !== slots.length) buildFrames(count);
+        var cams = Cams.slots(c, count);
         slots.forEach(function (s, i) {
-          var cs = named[i] || {};
-          s.name.textContent = cs.name || '';
+          var cam = cams[i];
+          s.name.textContent = cam.name;
           // caster.handle carries what Moldy's sheet called "social"
-          s.social.textContent = cs.handle || '';
-          s.social.style.display = cs.handle ? '' : 'none';
-          s.lt.style.display = cs.name ? '' : 'none'; // never an empty bar
-          s.hint.style.display = cs.name ? 'none' : ''; // named => cam incoming
+          s.social.textContent = cam.handle;
+          s.social.style.display = cam.handle ? '' : 'none';
+          s.lt.style.display = cam.name ? '' : 'none'; // never an empty bar
+          s.lt.classList.toggle('is-shared', cam.casters.length > 1);
+          s.hint.style.display = cam.name ? 'none' : ''; // named => cam incoming
         });
         scheduleMask();
       });
 
-      // Re-derive the holes when the webfont lands (the header grows, the
-      // whole stack re-centers) — without this the holes sit a few px off.
+      // Re-derive the holes when the webfont lands. A safety net: the swap
+      // only changes text widths now, so the stack (and the holes) stay put.
       if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(scheduleMask);
       }

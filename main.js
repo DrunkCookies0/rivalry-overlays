@@ -39,6 +39,9 @@ const obsSettingsStore = require("./bridge/obs-settings");
 const devSettingsStore = require("./bridge/dev-settings");
 const { getMeta } = require("./bridge/app-meta");
 const overlayRegistry = require("./bridge/overlay-registry");
+const httpGuard = require("./bridge/http-guard");
+const { createDeckSwitcher } = require("./bridge/deck-switch");
+const { createCasterCamSync } = require("./bridge/caster-cams");
 const { createApiRouter } = require("./bridge/http-api");
 const leagueSettingsStore = require("./bridge/league-settings");
 const { createLeagueClient } = require("./bridge/league-client");
@@ -70,6 +73,7 @@ const MIME = {
   ".css": "text/css",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".json": "application/json",
@@ -135,7 +139,20 @@ if(r&&r.locked)location.reload();}catch{}},3000);</script>`;
 function startHttpServer(rootDir) {
   setHttpRoot(rootDir);
   const server = http.createServer((req, res) => {
-    let urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
+    // Host + Origin + path checks run before any routing (bridge/http-guard.js).
+    if (!httpGuard.isAllowedHost(req.headers.host)) {
+      res.writeHead(403);
+      return res.end("forbidden");
+    }
+    if (!["GET", "HEAD"].includes(req.method) && !httpGuard.isAllowedOrigin(req.headers.origin, HTTP_PORT)) {
+      res.writeHead(403);
+      return res.end("forbidden");
+    }
+    let urlPath = httpGuard.normalizeUrlPath(req.url);
+    if (urlPath === null) {
+      res.writeHead(400);
+      return res.end("bad request");
+    }
     // App API endpoints (status, setup, uploads, league proxy...) live in the
     // router; static serving + the overlay gate below stay untouched.
     if (apiRouter && apiRouter.handle(req, res, urlPath)) return;
@@ -174,7 +191,7 @@ function startHttpServer(rootDir) {
     }
     const root = httpRootDir;
     const filePath = path.normalize(path.join(root, urlPath));
-    if (!filePath.startsWith(root)) {
+    if (!httpGuard.isInsideRoot(root, filePath)) {
       res.writeHead(403);
       return res.end("forbidden");
     }
@@ -210,6 +227,8 @@ let bridgeHandle = null;
 let apiRouter = null;
 let leagueSettings = null;
 let leagueClient = null;
+let casterCamSync = null; // created with the OBS controller (setupObsIntegration)
+let lastCasterCamStatus = null; // replayed to a panel when it connects
 // Broadcast a masked league status on the control bus (never the key itself).
 function broadcastLeagueStatus() {
   if (!bridgeHandle || !bridgeHandle.broadcastControl) return;
@@ -549,7 +568,9 @@ async function setupObsScenes() {
       const ours = new Set(scenes.map((s) => s.sceneName));
       for (const name of defaults) if (!ours.has(name)) await obsController.removeScene(name);
     }
-    return { ok: true, created, collection: OBS_COLLECTION_NAME, sceneCount };
+    // Caster cams go in under the Casters overlay, fed from the Casters card.
+    const cams = casterCamSync ? await casterCamSync.syncNow() : null;
+    return { ok: true, created, collection: OBS_COLLECTION_NAME, sceneCount, cams };
   } catch (e) {
     console.error("[rivalry] OBS scene collection setup failed:", e.message);
     return { ok: false, error: e.message };
@@ -840,8 +861,40 @@ function setupObsIntegration() {
   // default) this is a no-op and OBS is never contacted.
   obsController.applySettings(obsSettings).catch(() => {});
 
-  // Status changes -> repaint tray menu so producers can see live state.
-  obsController.on("status", () => refreshTrayMenu());
+  // Caster cams: the app keeps the Casters scene's "Caster Cam N" sources in
+  // step with the Casters card (bridge/caster-cams.js). Synced after a scene
+  // build, on every OBS (re)connect, and when the control state changes.
+  casterCamSync = createCasterCamSync({
+    call: (type, data) => obsController.call(type, data),
+    isEnabled: () => !!(obsSettings && obsSettings.enabled),
+    isConnected: () => !!(obsController && obsController.status.connected),
+    getControl: () => (bridgeHandle && bridgeHandle.getControlState ? bridgeHandle.getControlState() : null),
+    sceneName: OBS_SCENE_NAMES.caster,
+    onResult: (r) => {
+      lastCasterCamStatus = r;
+      if (bridgeHandle && bridgeHandle.broadcastControl) bridgeHandle.broadcastControl({ type: "caster-cams-status", payload: r });
+    },
+  });
+
+  // Status changes -> repaint tray menu so producers can see live state. The
+  // cams re-sync on any change of connected/enabled: placed on connect, and
+  // the panel's cam line says so at once when OBS drops or is switched off.
+  let obsLink = "";
+  obsController.on("status", (s) => {
+    refreshTrayMenu();
+    const link = `${!!(s && s.connected)}|${!!(obsSettings && obsSettings.enabled)}`;
+    if (link !== obsLink) casterCamSync.request(true);
+    obsLink = link;
+  });
+  // OBS changed under the app: a collection switch, a rename, or a source
+  // removed (a Caster Cam, or the producer's copy of a feed) re-places the cams.
+  // An item shown or hidden in the Casters scene (often the app's own cams)
+  // only re-checks; elsewhere it is none of the cams' business, and a blinking
+  // item in another scene would otherwise keep pushing a pending sync back.
+  obsController.on("obs-event", (ev, data) => {
+    if (ev !== "SceneItemEnableStateChanged") casterCamSync.request(true);
+    else if (data && data.sceneName === OBS_SCENE_NAMES.caster) casterCamSync.request();
+  });
 
   // Control panel -> main process messages.
   if (bridgeHandle && bridgeHandle.events) {
@@ -866,13 +919,15 @@ function setupObsIntegration() {
         if (bridgeHandle.broadcastControl) {
           bridgeHandle.broadcastControl({
             type: "obs-status",
-            payload: { settings: obsSettings, status: obsController.status },
+            payload: { settings: obsSettingsStore.publicView(obsSettings), status: obsController.status },
           });
         }
       } else if (msg && msg.type === "obs-action") {
         handleObsAction(msg.payload || {});
       } else if (msg && msg.type === "obs-query") {
         handleObsQuery(msg.payload || {}, sourceWs);
+      } else if (msg && msg.type === "control") {
+        casterCamSync.request(); // debounced; skipped when the cams' plan is unchanged
       }
     });
 
@@ -908,18 +963,20 @@ async function handleObsAction(payload) {
   // full auto-switching — the producer drives the cut). With the chrome
   // present, the branded wipe covers the frame first and the switch lands
   // under it; game-event auto-switches (onGameEventForObs) deliberately skip
-  // the wipe because their timing is part of the goal sequence.
-  if (action === "switch" && payload.scene) {
-    try {
-      if (chromeAvailable() && bridgeHandle && bridgeHandle.broadcastControl) {
-        bridgeHandle.broadcastControl({ type: "chrome-wipe", payload: {} });
-        // The wipe panel fully covers the canvas ~450ms into its 1s sweep.
-        await new Promise((r) => setTimeout(r, 450));
-      }
-      await obsController.switchScene(payload.scene);
-    } catch (e) { /* unknown scene -> no-op */ }
-  }
+  // the wipe because their timing is part of the goal sequence. Clicks are
+  // serialized so a double-click never cuts on an uncovered canvas
+  // (bridge/deck-switch.js).
+  if (action === "switch" && payload.scene) deckSwitch(payload.scene);
 }
+
+const deckSwitch = createDeckSwitcher({
+  wipe: () => {
+    if (!(chromeAvailable() && bridgeHandle && bridgeHandle.broadcastControl)) return false;
+    bridgeHandle.broadcastControl({ type: "chrome-wipe", payload: {} });
+    return true;
+  },
+  switchScene: (scene) => obsController.switchScene(scene),
+});
 
 // The wipe only makes sense when the chrome overlay is actually servable
 // (present and, under the gate, approved) — otherwise a deck switch would
@@ -931,6 +988,20 @@ function chromeAvailable() {
 }
 
 async function handleObsQuery({ query }, sourceWs) {
+  // A panel asks for the saved settings when it connects (it used to push its
+  // blank form instead, which switched OBS off and wiped the password and
+  // scene map on every launch). Answered while OBS is disconnected too: the
+  // settings are what the panel needs to reconnect it.
+  if (query === "settings") {
+    if (sourceWs && sourceWs.readyState === sourceWs.OPEN) {
+      sourceWs.send(JSON.stringify({
+        type: "obs-status",
+        payload: { settings: obsSettingsStore.publicView(obsSettings), status: obsController ? obsController.status : null },
+      }));
+      if (lastCasterCamStatus) sourceWs.send(JSON.stringify({ type: "caster-cams-status", payload: lastCasterCamStatus }));
+    }
+    return;
+  }
   if (!obsController || !obsController.status.connected) return;
   if (query === "list-scenes") {
     try {

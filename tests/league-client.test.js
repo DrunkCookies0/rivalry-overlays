@@ -2,7 +2,8 @@
  * league-client tests — run with: node --test tests/league-client.test.js
  * -----------------------------------------------------------------------------
  * Shapes here mirror the LIVE therivalry.gg /api/v1 schema (captured from
- * GET /api/docs/json on 2026-07-25), which is what config/league-fixtures/
+ * GET /api/docs/json on 2026-07-25, plus the per-player `title` requested
+ * from the site for the goal banner), which is what config/league-fixtures/
  * holds. Mock mode runs against those fixtures (no network, no key). The no-key
  * guard is proven to short-circuit BEFORE any network I/O by swapping global
  * fetch for a tripwire that counts calls.
@@ -59,8 +60,36 @@ test("normalizeMatch: maps the live match shape", () => {
   const p = a.players[0];
   assert.equal(p.name, "Kaidan");
   assert.equal(p.role, "captain");
-  assert.equal(p.title, "captain", "player-titles overlay reads .title");
+  assert.equal(p.title, "Season 3 Champion", "title is the player's website title, not the role");
   assert.equal(p.stats.goals, 21);
+  assert.equal(a.players[1].role, "", "a player without a team role");
+  assert.equal(
+    a.players[1].title,
+    "Two-Time Summer Circuit Grand Finalist and Hall of Fame MVP",
+    "a title shows even for a player with no team role"
+  );
+  assert.equal(b.players[0].role, "captain");
+  assert.equal(b.players[0].title, "", "a captain with no website title gets no title");
+});
+
+test("normalizeMatch: title comes from the website title, never from teamRole", () => {
+  const m = normalizeMatch({
+    team1: {
+      players: [
+        { name: "A", teamRole: "captain", title: null },
+        { name: "B", teamRole: "captain" },
+        { name: "C", title: {} },
+        { name: "D", title: ["Champion"] },
+        { name: "E", teamRole: "captain", title: "Hall of Fame" },
+        { name: "F", title: "  Season 3 Champion  " },
+        { name: "G", title: "   " },
+      ],
+    },
+  });
+  const titles = m.teams[0].players.map((p) => p.title);
+  assert.deepEqual(titles, ["", "", "", "", "Hall of Fame", "Season 3 Champion", ""]);
+  assert.equal(m.teams[0].players[0].role, "captain", "the role stays in role");
+  assert.equal(m.teams[0].players[4].role, "captain");
 });
 
 test("normalizeMatch: a bye leaves side b null instead of shifting sides", () => {
@@ -141,6 +170,28 @@ test("mock: getMatch returns fixture, caches, and fresh:true re-reads", async ()
   const r3 = await client.getMatch(MATCH_A, { fresh: true });
   assert.notEqual(r3.data, r1.data); // new object -> cache busted, re-read
   assert.deepEqual(r3.data, r1.data); // ...with identical content
+});
+
+test("mock: fixture players carry the website title, and the finder list agrees", async () => {
+  const client = mockClient();
+  const one = await client.getMatch(MATCH_A);
+  assert.equal(one.ok, true);
+  const kaidan = normalizeMatch(one.data).teams[0].players[0];
+  assert.equal(kaidan.title, "Season 3 Champion", "mock mode shows the title flow end to end");
+
+  // Every fixture player carries `title` (string or null), like the live API,
+  // and matches.json (finder list) repeats the same title as match-<id>.json.
+  const list = await client.listMatches();
+  for (const listed of list.data) {
+    const full = await client.getMatch(listed.id);
+    for (const side of ["team1", "team2"]) {
+      const players = (listed[side] && listed[side].players) || [];
+      players.forEach((p, i) => {
+        assert.ok(p.title === null || typeof p.title === "string", `${listed.id} ${p.name} has a title field`);
+        assert.equal(p.title, full.data[side].players[i].title, `${listed.id} ${p.name} title in sync`);
+      });
+    }
+  }
 });
 
 test("mock: getLogo returns PNG bytes for each side", async () => {

@@ -66,4 +66,13 @@ function save(userDataDir, settings) {
   }
 }
 
-module.exports = { load, save, DEFAULTS };
+// What leaves the main process: everything but the password. The control bus
+// reaches every overlay page as well as the panel, and the OBS password opens
+// OBS's own websocket (which checks no Origin), so it never rides the bus; the
+// panel learns only that one is saved.
+function publicView(settings) {
+  const { password, ...rest } = settings || {};
+  return { ...rest, hasPassword: !!password };
+}
+
+module.exports = { load, save, publicView, DEFAULTS };

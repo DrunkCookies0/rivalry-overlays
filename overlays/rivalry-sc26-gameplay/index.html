@@ -520,19 +520,29 @@
                 0 2px 0 rgba(0,0,0,.6);
     opacity:0;transform:translateY(14px);
     transition:opacity .28s .30s,transform .28s .30s;white-space:nowrap;}
-  /* Subtitle — optional one-liner under the scorer name. Hidden when empty.
-     Will be populated from league-API data (e.g., team name, role, milestone). */
+  /* Subtitle — the scorer's title, one line under the name. Hidden when empty.
+     It comes from the panel's Player Titles (control.players[].title), which
+     loading a match fills with each player's active title on therivalry.gg.
+     Titles are free text (assume up to ~60 characters), so the line stays one
+     row and ends in an ellipsis instead of widening the banner past the frame.
+     The cap fits a ~60-character title; it is in stage pixels, since the
+     banner sits in the 1920x1080 stage that RivalryFit scales to the canvas.
+     The padding/negative-margin pairs give the text shadow and the italic
+     overhang room inside overflow:hidden without moving the text. */
   .goal-banner .gb-sub{position:relative;
     font-family:var(--font-display);font-style:italic;
     font-size:22px;font-weight:700;letter-spacing:4px;
     text-transform:uppercase;color:rgba(255,255,255,.85);
     text-shadow:0 2px 8px rgba(0,0,0,.65);
+    max-width:1200px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    padding:6px 12px 10px 8px;margin:-6px -12px -10px -8px;
     opacity:0;transform:translateY(8px);
     transition:opacity .28s .38s,transform .28s .38s;display:none;}
   .goal-banner.has-sub .gb-sub{display:block;}
   .goal-banner.show.has-sub .gb-sub{opacity:1;transform:translateY(0);}
   /* Badges row — up to 3 small pills (achievement / role / milestone markers).
-     Hidden when empty. Populated from league-API per-player data. */
+     Hidden when empty. Typed per player in the panel's Player Titles. */
   .goal-banner .gb-badges{position:relative;display:none;flex-direction:row;gap:8px;
     opacity:0;transform:translateY(8px);
     transition:opacity .28s .46s,transform .28s .46s;}
@@ -802,12 +812,13 @@ let control = {
   bestOf: 5,
   series: { a:0, b:0 },
   eventTitle: "RIVALRY",
-  // Goal-banner extras. scorerSubtitle is the default league line shown under
-  // any scorer; scorerBadges defaults to NONE so unlisted players never show
-  // placeholder badges on air. Per-player overrides come from the control
-  // panel's "Player Titles" section (control.players, matched by in-game name)
-  // or from the league API (player.subtitle / player.badges) when wired.
-  scorerSubtitle: "RIVALRY PRO LEAGUE • SEASON 1",
+  // Goal-banner extras: a line and badges under the scorer's name. Neither
+  // has a default, since a placeholder would air under every goal. Per player
+  // they come from the panel's "Player Titles" section (control.players,
+  // matched by in-game name): the line is the player's title, pre-filled from
+  // their active title on therivalry.gg when a match loads. scorerSubtitle /
+  // scorerBadges are the global fallback.
+  scorerSubtitle: "",
   scorerBadges: [],
   // Operator-set per-player titles/badges: [{ name, title, badges:[] }].
   players: [],
@@ -917,10 +928,18 @@ const COUNTDOWN_DEBOUNCE_MS = 500;
 // override per row when it lands.
 const RV_LOGO = "../../assets/rivalry-logo.svg";
 
+// eventTitle is free text (producer-typed or the league API's title), so it is
+// escaped in full, then only bare <b>/</b> (styled by .eventbar b) is re-allowed.
+function titleHtml(s){
+  return String(s)
+    .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
+    .replace(/&lt;(\/?)b&gt;/gi, "<$1b>");
+}
+
 // Eventbar shows the operator-set event title only — match-state takeovers
 // (OVERTIME / KICKOFF) live in the state strip below the pip row.
 function updateEventBar(){
-  $("eventbar").innerHTML = control.eventTitle || "RIVALRY";
+  $("eventbar").innerHTML = titleHtml(control.eventTitle || "RIVALRY");
 }
 
 // State strip — below the pip row. OVERTIME wins over KICKOFF if both apply.
@@ -1265,9 +1284,9 @@ function showGoalBanner(scorer, teamNum){
   const teamName = blue ? control.teamA.name : control.teamB.name;
   document.documentElement.style.setProperty("--goalc", blue ? "var(--blue)" : "var(--red)");
   $("gbText").textContent = fillGoalText(control.goalText, scorer, teamName);
-  // Subtitle + badges — populated from per-player league data (when wired).
-  // Look up the scorer in the latest snapshot for any attached metadata. Both
-  // slots stay hidden until real data lands.
+  // Subtitle + badges — the scorer's title (their therivalry.gg title, via the
+  // panel's Player Titles) and badges. Both slots stay hidden when the scorer
+  // has neither.
   applyGoalBannerExtras(scorer, teamNum);
   // Strip the .exiting class from any previous goal cycle so the wipe-in
   // is anchored at the correct side. Apply .from-right when the orange
@@ -1513,15 +1532,18 @@ function finishKickoffCountdown(){
 }
 
 // Populate the goal banner's optional subtitle + badges slots. Data sources:
-//   1. League API per-player blob (future) — `subtitle` string + `badges` array
-//   2. Manual override on control state (`control.scorerSubtitle`, `control.scorerBadges`)
+//   1. control.players[] (panel "Player Titles"), matched by in-game name:
+//      `title` is the player's title, which the panel pre-fills from their
+//      active title on therivalry.gg when a match loads (operator may edit it)
+//   2. `subtitle` / `badges` on the game feed's player entry (not sent today)
+//   3. Global default on control state (`control.scorerSubtitle`, `control.scorerBadges`)
 // Both slots stay hidden when no data is supplied. Up to 3 badges max.
 function applyGoalBannerExtras(scorer, teamNum){
   const b = $("goalBanner");
   const player = (latestPlayers || []).find(p => p && p.Name === scorer) || {};
   // Operator-set title/badges (control panel "Player Titles"), matched to the
   // scorer by in-game name (trimmed, case-insensitive). Precedence:
-  // operator override > league API per-player > global default.
+  // panel row (website title or the operator's edit) > game feed > global default.
   const key = String(scorer || "").trim().toLowerCase();
   const op = (control.players || []).find(p => p && (p.name || "").trim().toLowerCase() === key) || {};
   const subtitle = op.title || player.subtitle || control.scorerSubtitle || "";

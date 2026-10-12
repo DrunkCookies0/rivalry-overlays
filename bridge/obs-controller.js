@@ -47,6 +47,14 @@ function createOBSController() {
         setStatus();
         scheduleReconnect();
       });
+      // Changes made in OBS that the caster cams react to (main.js): a
+      // collection switch or scene rename, a source deleted or renamed, an
+      // item shown or hidden. None of these is caused by the app itself
+      // except show/hide, which the cams only re-check, never force.
+      for (const ev of ["CurrentSceneCollectionChanged", "SceneNameChanged", "InputRemoved", "InputNameChanged",
+        "SceneItemRemoved", "SceneItemEnableStateChanged"]) {
+        obs.on(ev, (data) => emitter.emit("obs-event", ev, data));
+      }
     }
     connecting = true;
     try {
@@ -237,9 +245,17 @@ function createOBSController() {
     return { itemId };
   }
 
+  // Raw obs-websocket request, for modules that orchestrate their own calls
+  // (bridge/caster-cams.js). Same connected guard as every operation here.
+  async function call(requestType, requestData) {
+    if (!connected) throw new Error("OBS not connected");
+    return obs.call(requestType, requestData);
+  }
+
   return {
     on: emitter.on.bind(emitter),
     off: emitter.off.bind(emitter),
+    call,
     applySettings,
     connect,
     disconnect,

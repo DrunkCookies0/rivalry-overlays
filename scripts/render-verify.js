@@ -20,8 +20,13 @@
  *      feed (flash -> banner -> replay card -> stinger -> kickoff count) at
  *      1080p; pass --full (or RIVALRY_VERIFY_FULL=1) to prove it at every
  *      resolution. --full is mandatory after any gameplay layout change.
- *   5. control/control.html renders scene rows from the registry, error-free.
- *   6. control/setup.html (if it exists) reaches its feed-is-live state.
+ *   5. Each casters overlay puts its cam frames exactly on the rects in
+ *      overlays/shared/rivalry-caster-cams.js, for auto and picked cam
+ *      counts: the app places the OBS cam sources there, so a frame that
+ *      drifts (or a count the app and scene disagree on) leaves a camera
+ *      misaligned with its hole on air.
+ *   6. control/control.html renders scene rows from the registry, error-free.
+ *   7. control/setup.html (if it exists) reaches its feed-is-live state.
  *
  * Exit 0 only if every check passes. No deps beyond playwright + node builtins.
  * ===========================================================================*/
@@ -37,6 +42,7 @@ const { spawn, execFileSync } = require("child_process");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const { verifyOverlay } = require(path.join(REPO_ROOT, "bridge", "overlay-signing"));
+const CasterCams = require(path.join(REPO_ROOT, "overlays", "shared", "rivalry-caster-cams.js"));
 const { chromium } = require(path.join(REPO_ROOT, "node_modules", "playwright"));
 
 // ---------------------------------------------------------------------------
@@ -108,6 +114,13 @@ const SCENE_CHECKS = {
   "rivalry-sc26-match-preview": { selector: ".mp-name", description: "team name node" },
   "rivalry-sc26-postgame": { selector: ".pg-boards", description: "team stat boards" },
   "rivalry-sc26-up-next": { selector: '.scene-root[data-scene="up-next"] .un-row[data-slot="upNext.0"]', description: "first on-deck schedule row" },
+};
+
+// Cam frame per casters overlay, for the cam-rect check. Every overlay in
+// RivalryCasterCams.RECTS needs one.
+const CAM_FRAME_SELECTORS = {
+  "rivalry-casters": ".cs-frame",
+  "rivalry-sc26-casters": ".caster-frame",
 };
 
 // ---------------------------------------------------------------------------
@@ -364,6 +377,65 @@ function assertNoErrors(errors, where) {
   if (bad.length) {
     throw new Error(`${bad.length} console/page error(s) on ${where}: ${bad.join(" | ")}`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Caster cams: frames on the shared rects
+// ---------------------------------------------------------------------------
+// The app places each OBS cam source at the rect overlays/shared/rivalry-
+// caster-cams.js gives; the scene must put its frame (and so its hole) at the
+// same place for every cam count. rivalry-casters draws from the file, while
+// rivalry-sc26-casters lays its frames out with flexbox, so this is what
+// catches it drifting. The control bus is served from here (routeWebSocket)
+// so each cam count is exactly the payload sent.
+
+async function checkCasterCams(browser, entry) {
+  await runCheck(`${entry.id} | cam frames on the shared cam rects (auto and picked counts)`, async () => {
+    const sel = CAM_FRAME_SELECTORS[entry.id];
+    if (!sel) throw new Error(`no CAM_FRAME_SELECTORS entry for ${entry.id}`);
+    const context = await browser.newContext({ viewport: BASE_VIEWPORT });
+    try {
+      const page = await context.newPage();
+      const errors = [];
+      page.on("console", (msg) => { if (msg.type() === "error") errors.push(msg.text()); });
+      page.on("pageerror", (err) => errors.push("pageerror: " + (err && err.message ? err.message : String(err))));
+      const control = [];
+      await page.routeWebSocket(/:49777/, (ws) => control.push(ws));
+      await page.routeWebSocket(/:49124/, () => {});
+      await page.goto(`${BASE}${entry.url}`, { waitUntil: "load", timeout: 15000 });
+      await page.evaluate(() => document.fonts.ready.then(() => true));
+      const named = (n) => ["ONE", "TWO", "THREE"].slice(0, n).map((name) => ({ name, role: "", handle: "", stream: "", avatar: "" }));
+      // Auto at each caster count, then the producer's picks (fewer cams than
+      // casters, and more): the scene and the app must agree on the count too.
+      const cases = [
+        { casters: named(1) }, { casters: named(2) }, { casters: named(3) },
+        { casters: named(3), casterCams: 1 }, { casters: named(3), casterCams: 2 }, { casters: named(1), casterCams: 3 },
+      ];
+      for (const payload of cases) {
+        const n = CasterCams.camCount(payload, entry.id);
+        const label = `${payload.casters.length} caster(s), casterCams ${payload.casterCams || "auto"} (${n} cam(s))`;
+        for (const ws of control) ws.send(JSON.stringify({ type: "control", payload }));
+        await page.waitForTimeout(400);
+        const got = await page.evaluate((frameSel) => {
+          const st = document.querySelector(".rv-stage").getBoundingClientRect();
+          const k = st.width / 1920;
+          return [...document.querySelectorAll(frameSel)].map((f) => {
+            const r = f.getBoundingClientRect();
+            return { x: Math.round((r.left - st.left) / k), y: Math.round((r.top - st.top) / k),
+              w: Math.round(r.width / k), h: Math.round(r.height / k) };
+          });
+        }, sel);
+        const want = CasterCams.RECTS[entry.id][n];
+        const off = got.length !== want.length ||
+          got.some((g, i) => ["x", "y", "w", "h"].some((key) => Math.abs(g[key] - want[i][key]) > 1));
+        if (off) throw new Error(`${label}: frames ${JSON.stringify(got)} but the app places cams at ${JSON.stringify(want)}`);
+      }
+      assertNoErrors(errors, entry.url);
+      return `frames match in ${cases.length} cases`;
+    } finally {
+      await context.close();
+    }
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -664,6 +736,21 @@ async function main() {
           "rivalry-gameplay | goal sequence at extra resolutions",
           "run with --full after gameplay layout changes"
         );
+      }
+    }
+
+    for (const id of Object.keys(CasterCams.RECTS)) {
+      const o = overlays.find((x) => x.id === id);
+      if (o) await checkCasterCams(browser, o);
+      else await runCheck(`${id} | cam frames on the shared cam rects`, async () => {
+        throw new Error("rivalry-caster-cams.js has rects for an overlay the registry does not serve");
+      });
+    }
+    // A casters scene without rects gets no app-placed cams (the producer
+    // places their own), so it has nothing to line up: say so, don't hide it.
+    for (const o of overlays) {
+      if (o.scene === "caster" && !Object.prototype.hasOwnProperty.call(CasterCams.RECTS, o.id)) {
+        recordSkip(`${o.id} | cam frames on the shared cam rects`, "no cam rects in rivalry-caster-cams.js: the app does not place cams for this scene");
       }
     }
 

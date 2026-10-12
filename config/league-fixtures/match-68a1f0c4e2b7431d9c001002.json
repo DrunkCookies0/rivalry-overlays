@@ -17,12 +17,14 @@
         "userId": "u-nova-1",
         "name": "Ashwing",
         "teamRole": "captain",
+        "title": null,
         "stats": null
       },
       {
         "userId": "u-nova-2",
         "name": "Tidebreak",
         "teamRole": null,
+        "title": null,
         "stats": null
       }
     ]
@@ -38,6 +40,7 @@
         "userId": "u-eclipse-1",
         "name": "Marrow",
         "teamRole": null,
+        "title": null,
         "stats": null
       }
     ]
