@@ -2,8 +2,8 @@
  * league-client tests — run with: node --test tests/league-client.test.js
  * -----------------------------------------------------------------------------
  * Shapes here mirror the LIVE therivalry.gg /api/v1 schema (captured from
- * GET /api/docs/json on 2026-07-25, plus the per-player `title` added in
- * rivalry-web for the goal banner), which is what config/league-fixtures/
+ * GET /api/docs/json on 2026-07-25, plus the per-player `title` requested
+ * from the site for the goal banner), which is what config/league-fixtures/
  * holds. Mock mode runs against those fixtures (no network, no key). The no-key
  * guard is proven to short-circuit BEFORE any network I/O by swapping global
  * fetch for a tripwire that counts calls.

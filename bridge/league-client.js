@@ -21,8 +21,8 @@
  * player also carries `title` (string|null): the text of the active title that
  * player picked on therivalry.gg. That is what the goal banner shows under a
  * scorer's name; teamRole stays a separate field and never becomes the title.
- * `title` comes with the rivalry-web change that added it; a site without it
- * omits the field, which reads as "no title" (no line on the banner).
+ * The site does not send `title` yet (requested); a missing field reads as
+ * "no title" (no line on the banner).
  *
  * Design notes:
  *   - createLeagueClient({ getSettings }) takes a GETTER, not a settings
