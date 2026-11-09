@@ -185,18 +185,26 @@
   <div class="card full v-setup" id="chromeCard" style="margin-bottom:18px;">
     <h2>Chrome &amp; ticker <span class="muted-note">(the always-on frame: set once per event)</span></h2>
     <div class="row" style="gap:10px;">
-      <div style="flex:2"><label>Stream line (ticker, bottom right)</label><input type="text" id="chStream" placeholder="STREAM • TWITCH.TV/RIVALRY" /></div>
-      <div style="flex:1"><label>Showcase label</label><input type="text" id="chScLabel" placeholder="FRANCHISE" /></div>
-      <div style="flex:1"><label>Showcase name</label><input type="text" id="chScName" placeholder="FROST" /></div>
-      <div style="flex:2"><label>Showcase logo URL <span class="muted-note">(optional)</span></label><input type="text" id="chScLogo" placeholder="https://.../logo.png" /></div>
+      <div style="flex:2"><label>Stream line (ticker, bottom right)</label><input type="text" id="chStream" placeholder="THERIVALRY.GG" /></div>
+    </div>
+    <!-- Right rail: the socials, top to bottom in this order. Known networks
+         (x, instagram, youtube, twitch, discord) get their mark; anything else
+         gets a letter tile. The rail's bottom is kept for league-pushed
+         sponsors, so there is no showcase field any more. -->
+    <div class="row" style="gap:10px;">
+      <div style="flex:1"><label>Social 1 network</label><input type="text" id="chSocNet0" placeholder="x" /></div>
+      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle0" placeholder="@theRIVALRYgg" /></div>
+      <div style="flex:1"><label>Social 2 network</label><input type="text" id="chSocNet1" placeholder="instagram" /></div>
+      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle1" placeholder="@theRIVALRYgg" /></div>
+      <div style="flex:1"><label>Social 3 network</label><input type="text" id="chSocNet2" placeholder="youtube" /></div>
+      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle2" placeholder="@theRIVALRYgg" /></div>
     </div>
     <div class="row" style="gap:10px;">
-      <div style="flex:1"><label>Social 1 network</label><input type="text" id="chSocNet0" placeholder="discord" /></div>
-      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle0" placeholder="discord.gg/rivalry" /></div>
-      <div style="flex:1"><label>Social 2 network</label><input type="text" id="chSocNet1" placeholder="x" /></div>
-      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle1" placeholder="@rivalrygg" /></div>
-      <div style="flex:1"><label>Social 3 network</label><input type="text" id="chSocNet2" placeholder="twitch" /></div>
-      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle2" placeholder="twitch.tv/rivalry" /></div>
+      <div style="flex:1"><label>Social 4 network</label><input type="text" id="chSocNet3" placeholder="twitch" /></div>
+      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle3" placeholder="twitch.tv/rivalry" /></div>
+      <div style="flex:1"><label>Social 5 network</label><input type="text" id="chSocNet4" placeholder="discord" /></div>
+      <div style="flex:2"><label>Handle</label><input type="text" id="chSocHandle4" placeholder="discord.gg/rivalry" /></div>
+      <div style="flex:3"></div>
     </div>
     <label>Ticker lines <span class="muted-note">— one per line; these always run, even with no schedule and no league</span></label>
     <textarea id="tickerLines" rows="2" placeholder="SIGN-UPS FOR FALL CIRCUIT OPEN AUGUST 15"></textarea>
@@ -591,20 +599,17 @@ function gatherSchedule(){
     })),
   };
 }
+const SOCIAL_SLOTS = 5;
 function gatherChrome(){
   const socials = [];
-  for (let i = 0; i < 3; i++){
+  for (let i = 0; i < SOCIAL_SLOTS; i++){
     const net = $("chSocNet"+i).value.trim(), handle = $("chSocHandle"+i).value.trim();
     if (net || handle) socials.push({ network: net, handle });
   }
+  // No showcase: the right rail's bottom is reserved for league-pushed sponsors.
   return {
     streamLine: $("chStream").value.trim(),
     socials,
-    showcase: {
-      label: $("chScLabel").value.trim(),
-      name: $("chScName").value.trim(),
-      logo: $("chScLogo").value.trim(),
-    },
   };
 }
 function gatherTicker(){
@@ -868,9 +873,9 @@ $("bestOf").addEventListener("input", () => {
 ["bestOf","eventTitle",
  "seedA","recordA","seedB","recordB","round","startTime","kickoff",
  "evSeason","evCircuit","evTier",
- "chStream","chScLabel","chScName","chScLogo","tickerLines"]
+ "chStream","tickerLines"]
   .forEach(id => $(id).addEventListener("input", pushSoon));
-for (let i = 0; i < 3; i++) ["chSocNet","chSocHandle"].forEach(p => $(p+i).addEventListener("input", pushSoon));
+for (let i = 0; i < SOCIAL_SLOTS; i++) ["chSocNet","chSocHandle"].forEach(p => $(p+i).addEventListener("input", pushSoon));
 for (let i = 0; i < 3; i++) ["casterName","casterRole","casterHandle","casterStream"].forEach(p => $(p+i).addEventListener("input", pushSoon));
 $("casterCams").addEventListener("change", push);
 for (let i = 0; i < 6; i++) ["pName","pTitle","pBadges"].forEach(p => $(p+i).addEventListener("input", pushSoon));
@@ -1017,13 +1022,8 @@ function hydrateControlForm(p){
   if (p.chrome){
     setVal("chStream", p.chrome.streamLine);
     const soc = Array.isArray(p.chrome.socials) ? p.chrome.socials : [];
-    for (let i = 0; i < 3; i++){ const s = soc[i] || {};
+    for (let i = 0; i < SOCIAL_SLOTS; i++){ const s = soc[i] || {};
       setVal("chSocNet"+i, s.network); setVal("chSocHandle"+i, s.handle); }
-    if (p.chrome.showcase){
-      setVal("chScLabel", p.chrome.showcase.label);
-      setVal("chScName", p.chrome.showcase.name);
-      setVal("chScLogo", p.chrome.showcase.logo);
-    }
   }
   if (p.ticker && Array.isArray(p.ticker.manualLines)) setVal("tickerLines", p.ticker.manualLines.join("\n"));
   if (typeof p.swapped === "boolean" && p.swapped !== state.swapped){
