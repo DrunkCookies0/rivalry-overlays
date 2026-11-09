@@ -10,12 +10,12 @@
     "control"
   ],
   "contract": "1.x",
-  "description": "Be Right Back scene (Kinetic Bold).",
+  "description": "Be Right Back, with the series on a card (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "3e8279183c9066e7e5c1a824685f9deee24801521e8af99ef6a153326995b20d",
-    "signature": "qbMljUhn1DAuKc4Bira5S9qwsBRLKdUgGVpjr951GKamZfsmSeHRzFWWoP16fIsdGRfL7ZDzZ1f0hzD6fDqXDg==",
+    "contentHash": "2d91895a8323d9a0526fcadc9ec8fd9209fa7c7df753240d8576370229df5317",
+    "signature": "4PJMo9W5D18z4ZTHgsTQi2YO9ihU4rZoiSPWdx9WtfbzkYl/dpjIBqZx2Zcb3tnhHVWQyPg83irkxEe+7AYsBg==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-08-01T12:53:10.431Z"
+    "signedAt": "2026-11-09T18:25:10.811Z"
   }
 }
