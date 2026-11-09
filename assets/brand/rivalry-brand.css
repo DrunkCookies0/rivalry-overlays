@@ -1,0 +1,83 @@
+/* =============================================================================
+ * The Rivalry brand (Emerald), v1
+ * -----------------------------------------------------------------------------
+ * Self-hosted fonts plus the brand's color tokens, named exactly as the brand
+ * package ships them (03_Color/the-rivalry-colors.css). Nothing here touches the
+ * network, so a scene looks the same with the internet down on show night.
+ *
+ * It lives under /assets/ on purpose: /overlays/ paths are held back by the match
+ * gate until a match is loaded, and the control panel + setup wizard need these
+ * fonts before that.
+ *
+ * A scene opts in by linking this AFTER rivalry-theme.css:
+ *
+ *   <link rel="stylesheet" href="../shared/rivalry-theme.css" />
+ *   <link rel="stylesheet" href="../../assets/brand/rivalry-brand.css" />
+ *
+ * The Kinetic Bold role names (--rv-ink, --rv-panel, ...) are re-pointed at the
+ * brand at the bottom of this file, so an opted-in scene's existing CSS picks up
+ * the new colors and fonts while its shapes are restyled. Scenes that don't link
+ * this file keep the Kinetic Bold look untouched. Once every scene is migrated,
+ * delete the alias block and the old tokens in rivalry-theme.css.
+ * ===========================================================================*/
+
+/* Barlow Condensed: headlines, team names. Upright caps, 700 by default. */
+@font-face { font-family: "Barlow Condensed"; src: url("../fonts/barlow-condensed-medium.ttf") format("truetype"); font-weight: 500; font-style: normal; font-display: block; }
+@font-face { font-family: "Barlow Condensed"; src: url("../fonts/barlow-condensed-semibold.ttf") format("truetype"); font-weight: 600; font-style: normal; font-display: block; }
+@font-face { font-family: "Barlow Condensed"; src: url("../fonts/barlow-condensed-bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: block; }
+/* Inter: body text, player names. One variable file covers every weight. */
+@font-face { font-family: "Inter"; src: url("../fonts/inter-variable.ttf") format("truetype"); font-weight: 100 900; font-style: normal; font-display: block; }
+/* Space Mono: scores, clock, stats, labels. */
+@font-face { font-family: "Space Mono"; src: url("../fonts/space-mono-regular.ttf") format("truetype"); font-weight: 400; font-style: normal; font-display: block; }
+@font-face { font-family: "Space Mono"; src: url("../fonts/space-mono-bold.ttf") format("truetype"); font-weight: 700; font-style: normal; font-display: block; }
+
+:root {
+  /* --- brand core (sRGB masters) --- */
+  --rv-coal: #17191F;
+  --rv-slate: #343B49;
+  --rv-chalk: #F0EDE5;
+  --rv-emerald: #20B878;
+
+  /* --- brand digital extended (UI only, never in the logo) --- */
+  --rv-coal-raised: #1F2229;
+  --rv-hover: #262A33;
+  --rv-chalk-dim: #A9A79F;
+  --rv-emerald-tint: #1B3329;
+
+  /* --- type --- */
+  --rv-font-head: "Barlow Condensed", "Arial Narrow", sans-serif; /* 700, uppercase */
+  --rv-font-body: "Inter", system-ui, sans-serif;
+  --rv-font-mono: "Space Mono", ui-monospace, monospace; /* scores and labels */
+
+  /* --- shape --- */
+  --rv-radius: 0;
+  --rv-rule: 1px solid #343B49;
+
+  /* --- team sides: thin stripes and boost fills only --- */
+  --rv-team-blue: #2D8CFF;
+  --rv-team-orange: #FF8A1F;
+
+  /* --- Kinetic Bold role names, re-pointed for scenes that opt in --- */
+  --rv-ink: var(--rv-chalk);
+  --rv-muted: var(--rv-chalk-dim);
+  --rv-panel: var(--rv-coal);
+  --rv-panel-solid: var(--rv-coal);
+  --rv-bar: var(--rv-coal-raised);
+  --rv-seg-off: var(--rv-slate);
+  --rv-blue: var(--rv-team-blue);
+  --rv-orange: var(--rv-team-orange);
+  --rv-white-smoke: var(--rv-chalk);
+  --rv-jet-black: var(--rv-coal);
+  --rv-yale-blue: var(--rv-slate);
+  --rv-surface-1: var(--rv-coal-raised);
+  --rv-surface-2: var(--rv-slate);
+  --rv-gold: var(--rv-emerald);
+  --rv-teal: var(--rv-emerald);
+  /* --rv-green and --rv-red stay as they are: status colors are still an open
+     brand item. */
+  --rv-shadow: none;
+  --rv-shadow-soft: none;
+  --rv-cut: 0px;
+  --rv-font-display: var(--rv-font-head);
+  --rv-font-stat: var(--rv-font-mono);
+}

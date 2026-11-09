@@ -87,6 +87,8 @@ const MIME = {
   ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
+  ".ttf": "font/ttf",
+  ".woff2": "font/woff2",
   ".json": "application/json",
 };
 

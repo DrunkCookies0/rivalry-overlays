@@ -16,6 +16,14 @@ overlays/keys/*.pem text eol=lf
 # Binary art served from /assets/ (shared by scenes): never convert.
 assets/*.webp       binary
 assets/*.png        binary
+assets/**/*.png     binary
+assets/**/*.ttf     binary
+assets/**/*.ico     binary
+
+# Brand text assets (logo masters, brand stylesheet) stay LF like the scenes
+# that load them.
+assets/**/*.svg     text eol=lf
+assets/**/*.css     text eol=lf
 
 # Common binaries a designer might drop into an overlay folder: never convert.
 overlays/**/*.png   binary
