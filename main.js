@@ -135,14 +135,17 @@ function matchGateBlocks() {
 // loaded. Polls the lock and reloads itself the moment one lands, so the
 // producer never has to hand-refresh every OBS source after loading a match.
 function matchNoticeHtml() {
+  // Brand fonts come from /assets/, which the match gate never holds back.
   return `<!doctype html><meta charset="utf-8"><title>No match loaded</title>
-<style>html,body{margin:0;height:100%;background:#0b1219;color:#f1eeee;
-font-family:"Segoe UI",system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
+<link rel="stylesheet" href="/assets/brand/rivalry-brand.css">
+<style>html,body{margin:0;height:100%;background:#17191F;color:#F0EDE5;
+font-family:"Inter",system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
 .c{max-width:640px;padding:40px;text-align:center}
-h1{font-size:26px;letter-spacing:.14em;margin:0 0 14px;text-transform:uppercase;font-style:italic}
-p{font-size:16px;line-height:1.6;color:#9fb0be;margin:0 0 10px}
-b{color:#30c0f6}</style>
-<div class="c"><h1>RIVALRY Casterverse</h1>
+img{width:72px;height:auto;margin:0 0 18px}
+h1{font:700 40px/.95 "Barlow Condensed","Arial Narrow",sans-serif;letter-spacing:.02em;margin:0 0 16px;text-transform:uppercase}
+p{font-size:16px;line-height:1.6;color:#A9A79F;margin:0 0 10px}
+b{color:#20B878;font-weight:600}</style>
+<div class="c"><img src="/assets/brand/logo-emerald-on-dark.svg" alt=""><h1>RIVALRY Casterverse</h1>
 <p>No league match is loaded, so overlay scenes are not being served.</p>
 <p>Open the control panel, <b>find your match</b>, and load it. This source will pick it up on its own.</p></div>
 <script>setInterval(async()=>{try{const r=await(await fetch("/league/lock",{cache:"no-store"})).json();
@@ -317,7 +320,7 @@ function createWindow() {
     minWidth: 360,
     autoHideMenuBar: true,
     title: APP_TITLE,
-    backgroundColor: "#0e1218",
+    backgroundColor: "#17191F", // brand Coal, matches the panel so there's no flash on load
     icon: TRAY_ICON,
     show: false,
     webPreferences: { contextIsolation: true },
