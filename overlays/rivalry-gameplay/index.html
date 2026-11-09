@@ -243,42 +243,42 @@
   .ptag.statev .slot{clip-path:inset(0)!important;transition:clip-path .22s cubic-bezier(.2,.8,.2,1);}
   .ptag.statev .bar,.ptag.statev .pboost .num{opacity:0;}
 
-  /* ===================== BOTTOM STATFEED BAR ====================== */
-  /* While the goal sequence is in flight (banner → replay → card → stinger
-     → kickoff), the focused-player widgets (statfeed bar + radial boost
-     gauge) fade out so they don't compete visually with goal graphics OR
-     pop back in during the banner-exit → replay-start gap. JS toggles
-     body.goal-sequence-active, synced 1:1 with the goalSequenceActive
-     flag — set in showGoalBanner, cleared in clearGoalSequence. */
-  .statbar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
-    display:flex;align-items:stretch;height:40px;background:var(--bar);
-    box-shadow:var(--shadow);border-radius:4px;overflow:hidden;
-    transition:opacity .22s ease-out;}
+  /* ===================== SPECTATED PLAYER CARD + BOOST ====================== */
+  /* Bottom-left card (88% size) and bottom-right boost block, 28px in from the
+     window's corners. While the goal sequence is in flight (banner -> replay
+     -> card -> stinger -> kickoff) both fade out so they don't compete with the
+     goal graphics. JS toggles body.goal-sequence-active (showGoalBanner sets
+     it, clearGoalSequence clears it). */
   body.goal-sequence-active .statbar,
   body.goal-sequence-active .boostgauge{opacity:0;pointer-events:none;}
-  .statbar .who{display:flex;align-items:center;padding:0 20px;
-    font-family:var(--font-display);
-    font-weight:700;font-size:16px;letter-spacing:1px;text-transform:uppercase;color:#fff;}
-  .statbar .who.blue{background:var(--blue);}
-  .statbar .who.red{background:var(--red);}
-  .statbar .stat{display:flex;align-items:center;gap:7px;padding:0 18px;
-    border-right:1px solid #1c2632;}
-  .statbar .stat:last-child{border-right:none;}
-  .statbar .stat b{font-family:var(--font-stat);font-size:18px;font-weight:700;
-    font-variant-numeric:tabular-nums;}
-  .statbar .stat span{font-family:var(--font-display);
-    font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
-
-  /* ===================== RADIAL BOOST GAUGE ====================== */
-  .boostgauge{position:fixed;bottom:22px;right:30px;width:118px;height:118px;
-    transition:opacity .22s ease-out;}
-  .boostgauge svg{transform:rotate(-90deg);}
-  .boostgauge .track{fill:none;stroke:#1a2330;stroke-width:9;}
-  .boostgauge .val{fill:none;stroke:var(--blue);stroke-width:9;stroke-linecap:round;
-    transition:stroke-dashoffset .12s linear,stroke .2s;}
-  .boostgauge .label{position:absolute;inset:0;display:flex;align-items:center;
-    justify-content:center;font-family:var(--font-stat);font-size:34px;font-weight:700;
-    font-variant-numeric:tabular-nums;}
+  .pc{position:absolute;left:28px;bottom:28px;width:640px;box-sizing:border-box;
+    background:var(--rv-coal);border:1px solid var(--rv-slate);
+    transform:scale(.88);transform-origin:0 100%;transition:opacity .22s ease-out;}
+  .pc.blue{--side:var(--blue);}
+  .pc.red{--side:var(--red);}
+  .pc-top{position:relative;display:flex;align-items:center;gap:14px;height:66px;padding:0 18px 0 22px;
+    border-bottom:1px solid var(--rv-slate);}
+  .pc-top .stripe{position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--side);}
+  .pc-top .tile{width:46px;height:46px;font-size:15px;}
+  .pc-top .nm{min-width:0;font:700 40px/1 var(--font-display);text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pc-top .lab{margin-left:auto;flex:none;font:400 13px/1.2 var(--font-stat);letter-spacing:.14em;
+    text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+  .pc-stats{display:grid;grid-template-columns:repeat(6,1fr);height:58px;}
+  .pc-stats div{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:0 16px;
+    border-left:1px solid var(--rv-slate);}
+  .pc-stats div:first-child{border-left:0;}
+  .pc-stats b{font:700 22px/1.1 var(--font-stat);font-variant-numeric:tabular-nums;}
+  .pc-stats span{font:400 10px/1 var(--font-stat);letter-spacing:.12em;color:var(--muted);}
+  .bb{position:absolute;right:28px;bottom:28px;width:300px;box-sizing:border-box;padding:12px 16px 14px;
+    background:var(--rv-coal);border:1px solid var(--rv-slate);transition:opacity .22s ease-out;}
+  .bb p{margin:0;}
+  .bb .lab{font:400 13px/1.2 var(--font-stat);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bb-n{margin-top:4px!important;font:700 62px/1 var(--font-stat);font-variant-numeric:tabular-nums;}
+  .segs{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:10px;}
+  .segs i{height:16px;box-sizing:border-box;border:2px solid var(--rv-slate);}
+  .segs i.on{background:var(--rv-emerald);border-color:var(--rv-emerald);}
 
   /* ===================== GOAL BANNER ====================== */
   /* Positioned at y=35% center, 300px tall, fully opaque across the full
@@ -546,6 +546,26 @@
   <!-- PLAYER BOARDS -->
   <div class="pb left"><div class="pb-h"><i></i><span id="pbNameA">BLUE</span></div><div class="col left" id="colA"></div></div>
   <div class="pb right"><div class="pb-h"><i></i><span id="pbNameB">ORANGE</span></div><div class="col right" id="colB"></div></div>
+
+  <!-- SPECTATED PLAYER CARD -->
+  <div class="pc statbar blue" id="statbar" style="display:none">
+    <div class="pc-top"><i class="stripe"></i><span class="tile" id="pcTile"></span><span class="nm" id="sbWho">PLAYER</span><span class="lab" id="pcLab">Spectating</span></div>
+    <div class="pc-stats">
+      <div><b id="sbScore">0</b><span>SCORE</span></div>
+      <div><b id="sbGoals">0</b><span>GOALS</span></div>
+      <div><b id="sbAssists">0</b><span>ASSISTS</span></div>
+      <div><b id="sbSaves">0</b><span>SAVES</span></div>
+      <div><b id="sbShots">0</b><span>SHOTS</span></div>
+      <div><b id="sbDemos">0</b><span>DEMOS</span></div>
+    </div>
+  </div>
+
+  <!-- BOOST: 10 segments -->
+  <div class="bb boostgauge" id="boostgauge" style="display:none">
+    <p class="lab" id="bbLbl">Boost</p>
+    <p class="bb-n" id="gaugeLabel">0</p>
+    <div class="segs" id="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
   </div>
 
   <!-- FINAL 10s COUNTDOWN — upper-center big number, ≤10s in regulation -->
@@ -553,25 +573,6 @@
 
   <!-- KICKOFF 3-2-1-GO! — center-screen during CountdownBegin → RoundStarted -->
   <div class="kickoff-count" id="kickoffCount"></div>
-
-  <!-- BOTTOM STATFEED -->
-  <div class="statbar" id="statbar" style="display:none">
-    <div class="who blue" id="sbWho">PLAYER</div>
-    <div class="stat"><b id="sbGoals">0</b><span>Goals</span></div>
-    <div class="stat"><b id="sbShots">0</b><span>Shots</span></div>
-    <div class="stat"><b id="sbAssists">0</b><span>Assists</span></div>
-    <div class="stat"><b id="sbSaves">0</b><span>Saves</span></div>
-    <div class="stat"><b id="sbDemos">0</b><span>Demos</span></div>
-  </div>
-
-  <!-- RADIAL BOOST -->
-  <div class="boostgauge" id="boostgauge" style="display:none">
-    <svg width="118" height="118" viewBox="0 0 118 118">
-      <circle class="track" cx="59" cy="59" r="52"></circle>
-      <circle class="val" id="gaugeVal" cx="59" cy="59" r="52"></circle>
-    </svg>
-    <div class="label nums" id="gaugeLabel">0</div>
-  </div>
 
   <!-- GOAL BANNER (sweeps across, covers RL's in-game "X Scored" text)
        Layers: back slate → team-color slab w/ ambient lighting → avatar + text.
@@ -646,7 +647,6 @@ let control = {
 };
 
 const $ = (id) => document.getElementById(id);
-const GAUGE_CIRC = 2 * Math.PI * 52; // circumference of the boost ring
 
 // demos are not in UpdateState; tally them from StatfeedEvent, keyed by player.
 let demosByName = {};
@@ -1058,30 +1058,34 @@ function markActive(name){
 }
 
 function updateFocus(p){
-  const bar = $("statbar"), gauge = $("boostgauge");
-  if (!p){ bar.style.display = "none"; gauge.style.display = "none"; return; }
-  bar.style.display = "flex"; gauge.style.display = "block";
+  const card = $("statbar"), boostBox = $("boostgauge");
+  if (!p){ card.style.display = "none"; boostBox.style.display = "none"; return; }
+  card.style.display = "block"; boostBox.style.display = "block";
 
   const blue = p.TeamNum === 0;
-  $("sbWho").textContent = p.Name || "";
-  $("sbWho").className = "who " + (blue ? "blue" : "red");
-  $("sbGoals").textContent   = p.Goals   ?? 0;
-  $("sbShots").textContent   = p.Shots   ?? 0;
-  $("sbAssists").textContent = p.Assists ?? 0;
-  $("sbSaves").textContent   = p.Saves   ?? 0;
-  $("sbDemos").textContent   = demosByName[p.Name] || 0;
+  const team = blue ? control.teamA : control.teamB;
+  card.classList.toggle("blue", blue);
+  card.classList.toggle("red", !blue);
+  setTeamTile($("pcTile"), team);
+  setText($("sbWho"), p.Name || "");
+  setText($("pcLab"), (team.name || (blue ? "BLUE" : "ORANGE")) + " · Spectating");
+  setText($("sbScore"),   p.Score   ?? 0);
+  setText($("sbGoals"),   p.Goals   ?? 0);
+  setText($("sbAssists"), p.Assists ?? 0);
+  setText($("sbSaves"),   p.Saves   ?? 0);
+  setText($("sbShots"),   p.Shots   ?? 0);
+  setText($("sbDemos"),   demosByName[p.Name] || 0);
 
-  // Same boost cache as renderBoost so the radial gauge doesn't flicker
-  // to 0 / "--" on frames where RL omits the Boost field.
+  // Same boost cache as renderBoost so the block doesn't flicker to 0 on
+  // frames where RL omits the Boost field. Unknown boost shows 0.
   const cachedBoost = lastBoostByName[p.Name];
   const boost = typeof p.Boost === "number" ? p.Boost
               : typeof cachedBoost === "number" ? cachedBoost : 0;
-  const val = $("gaugeVal");
-  val.style.stroke = blue ? "var(--blue)" : "var(--red)";
-  val.style.strokeDasharray = GAUGE_CIRC;
-  val.style.strokeDashoffset = GAUGE_CIRC * (1 - boost/100);
-  // Unknown boost shows 0 (not "--") per broadcast preference.
-  $("gaugeLabel").textContent = boost;
+  setText($("bbLbl"), "Boost · " + (p.Name || ""));
+  setText($("gaugeLabel"), boost);
+  const lit = Math.round(boost / 10);
+  const segs = $("segs").children;
+  for (let i = 0; i < segs.length; i++) segs[i].classList.toggle("on", i < lit);
 }
 
 /* ---- Goal sequence (v0.5.5 layered model) --------------------------------
