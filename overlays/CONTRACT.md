@@ -138,7 +138,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
     "eventTitle": "RIVALRY SEASON 1 | PLAYOFFS",
     "round": "UPPER BRACKET • ROUND 1",
     "startTime": "8:00 PM ET",
-    "casters": [ { "name": "ALEX 'COOKIES' TOLL", "role": "PLAY-BY-PLAY", "handle": "@cookies", "stream": "vdo-id-or-url", "avatar": "" } ],
+    "casters": [ { "name": "DrunkCookies", "role": "PLAY-BY-PLAY", "handle": "@cookies", "stream": "vdo-id-or-url", "avatar": "" } ],
     "casterCams": 0,
     "upNext": [ { "teamA": "NOVA", "teamB": "ECLIPSE", "time": "9:30 ET", "round": "UB R1" } ],
     "brand": { "leagueName": "RIVALRY", "logo": "" },
