@@ -10,12 +10,12 @@
     "control"
   ],
   "contract": "1.x",
-  "description": "Starting Soon scene (Kinetic Bold).",
+  "description": "Starting Soon: the lockup, a kickoff countdown and the first match on a card (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "e37b7599d6bc9ff5802eab465891ea1fb343cc94290043105544319d24850f3c",
-    "signature": "lgmeLeC8ogElDFfTcX+qkZPEy92PyyeXGSz8MUIkmCKHVHY8S84aK4dNYjEWFwVY2wyz8P+RgY97eEqtH0dJAg==",
+    "contentHash": "f7457f2c146039a1a8daca148306e35a439ef622ab1148f90ad97bcf72d2cf46",
+    "signature": "ZAgXbei4zj+vU/y1pTQ6jeNJDy7x3eRK/Tb2DT10lVaO+FU2db9rFHU4ip3VIZRRSCXCK/YUwkJn0ZbgJm8hDA==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-08-01T12:53:09.278Z"
+    "signedAt": "2026-11-09T16:08:46.326Z"
   }
 }

@@ -28,6 +28,7 @@
   input[type=text],input[type=number],input[type=password],textarea,select{width:100%;padding:8px 10px;
     border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:14px;font-family:inherit;}
   textarea{font-family:inherit;resize:vertical;}
+  input[type=time]{color-scheme:dark;}
   .row{display:flex;align-items:center;gap:10px;}
   .series{display:flex;align-items:center;gap:8px;margin-top:6px;}
   button{cursor:pointer;border:none;padding:8px 12px;font-weight:600;font-size:14px;font-family:inherit;}
@@ -280,6 +281,10 @@
         <div style="flex:1">
           <label>Start time</label>
           <input type="text" id="startTime" placeholder="8:00 PM ET" />
+        </div>
+        <div style="flex:1">
+          <label>First kickoff <span class="muted-note">(countdown)</span></label>
+          <input type="time" id="kickoff" title="Starting Soon counts down to this time on this computer's clock. Leave empty to show the start time instead." />
         </div>
       </div>
       <div class="row" style="gap:8px;margin-top:12px;">
@@ -607,6 +612,26 @@ function gatherTicker(){
     manualLines: $("tickerLines").value.split("\n").map(s => s.trim()).filter(Boolean),
   };
 }
+// Starting Soon's countdown runs off the producer's own clock: the league's
+// match times are local time labelled UTC until the website fixes it, so a
+// countdown built on them could be hours off. "HH:MM" from the picker becomes
+// the next such instant (a time more than 12 hours behind now means after
+// midnight); empty means no countdown.
+function kickoffAt(){
+  const v = $("kickoff").value;
+  if (!/^\d{2}:\d{2}$/.test(v)) return 0;
+  const [h, m] = v.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  if (d.getTime() < Date.now() - 12 * 3600e3) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+function hhmm(ms){
+  const d = new Date(Number(ms));
+  if (!ms || isNaN(d.getTime())) return "";
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
+
 function payload(){
   // Team identity rides from the LOCK (displayTeam), never from typed input.
   // tag stays in the contract shape but empty — same as a league fill today.
@@ -622,6 +647,7 @@ function payload(){
       eventTitle: $("eventTitle").value,
       round: $("round").value,
       startTime: $("startTime").value,
+      kickoffAt: kickoffAt(),
       casters: gatherCasters(),
       // 0 = one cam per named caster; 1-3 pins the count (CONTRACT.md).
       casterCams: parseInt($("casterCams").value, 10) || 0,
@@ -840,7 +866,7 @@ $("bestOf").addEventListener("input", () => {
 });
 // push on any field change (debounced — these are all typed fields)
 ["bestOf","eventTitle",
- "seedA","recordA","seedB","recordB","round","startTime",
+ "seedA","recordA","seedB","recordB","round","startTime","kickoff",
  "evSeason","evCircuit","evTier",
  "chStream","chScLabel","chScName","chScLogo","tickerLines"]
   .forEach(id => $(id).addEventListener("input", pushSoon));
@@ -971,6 +997,7 @@ function hydrateControlForm(p){
     $("seriesA").textContent = state.series.a; $("seriesB").textContent = state.series.b;
   }
   setVal("eventTitle", p.eventTitle); setVal("round", p.round); setVal("startTime", p.startTime);
+  setVal("kickoff", hhmm(p.kickoffAt));
   const cs = Array.isArray(p.casters) ? p.casters : [];
   for (let i = 0; i < 3; i++){ const c = cs[i] || {};
     setVal("casterName"+i, c.name); setVal("casterRole"+i, c.role); setVal("casterHandle"+i, c.handle); setVal("casterStream"+i, c.stream); }
