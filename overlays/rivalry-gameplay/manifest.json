@@ -14,9 +14,9 @@
   "description": "Live in-match gameplay overlay (scorebug, boost, stat pops, goal sequence).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "f0ed4316f34c8017fb9ae2c2197caf2d34979d2f7d51ab9a9cf1feac7cf847fa",
-    "signature": "vNtTJYi0NL8FjHuXyuSngOOsYhOvdU4WVe9+EkTC0pxHnSCv05kFpho43k1jM5R2CJDxfB+5AP07F1ca11XtAg==",
+    "contentHash": "e2e7a233e837389e1a7e817d2c4b02653cb28f0291962c3a5f3e097ba37d8d81",
+    "signature": "LNgAtw7y9v/IQlsMsUAtMBh4LDPF+hFtujZcJvER5zq9Q91kM8//CAHFzX6We+AzAcUf9/5IBIsSePpqReSrBw==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-09T17:24:28.902Z"
+    "signedAt": "2026-11-09T17:29:56.123Z"
   }
 }
