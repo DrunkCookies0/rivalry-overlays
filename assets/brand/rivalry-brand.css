@@ -81,3 +81,30 @@
   --rv-font-display: var(--rv-font-head);
   --rv-font-stat: var(--rv-font-mono);
 }
+
+/* ---------------------------------------------------------------------------
+   Scene building blocks for the house scenes (rv- prefixed, so nothing that
+   only loads this file for the fonts can collide with them).
+   --------------------------------------------------------------------------- */
+.rv-lab { font: 400 13px/1.2 var(--rv-font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--rv-chalk-dim); }
+.rv-hd { font-family: var(--rv-font-head); font-weight: 700; text-transform: uppercase; line-height: .9; }
+/* The outlined Emerald half of the motif, for the last word of a headline. */
+.rv-o { color: transparent; -webkit-text-stroke: var(--rv-stroke, 5px) var(--rv-emerald); }
+.rv-tag { display: inline-flex; align-items: center; padding: 4px 10px; font: 700 13px/1.2 var(--rv-font-mono); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+.rv-tag.em { background: var(--rv-emerald); color: var(--rv-coal); }
+.rv-tag.ln { border: 1px solid var(--rv-slate); color: var(--rv-chalk-dim); font-weight: 400; }
+.rv-tag b { color: var(--rv-chalk); font-weight: 700; }
+/* The top band every full-window scene shares: the lockup left, tags right,
+   inside the chrome's window (rails 64, so 60px of air on each side). */
+.rv-lockup { position: absolute; left: 124px; top: 64px; height: 120px; width: auto; }
+.rv-tags { position: absolute; right: 124px; top: 92px; display: flex; gap: 8px; max-width: 960px; }
+/* Team / player tile: the league logo first. Without one, the brand symbol as
+   supplied (never recolored: brand rule 04) on a Coal tile whose 4px outer edge
+   carries the team color from --rv-side. Add .has-logo when a logo is set;
+   .r puts the edge on the right for right-hand placements. */
+.rv-tile { display: inline-block; flex: none; box-sizing: border-box; padding: 6px;
+  background-color: var(--rv-coal-raised); background-position: center; background-size: contain;
+  background-repeat: no-repeat; background-origin: content-box; border: 1px solid var(--rv-slate); }
+.rv-tile:not(.has-logo) { padding: 2px; background-image: url("logo-emerald-on-dark.svg");
+  border-left: 4px solid var(--rv-side, var(--rv-slate)); }
+.rv-tile.r:not(.has-logo) { border-left: 1px solid var(--rv-slate); border-right: 4px solid var(--rv-side, var(--rv-slate)); }
