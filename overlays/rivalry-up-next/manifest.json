@@ -10,12 +10,12 @@
     "control"
   ],
   "contract": "1.x",
-  "description": "Up Next scene (Kinetic Bold).",
+  "description": "Up Next: the night's series as rows (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "58701f1cdfffe0ddecb93e7e0ed7aa1db0444f9588a81405034b0bd4ba206f66",
-    "signature": "Sg5YAivdhFdpTafy3yAmPU5+bglwV2+BtbGEKWiuIRFscF2AKSvlZc4P7I24VNcZ81U/SbFwrPQ9wO8ZIgrrAg==",
+    "contentHash": "f7025e9f3f0ecf5aa631c467acd5aed60131db617a2d1e0ab5da1ddc4dd83f01",
+    "signature": "V0RmqOaM48MVyEBzdFTurv7Y9KxV9uDAJsgRqDU0ie44I2TgrXC0L89LHGjl4X5INWmuuJzrlvbrGI+EamAWDA==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-09T03:07:39.043Z"
+    "signedAt": "2026-11-09T18:25:10.794Z"
   }
 }
