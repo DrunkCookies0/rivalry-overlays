@@ -62,7 +62,7 @@ The **Broadcast schedule** card lines up the whole night: add each series with i
 
 ### Overlay looks (sets)
 
-Overlays ship in visual families. **Kinetic Bold** is the house look; community sets (like Moldybanana's **SC26**) provide alternate looks for some scene types. Pick a look in the Overlays / Scenes card and rebuild the OBS scene collection; scene types the chosen look doesn't cover fall back to the house look automatically.
+Overlays ship in visual families. **Kinetic Bold** is the house look; community sets can provide alternate looks for some scene types. (Moldybanana's SC26 summer look was retired with the 0.7.0 rebrand.) Pick a look in the Overlays / Scenes card and rebuild the OBS scene collection; scene types the chosen look doesn't cover fall back to the house look automatically.
 
 ### Caster cams
 

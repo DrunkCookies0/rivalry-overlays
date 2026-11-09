@@ -25,9 +25,9 @@
  *                         parameters, so one feed is never loaded twice
  *   badLinks(control)     named casters whose link is not a VDO.Ninja one
  *
- * rivalry-sc26-casters lays its frames out with flexbox and measures them for
- * its mask, so its rects here are those measurements; render-verify fails if
- * the scene's frames ever move off them.
+ * A casters look that lays its frames out itself (rather than reading these
+ * rects) records its measured rects here; render-verify fails if the scene's
+ * frames ever move off them.
  * ===========================================================================*/
 
 (function (root, factory) {
@@ -44,11 +44,6 @@
       1: [{ x: 360, y: 250, w: 1200, h: 675 }],
       2: [{ x: 90, y: 300, w: 853, h: 480 }, { x: 977, y: 300, w: 853, h: 480 }],
       3: [{ x: 90, y: 383, w: 560, h: 315 }, { x: 680, y: 383, w: 560, h: 315 }, { x: 1270, y: 383, w: 560, h: 315 }],
-    },
-    "rivalry-sc26-casters": {
-      1: [{ x: 620, y: 267, w: 680, h: 382 }],
-      2: [{ x: 255, y: 267, w: 680, h: 382 }, { x: 985, y: 267, w: 680, h: 382 }],
-      3: [{ x: 81, y: 302, w: 553, h: 311 }, { x: 684, y: 302, w: 553, h: 311 }, { x: 1287, y: 302, w: 553, h: 311 }],
     },
   };
 

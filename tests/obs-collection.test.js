@@ -222,7 +222,7 @@ test("one overlay per scene type: same-type overlays collapse instead of suffixi
   // one broadcast scene, never two OBS scenes. House set wins by default.
   const overlays = [
     { ...entry({ folder: "gameplay-a", name: "Gameplay A", scene: "gameplay" }), set: "kinetic-bold" },
-    { ...entry({ folder: "gameplay-b", name: "Gameplay B", scene: "gameplay" }), set: "sc26" },
+    { ...entry({ folder: "gameplay-b", name: "Gameplay B", scene: "gameplay" }), set: "alt" },
   ];
   const col = buildSceneCollection({ overlays, baseUrl: BASE });
   assert.deepEqual(scenesOf(col).map((s) => s.name), ["RIVALRY - Live"]);
@@ -235,23 +235,23 @@ test("preferredSet picks that set's overlay, house set fills uncovered scene typ
   assert.equal(DEFAULT_SET, "kinetic-bold");
   const overlays = [
     { ...entry({ folder: "rivalry-brb", name: "RIVALRY BRB", scene: "brb" }), set: "kinetic-bold" },
-    { ...entry({ folder: "sc26-brb", name: "SC26 BRB", scene: "brb" }), set: "sc26" },
+    { ...entry({ folder: "alt-brb", name: "Alt BRB", scene: "brb" }), set: "alt" },
     { ...entry({ folder: "rivalry-gameplay", name: "RIVALRY Gameplay", scene: "gameplay" }), set: "kinetic-bold" },
   ];
-  const chosen = selectOverlaysForSet(overlays, "sc26");
+  const chosen = selectOverlaysForSet(overlays, "alt");
   const byScene = Object.fromEntries(chosen.map((o) => [o.scene, o.folder]));
-  assert.equal(byScene.brb, "sc26-brb", "preferred set covers brb");
-  assert.equal(byScene.gameplay, "rivalry-gameplay", "sc26 has no gameplay: house set fills it");
+  assert.equal(byScene.brb, "alt-brb", "preferred set covers brb");
+  assert.equal(byScene.gameplay, "rivalry-gameplay", "alt has no gameplay: house set fills it");
   // And the built collection agrees.
-  const col = buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "sc26" });
-  assert.ok(browsersOf(col).some((b) => b.name === "SC26 BRB Overlay"));
+  const col = buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "alt" });
+  assert.ok(browsersOf(col).some((b) => b.name === "Alt BRB Overlay"));
   assert.ok(browsersOf(col).some((b) => b.name === "RIVALRY Gameplay Overlay"));
 });
 
 test("a missing set field reads as the house set", () => {
   const { selectOverlaysForSet } = require("../bridge/obs-collection");
   const legacy = entry({ folder: "rivalry-brb", name: "RIVALRY BRB", scene: "brb" }); // no .set
-  const chosen = selectOverlaysForSet([legacy], "sc26");
+  const chosen = selectOverlaysForSet([legacy], "alt");
   assert.equal(chosen.length, 1, "legacy entries without a set still serve as fallback");
 });
 
@@ -259,9 +259,9 @@ test("opaque scenes never get the chrome pinned on top", () => {
   const overlays = [
     entry({ folder: "rivalry-chrome", name: "Chrome (persistent frame)", scene: "chrome" }),
     entry({ folder: "rivalry-gameplay", name: "RIVALRY Gameplay", scene: "gameplay" }),
-    { ...entry({ folder: "sc26-brb", name: "SC26 BRB", scene: "brb" }), set: "sc26", opaque: true },
+    { ...entry({ folder: "alt-brb", name: "Alt BRB", scene: "brb" }), set: "alt", opaque: true },
   ];
-  const col = buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "sc26" });
+  const col = buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "alt" });
   const chromeSrc = browsersOf(col).find((b) => b.name === CHROME_SOURCE_NAME);
   const live = scenesOf(col).find((s) => s.name === "RIVALRY - Live");
   assert.equal(live.settings.items.at(-1).source_uuid, chromeSrc.uuid, "transparent scene keeps the chrome");
@@ -415,12 +415,16 @@ test("a casters overlay without known cam geometry gets no cams", () => {
   assert.ok(!browsersOf(col).some((b) => b.name.startsWith("Caster Cam ")));
 });
 
-test("the SC26 casters overlay gets its own hole geometry", () => {
-  const overlays = [{ ...entry({ folder: "rivalry-sc26-casters", name: "SC26 Casters", scene: "caster" }), set: "sc26", opaque: true }];
+test("a second casters look gets its own hole geometry", () => {
+  // Stand-in second look (the retired summer look's measured holes).
+  RECTS["test-alt-casters"] = {
+    3: [{ x: 81, y: 302, w: 553, h: 311 }, { x: 684, y: 302, w: 553, h: 311 }, { x: 1287, y: 302, w: 553, h: 311 }],
+  };
+  const overlays = [{ ...entry({ folder: "test-alt-casters", name: "Alt Casters", scene: "caster" }), set: "alt", opaque: true }];
   const control = { casters: [C("A", "a"), C("B", "b"), C("C", "c")] };
-  const items = castersScene(buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "sc26", control }));
+  const items = castersScene(buildSceneCollection({ overlays, baseUrl: BASE, preferredSet: "alt", control }));
   const cams = items.filter((x) => x.src.name.startsWith("Caster Cam "));
-  assert.deepEqual(cams.map((x) => x.it.pos), RECTS["rivalry-sc26-casters"][3].map((r) => ({ x: r.x, y: r.y })));
+  assert.deepEqual(cams.map((x) => x.it.pos), RECTS["test-alt-casters"][3].map((r) => ({ x: r.x, y: r.y })));
 });
 
 test("a caster sharing a cam rides a hidden spare source, so they are still heard", () => {

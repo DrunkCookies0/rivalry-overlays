@@ -17,7 +17,7 @@
 
 "use strict";
 
-// Mirrored from the chrome scenes (overlays/rivalry-chrome, rivalry-sc26-chrome):
+// Mirrored from the chrome scene (overlays/rivalry-chrome):
 // the panels cover the canvas ~450 ms into the sweep, and the wipe element
 // clears at 1600 ms.
 const WIPE_COVER_MS = 450;

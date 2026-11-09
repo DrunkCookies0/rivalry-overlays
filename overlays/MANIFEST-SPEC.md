@@ -38,7 +38,7 @@ overlays/
 ### `set` (overlay looks)
 
 Overlays ship in visual families. `kinetic-bold` is the house set; community
-sets (e.g. Moldybanana's `sc26`) provide alternate looks for some or all scene
+sets provide alternate looks for some or all scene
 types. The producer picks a look in the control panel; the OBS scene build
 takes ONE overlay per scene type — the preferred set's when it has one, the
 house set's otherwise — so a partial set still yields a complete show.

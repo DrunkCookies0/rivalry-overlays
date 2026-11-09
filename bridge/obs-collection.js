@@ -67,7 +67,7 @@ const OBS_SCENE_NAMES = {
 };
 
 // Overlays ship in visual families ("sets"): kinetic-bold is the house look,
-// community sets (e.g. Moldybanana's "sc26") provide alternates for some scene
+// community sets provide alternates for some scene
 // types. The OBS build takes ONE overlay per scene type: the preferred set's
 // when it has one, the house set's otherwise — so a partial community set
 // composes with the house look instead of leaving holes, and two overlays of

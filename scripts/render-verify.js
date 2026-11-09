@@ -107,27 +107,12 @@ const SCENE_CHECKS = {
   "rivalry-casters": { selector: ".cs-frame", description: "caster cam frame" },
   "rivalry-postgame": { selector: ".pg-boards", description: "team stat boards" },
   "rivalry-brb": { selector: ".brb-title", description: "BE RIGHT BACK title" },
-  // sc26 set (Moldybanana's Summer 2026 look: 3 ported originals + 5 house
-  // scenes reskinned to the same design language)
-  "rivalry-sc26-starting-soon": { selector: '#team1-name[data-field="teamA.name"]', description: "left team name in the VS bar" },
-  "rivalry-sc26-casters": { selector: ".caster-name", description: "caster name plate from casters[]" },
-  "rivalry-sc26-brb": { selector: "#hero-time", description: "match start time in the VS block" },
-  "rivalry-sc26-chrome": { selector: ".ticker", description: "bottom ticker bar" },
-  "rivalry-sc26-gameplay": {
-    selector: ".scorebar",
-    description: "scorebar container",
-    sdkBadge: false, // fork of the shipped gameplay overlay: own socket code, no SDK, no badge
-  },
-  "rivalry-sc26-match-preview": { selector: ".mp-name", description: "team name node" },
-  "rivalry-sc26-postgame": { selector: ".pg-boards", description: "team stat boards" },
-  "rivalry-sc26-up-next": { selector: '.scene-root[data-scene="up-next"] .un-row[data-slot="upNext.0"]', description: "first on-deck schedule row" },
 };
 
 // Cam frame per casters overlay, for the cam-rect check. Every overlay in
 // RivalryCasterCams.RECTS needs one.
 const CAM_FRAME_SELECTORS = {
   "rivalry-casters": ".cs-frame",
-  "rivalry-sc26-casters": ".caster-frame",
 };
 
 // ---------------------------------------------------------------------------
@@ -397,9 +382,9 @@ function assertNoErrors(errors, where) {
 // ---------------------------------------------------------------------------
 // The app places each OBS cam source at the rect overlays/shared/rivalry-
 // caster-cams.js gives; the scene must put its frame (and so its hole) at the
-// same place for every cam count. rivalry-casters draws from the file, while
-// rivalry-sc26-casters lays its frames out with flexbox, so this is what
-// catches it drifting. The control bus is served from here (routeWebSocket)
+// same place for every cam count. rivalry-casters draws from the file; a
+// casters look that lays its frames out any other way (a community set) is
+// caught drifting here. The control bus is served from here (routeWebSocket)
 // so each cam count is exactly the payload sent.
 
 async function checkCasterCams(browser, entry) {

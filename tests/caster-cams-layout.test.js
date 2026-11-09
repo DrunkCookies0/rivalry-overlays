@@ -98,10 +98,10 @@ test("vdoUrl takes VDO.Ninja links and bare stream IDs, nothing else", () => {
   }
 });
 
-test("auto never drops the classic look below its two frames; SC26 goes to one", () => {
+test("auto never drops the classic look below its two frames; any other look goes to one", () => {
   const one = { casters: [C("A")] };
   assert.equal(cams.camCount(one, "rivalry-casters"), 2, "cams placed on the duo holes before cam counts existed stay lined up");
-  assert.equal(cams.camCount(one, "rivalry-sc26-casters"), 1);
+  assert.equal(cams.camCount(one, "test-alt-casters"), 1);
   assert.equal(cams.camCount({ ...one, casterCams: 1 }, "rivalry-casters"), 1, "a single big frame is the explicit pick");
   assert.equal(cams.camCount(one, "toString"), 1, "no prototype keys");
 });

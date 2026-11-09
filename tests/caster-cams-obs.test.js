@@ -16,7 +16,16 @@ const { RECTS } = require("../overlays/shared/rivalry-caster-cams");
 
 const SCENE = "RIVALRY - Casters";
 const CLASSIC = "http://localhost:49080/overlays/rivalry-casters/index.html";
-const SC26 = "http://localhost:49080/overlays/rivalry-sc26-casters/index.html";
+// A second casters look, defined here so the per-look behavior (its own
+// holes, its own auto minimum, the topmost visible overlay winning) stays
+// covered with only the house look installed. The rects are the retired summer
+// look's measurements.
+const ALT = "http://localhost:49080/overlays/test-alt-casters/index.html";
+RECTS["test-alt-casters"] = {
+  1: [{ x: 620, y: 267, w: 680, h: 382 }],
+  2: [{ x: 255, y: 267, w: 680, h: 382 }, { x: 985, y: 267, w: 680, h: 382 }],
+  3: [{ x: 81, y: 302, w: 553, h: 311 }, { x: 684, y: 302, w: 553, h: 311 }, { x: 1287, y: 302, w: 553, h: 311 }],
+};
 
 function fakeObs() {
   const inputs = new Map(); // name -> { kind, settings, sets }
@@ -164,7 +173,7 @@ test("two casters at one desk sharing one feed: one cam, nothing extra loaded", 
   assert.equal(cam(v, 2), undefined);
 });
 
-test("auto with one caster: the classic look keeps its two frames, the SC26 look shows one", async () => {
+test("auto with one caster: the classic look keeps its two frames, another look shows one", async () => {
   const classic = setup();
   classic.set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam")] });
   const r = await classic.sync.syncNow();
@@ -172,10 +181,10 @@ test("auto with one caster: the classic look keeps its two frames, the SC26 look
   assert.deepEqual(r.noCaster, [2], "the second frame has nobody in it");
   assert.deepEqual(r.waiting, []);
   assert.deepEqual(rectOf(cam(classic.obs.view(), 1).t), RECTS["rivalry-casters"][2][0]);
-  const sc26 = setup({ overlayUrl: SC26 });
-  sc26.set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam")] });
-  assert.equal((await sc26.sync.syncNow()).frames, 1);
-  assert.deepEqual(rectOf(cam(sc26.obs.view(), 1).t), RECTS["rivalry-sc26-casters"][1][0]);
+  const alt = setup({ overlayUrl: ALT });
+  alt.set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam")] });
+  assert.equal((await alt.sync.syncNow()).frames, 1);
+  assert.deepEqual(rectOf(cam(alt.obs.view(), 1).t), RECTS["test-alt-casters"][1][0]);
 });
 
 test("a third caster adds a cam; a caster without a feed is dark", async () => {
@@ -191,23 +200,23 @@ test("a third caster adds a cam; a caster without a feed is dark", async () => {
   assert.ok(cam(v, 3).index < v.find((x) => x.name === "Casters Overlay").index);
 });
 
-test("the SC26 look's holes are used when its overlay is in the scene", async () => {
-  const { obs, sync, set } = setup({ overlayUrl: SC26 });
+test("another look's holes are used when its overlay is in the scene", async () => {
+  const { obs, sync, set } = setup({ overlayUrl: ALT });
   set({ casters: [caster("A", "a"), caster("B", "b"), caster("C", "c")] });
   const r = await sync.syncNow();
-  assert.equal(r.overlay, "rivalry-sc26-casters");
+  assert.equal(r.overlay, "test-alt-casters");
   const v = obs.view();
-  for (const n of [1, 2, 3]) assert.deepEqual(rectOf(cam(v, n).t), RECTS["rivalry-sc26-casters"][3][n - 1]);
+  for (const n of [1, 2, 3]) assert.deepEqual(rectOf(cam(v, n).t), RECTS["test-alt-casters"][3][n - 1]);
 });
 
 test("after a look change the cams follow the topmost visible overlay", async () => {
   // A rebuild stacks the new look's overlay over the old one.
-  const { obs, sync, set } = setup({ extra: [{ name: "SC26 Casters Overlay", url: SC26 }] });
+  const { obs, sync, set } = setup({ extra: [{ name: "Alt Casters Overlay", url: ALT }] });
   set({ casters: [caster("A", "a"), caster("B", "b")] });
-  assert.equal((await sync.syncNow()).overlay, "rivalry-sc26-casters");
-  assert.deepEqual(rectOf(cam(obs.view(), 1).t), RECTS["rivalry-sc26-casters"][2][0]);
+  assert.equal((await sync.syncNow()).overlay, "test-alt-casters");
+  assert.deepEqual(rectOf(cam(obs.view(), 1).t), RECTS["test-alt-casters"][2][0]);
   // Hide the new one with the eye icon: the visible classic overlay rules again.
-  obs.scenes.get(SCENE).find((x) => x.sourceName === "SC26 Casters Overlay").enabled = false;
+  obs.scenes.get(SCENE).find((x) => x.sourceName === "Alt Casters Overlay").enabled = false;
   assert.equal((await sync.syncNow()).overlay, "rivalry-casters");
   assert.deepEqual(rectOf(cam(obs.view(), 1).t), RECTS["rivalry-casters"][2][0]);
 });
@@ -484,7 +493,7 @@ test("overlayFromUrl and planCasterCams edge cases", () => {
   assert.equal(overlayFromUrl("not a url"), null);
   assert.equal(overlayFromUrl("http://localhost:49080/overlays/rivalry-brb/index.html"), null);
   assert.equal(overlayFromUrl("http://localhost:49080/overlays/toString/index.html"), null);
-  assert.deepEqual(overlayFromUrl(SC26 + "?layout=solo"), { id: "rivalry-sc26-casters", pinned: 0, cover: false }, "only classic reads ?layout=");
+  assert.deepEqual(overlayFromUrl(ALT + "?layout=solo"), { id: "test-alt-casters", pinned: 0, cover: false }, "only classic reads ?layout=");
   assert.deepEqual(overlayFromUrl(CLASSIC + "?layout=toString"), { id: "rivalry-casters", pinned: 0, cover: false }, "no prototype keys");
   assert.equal(overlayFromUrl(CLASSIC + "?fit=cover").cover, true);
   const plan = planCasterCams({ id: "rivalry-casters", pinned: 0 }, { casters: [caster("A", "https://evil.example/x")] });
