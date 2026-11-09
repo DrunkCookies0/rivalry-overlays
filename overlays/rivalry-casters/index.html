@@ -3,74 +3,48 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=1920, height=1080" />
-<title>RIVALRY — Casters</title>
+<title>RIVALRY · Casters</title>
 <link rel="stylesheet" href="../shared/rivalry-theme.css" />
+<link rel="stylesheet" href="../../assets/brand/rivalry-brand.css" />
 <style>
-/* Casters overlay = a GRAPHICS layer only. The decorative background is punched
+/* Casters overlay = a GRAPHICS layer only. The Coal background is punched
    with transparent cam holes so the real camera sources (VDO.Ninja browser
    sources or a webcam Video Capture Device) sit BEHIND this overlay in OBS and
    show through the frames; the app places those sources itself. One frame per
    cam: the panel's cam count, or one per named caster (overlays/shared/
    rivalry-caster-cams.js, which the app reads too); ?layout=solo|duo|trio pins
-   one. */
+   one.
+
+   The Rivalry brand (2026-11 rebrand), after the broadcast concept's caster
+   desk: square frames on a 1px Slate line, and each caster's name plate BELOW
+   their cam (name in Chalk, role on an Emerald block) instead of over it. The
+   cam rects themselves are unchanged. */
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
-.scene-root[data-scene="caster"]{position:relative;width:1920px;height:1080px;font-family:var(--rv-font-body);color:var(--rv-ink);overflow:hidden;}
+.scene-root[data-scene="caster"]{position:relative;width:1920px;height:1080px;font-family:var(--rv-font-body);color:var(--rv-chalk);overflow:hidden;}
 
 /* Decorative background. EVERY decorative layer lives inside .cs-deco, and the
-   mask (built in JS from the cam rects) is applied to that wrapper — not to the
-   gradient alone. Masking only the gradient left the grid texture and the gold
-   seam painting across the camera holes, i.e. straight over a caster's face. */
+   mask (built in JS from the cam rects) is applied to that wrapper, so nothing
+   decorative can paint across a camera hole. */
 .scene-root[data-scene="caster"] .cs-deco{position:absolute;inset:0;}
-.scene-root[data-scene="caster"] .cs-bg{position:absolute;inset:0;background:
-  radial-gradient(120% 80% at 20% 0%, rgba(47,125,255,.20), transparent 55%),
-  radial-gradient(120% 80% at 82% 100%, rgba(255,118,1,.16), transparent 55%),
-  linear-gradient(160deg,#163140 0%,#0d2330 46%,#0a1b25 100%);}
-.scene-root[data-scene="caster"] .cs-grid-tex{position:absolute;inset:0;opacity:.12;
-  background-image:linear-gradient(rgba(241,238,238,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(241,238,238,.10) 1px,transparent 1px);
-  background-size:64px 64px;-webkit-mask-image:radial-gradient(110% 90% at 50% 40%,#000 30%,transparent 80%);mask-image:radial-gradient(110% 90% at 50% 40%,#000 30%,transparent 80%);}
-.scene-root[data-scene="caster"] .cs-seam{position:absolute;top:-10%;height:120%;left:-150px;width:380px;transform:skewX(-12deg);
-  background:linear-gradient(180deg,rgba(241,196,15,.18),rgba(241,196,15,0));filter:blur(2px);}
-
-.scene-root[data-scene="caster"] .cs-top{position:absolute;top:54px;left:112px;right:112px;display:flex;align-items:flex-start;justify-content:space-between;}
-.scene-root[data-scene="caster"] .cs-brand{display:flex;align-items:center;gap:20px;}
-.scene-root[data-scene="caster"] .cs-mark{width:74px;height:50px;background:var(--rv-white-smoke);
-  -webkit-mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;mask:url(../../assets/rivalry-logo.svg) center/contain no-repeat;filter:drop-shadow(0 4px 12px rgba(0,0,0,.6));}
-.scene-root[data-scene="caster"] .cs-league{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:30px;letter-spacing:.14em;text-shadow:0 2px 8px rgba(0,0,0,.6);}
-.scene-root[data-scene="caster"] .cs-titleblock{position:absolute;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;}
-.scene-root[data-scene="caster"] .cs-kick{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:20px;letter-spacing:.42em;color:var(--rv-gold);text-indent:.42em;}
-.scene-root[data-scene="caster"] .cs-title{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:62px;line-height:.96;margin:2px 0 0;letter-spacing:.02em;text-transform:uppercase;}
-.scene-root[data-scene="caster"] .cs-underbar{margin-top:8px;width:150px;height:4px;background:linear-gradient(90deg,var(--rv-gold),rgba(241,196,15,0));}
-.scene-root[data-scene="caster"] .cs-event{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:17px;letter-spacing:.20em;color:var(--rv-muted);text-align:right;max-width:420px;}
-/* <b> in the event title: one Exo 2 step up (800 is loaded) from the 700 line */
-.scene-root[data-scene="caster"] .cs-event b{font-weight:800;}
+.scene-root[data-scene="caster"] .cs-bg{position:absolute;inset:0;background:var(--rv-coal);}
 
 /* Frames are absolutely positioned per layout rect (set in JS). The interior is
-   fully transparent (the cam shows through); only the border chrome + nameplate
-   paint. */
-.scene-root[data-scene="caster"] .cs-frame{position:absolute;background:transparent;
-  box-shadow:0 20px 56px rgba(0,0,0,.55), inset 0 0 0 2px rgba(241,196,15,.32), inset 0 0 0 5px rgba(0,0,0,.5);}
-.scene-root[data-scene="caster"] .cs-frame::before{content:"";position:absolute;left:-2px;top:-2px;width:60px;height:60px;
-  border-top:4px solid var(--rv-gold);border-left:4px solid var(--rv-gold);}
-.scene-root[data-scene="caster"] .cs-frame::after{content:"";position:absolute;right:-2px;bottom:-2px;width:60px;height:60px;
-  border-bottom:4px solid var(--rv-gold);border-right:4px solid var(--rv-gold);}
-.scene-root[data-scene="caster"] .cs-plate{position:absolute;left:0;right:0;bottom:0;padding:16px 20px 14px;display:flex;flex-direction:column;gap:2px;
-  background:linear-gradient(0deg, rgba(8,14,20,.96) 12%, rgba(8,14,20,.55) 62%, transparent);}
-.scene-root[data-scene="caster"] .cs-plate::before{content:"";position:absolute;left:0;top:0;width:64px;height:4px;background:var(--rv-gold);}
-.scene-root[data-scene="caster"] .cs-name{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:30px;text-transform:uppercase;letter-spacing:.02em;line-height:1;}
-.scene-root[data-scene="caster"] .cs-role{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:13px;letter-spacing:.24em;color:var(--rv-gold);text-transform:uppercase;margin-top:4px;}
+   fully transparent (the cam shows through). The 1px line sits outside the
+   rect (outline), so it never covers a pixel of camera. */
+.scene-root[data-scene="caster"] .cs-frame{position:absolute;background:transparent;outline:1px solid var(--rv-slate);}
+.scene-root[data-scene="caster"] .cs-plate{position:absolute;left:-1px;right:-1px;top:100%;height:68px;box-sizing:border-box;
+  display:flex;align-items:stretch;background:var(--rv-coal-raised);border:1px solid var(--rv-slate);}
+.scene-root[data-scene="caster"] .cs-name{flex:1;min-width:0;display:flex;align-items:center;padding:4px 20px 0;
+  font:700 40px/1 var(--rv-font-head);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.scene-root[data-scene="caster"] .cs-role{flex:none;display:flex;align-items:center;padding:0 16px;
+  background:var(--rv-emerald);color:var(--rv-coal);font:700 13px/1 var(--rv-font-mono);letter-spacing:.12em;text-transform:uppercase;}
+.scene-root[data-scene="caster"] .cs-role:empty{display:none;}
 /* Design-time guide: "CAMERA N" in an unnamed cam hole, for lining up the OBS
    cam sources. Opt-in only, via ?guides=1. Each cam is its own OBS source
-   UNDER this hole, so on air the label sat on top of a live camera: it used to
-   show unless ?live=1, and no URL the app builds carries that. */
+   UNDER this hole, so on air the label would sit on top of a live camera. */
 .scene-root[data-scene="caster"] .cs-hint{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
-  font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:22px;letter-spacing:.3em;color:rgba(241,238,238,.22);text-transform:uppercase;}
+  font:400 22px/1 var(--rv-font-mono);letter-spacing:.16em;color:rgba(240,237,229,.32);text-transform:uppercase;}
 .scene-root[data-scene="caster"][data-guides="1"] .cs-hint{display:flex;}
-
-/* bottom:120px = the chrome's 72px ticker + the 48px every scene frame keeps
-   above it. At 34px the round label sat inside the ticker band (y 1008-1080),
-   hidden on air. */
-.scene-root[data-scene="caster"] .cs-foot{position:absolute;left:0;right:0;bottom:120px;text-align:center;
-  font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.28em;color:var(--rv-muted);text-transform:uppercase;}
 </style>
 </head>
 <body>
@@ -78,23 +52,14 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     <div class="scene-root" data-scene="caster">
       <div class="cs-deco" id="csDeco">
         <div class="cs-bg"></div>
-        <div class="cs-grid-tex"></div>
-        <div class="cs-seam"></div>
       </div>
-      <header class="cs-top">
-        <div class="cs-brand">
-          <div class="cs-mark"></div>
-          <span class="cs-league" data-field="brand.leagueName">RIVALRY</span>
-        </div>
-        <div class="cs-titleblock">
-          <span class="cs-kick">ON THE</span>
-          <h1 class="cs-title">CALL</h1>
-          <span class="cs-underbar"></span>
-        </div>
-        <span class="cs-event" data-field="eventTitle">RIVALRY SEASON 1</span>
-      </header>
+      <img class="rv-lockup" src="../../assets/brand/lockup-horizontal-emerald-on-dark.svg" alt="The Rivalry" />
+      <div class="rv-tags">
+        <span class="rv-tag em">On the call</span>
+        <span class="rv-tag ln" data-field="eventTitle">RIVALRY SEASON 1</span>
+        <span class="rv-tag ln" data-field="round">CASTERS</span>
+      </div>
       <div id="csFrames"></div>
-      <footer class="cs-foot" data-field="round">CASTERS</footer>
     </div>
   </div>
   <script src="../sdk/rivalry-overlay-sdk.js"></script>
@@ -127,15 +92,14 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     //
     // It has to be alpha, not a black-on-white image: CSS mask-image samples an
     // SVG's ALPHA channel by default, so black rects on a white rect are all
-    // equally opaque and mask nothing at all. That is exactly what this overlay
-    // did before — the mask looked right in the source and was a silent no-op,
-    // leaving the grid texture and gold seam painted across the casters' faces.
+    // equally opaque and mask nothing at all.
     //
-    // Each hole follows the frame's .rv-cut outline (top-right and bottom-left
-    // corners cut by --rv-cut): a plain rectangle let the cam show square
-    // corners past the frame's diagonal cuts.
+    // Each hole follows the frame's outline. The brand's corners are square, so
+    // --rv-cut is 0 here; a 0 must stay 0 (a plain `|| 18` turned it back into
+    // cut corners, letting square cams show past the hole).
     var deco = document.getElementById('csDeco');
-    var cut = parseFloat(getComputedStyle(root).getPropertyValue('--rv-cut')) || 18;
+    var cutRaw = parseFloat(getComputedStyle(root).getPropertyValue('--rv-cut'));
+    var cut = isNaN(cutRaw) ? 18 : cutRaw;
     function maskHoles(rects) {
       var d = 'M0 0H1920V1080H0Z';
       rects.forEach(function (r) {
@@ -151,7 +115,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       deco.style.webkitMaskRepeat = 'no-repeat'; deco.style.maskRepeat = 'no-repeat';
     }
 
-    // Build a frame (border chrome + nameplate) at each rect for n cams and
+    // Build a frame (outline + nameplate under it) at each rect for n cams and
     // punch the matching holes. Rebuilds only when the count changes.
     var frames = document.getElementById('csFrames');
     var plates = [], current = 0;
@@ -163,7 +127,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       frames.innerHTML = '';
       plates = rects.map(function (r, i) {
         var f = document.createElement('div');
-        f.className = 'cs-frame rv-cut';
+        f.className = 'cs-frame';
         f.style.left = r.x + 'px'; f.style.top = r.y + 'px'; f.style.width = r.w + 'px'; f.style.height = r.h + 'px';
         var hint = document.createElement('div'); hint.className = 'cs-hint'; hint.textContent = 'Camera ' + (i + 1);
         f.appendChild(hint);
@@ -182,7 +146,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     // page: a second call opens a duplicate control socket with its own
     // reconnect loop and its own copy of the state.
     var rl = RivalryOverlay.connect({ game: false });
-    RivalryBind(root, rl); // header: league / event / round
+    RivalryBind(root, rl); // header: event / round
     rl.onControl(function (c) {
       // One frame per cam; casters sharing a cam share its plate ("A & B").
       var n = pinned || Cams.camCount(c, 'rivalry-casters');
@@ -192,7 +156,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
         var slot = slots[i];
         p.nm.textContent = slot.name;
         p.role.textContent = slot.role;
-        p.plate.style.display = slot.name ? '' : 'none'; // never an empty bar over a cam
+        p.plate.style.display = slot.name ? '' : 'none'; // never an empty bar under a cam
         p.hint.style.display = slot.name ? 'none' : ''; // once named, drop the guide label
       });
     });

@@ -10,12 +10,12 @@
     "control"
   ],
   "contract": "1.x",
-  "description": "Casters scene (Kinetic Bold).",
+  "description": "Casters: cam holes with name plates under each cam (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "cfddd319ef539758e43a8f9209e90064be463a4e8f87bd1065d8a9192f1d38c0",
-    "signature": "1K3dFN1EldKX5Pj7YgHHw5/ZnUXQRPbFqg0soqhjcjNyL9sZQmyCvTQxsYDl8369DBTIFjAjs9/ZWOlz3sn6Bg==",
+    "contentHash": "318e41b3b602661cf2fe58ab1d0f5ec306a36e693f69cfc727a555acc7740e69",
+    "signature": "qUjTy6bqLRpXqKQBcEdARegnlRN9IfNH/eZeawyq+9193ovVV1RrUhJ5aDRsIz5/djBSW15z7hSUGuVGN/UxDw==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-09T03:07:39.000Z"
+    "signedAt": "2026-11-09T18:25:10.822Z"
   }
 }
