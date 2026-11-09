@@ -112,10 +112,14 @@ function createApiRouter(ctx) {
         const q = new URLSearchParams((req.url || "").split("?")[1] || "");
         const obs = ctx.getObs ? ctx.getObs() : null;
         const preferredSet = q.get("set") || (obs && obs.settings && obs.settings.preferredSet) || "";
+        // Caster cams take their feeds and count from the Casters card as it
+        // stands right now (a snapshot; the websocket path keeps them in step).
+        const bridge = ctx.getBridge && ctx.getBridge();
         const collection = buildSceneCollection({
           overlays,
           baseUrl: `http://localhost:${ctx.httpPort}`,
           preferredSet,
+          control: bridge && bridge.getControlState ? bridge.getControlState() : null,
         });
         res.writeHead(200, {
           "Content-Type": "application/json",

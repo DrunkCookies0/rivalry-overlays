@@ -17,6 +17,7 @@
         "userId": "u-frost-1",
         "name": "Kaidan",
         "teamRole": "captain",
+        "title": "Season 3 Champion",
         "stats": {
           "goals": 21,
           "assists": 9,
@@ -34,6 +35,7 @@
         "userId": "u-frost-2",
         "name": "Vessel",
         "teamRole": null,
+        "title": "Two-Time Summer Circuit Grand Finalist and Hall of Fame MVP",
         "stats": {
           "goals": 21,
           "assists": 9,
@@ -60,12 +62,14 @@
         "userId": "u-nova-1",
         "name": "Ashwing",
         "teamRole": "captain",
+        "title": null,
         "stats": null
       },
       {
         "userId": "u-nova-2",
         "name": "Tidebreak",
         "teamRole": null,
+        "title": null,
         "stats": null
       }
     ]

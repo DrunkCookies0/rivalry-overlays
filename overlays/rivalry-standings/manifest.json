@@ -13,9 +13,9 @@
   "description": "Circuit standings board (Kinetic Bold). Dark-launched: built to Ask 1 of ASKS-FOR-CYNICAL.md ahead of the league API; kept out of the OBS collection until the endpoint is live.",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "adae954a32313242a699b49b3a08f6974466868759a07b56042040eb216a6c58",
-    "signature": "a3gyC9u+5HgKSJrT8jkT8HPAvtPH9B/EVus/k0ubg3e0fZhakhPb+L1++DXXM7qgNPGAD1xhN4N7+jaeDSUwAw==",
+    "contentHash": "33fde4f95843ee6ee0a752b4d87b522fcb78bf5e53bd524aa0ee48426ad0c6d6",
+    "signature": "8ME/vorvsJEvMi+GaqgT5p/Z6Hqqqq6bqYvcmLHjHcaqrntblYnj3udQstH7zoXkDa69hRefb+sqG06EZ/5xAQ==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-08-01T12:59:19.443Z"
+    "signedAt": "2026-11-09T03:07:39.038Z"
   }
 }

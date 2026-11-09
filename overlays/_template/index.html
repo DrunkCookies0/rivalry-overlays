@@ -103,8 +103,13 @@
   });
 
   // Branding from the control bus (manual now, database-driven later — same shape).
+  // eventTitle may carry bare <b> emphasis (CONTRACT.md): escape everything,
+  // put back only <b>/</b>. Never assign control strings to innerHTML raw.
+  const titleHtml = (s) => String(s)
+    .replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch])
+    .replace(/&lt;(\/?)b&gt;/gi, "<$1b>");
   rl.onControl((c) => {
-    $("eventTitle").textContent = c.eventTitle || "RIVALRY";
+    $("eventTitle").innerHTML = titleHtml(c.eventTitle || "RIVALRY");
     $("nameA").textContent = (c.teamA && c.teamA.name) || "BLUE";
     $("nameB").textContent = (c.teamB && c.teamB.name) || "ORANGE";
   });

@@ -149,6 +149,9 @@
     letter-spacing:.2em;color:var(--sc-lime);flex:none;
     }
   .t-item .vs{color:rgba(255,255,255,.55);font-size:16px;}
+  /* Event-title <b> segments: the item is already 900, so the emphasis is the
+     lime of the canon two-tone header, as on the gameplay eventbar. */
+  .t-item b{color:var(--sc-lime);}
   .t-item .rec{font-style:normal;font-weight:900;letter-spacing:.08em;
     font-size:16px;color:var(--sc-cyan);}
   .t-item .live-dot{width:10px;height:10px;border-radius:50%;flex:none;
@@ -282,6 +285,7 @@
   var TICKER_CYCLE_MS = 6000;
   var tickerIdx = 0;
   var tickerTimer = null;
+  var tickerSig = "";
 
   function el(tag, cls, text) {
     var d = document.createElement(tag);
@@ -359,9 +363,23 @@
       // unknown item types: deliberately skipped, additive contract
     });
     if (!items.length) {
-      items.push({ kind: "text", text: (c.eventTitle || (c.brand && c.brand.leagueName) || "RIVALRY") });
+      if (c.eventTitle) items.push({ kind: "title", text: c.eventTitle });
+      else items.push({ kind: "text", text: (c.brand && c.brand.leagueName) || "RIVALRY" });
     }
     return items;
+  }
+
+  // eventTitle keeps its <b> emphasis, as the gameplay eventbar shows it. Only
+  // a bare <b> / </b> becomes an element; every other token (any other tag
+  // included) is appended as inert text, never parsed as HTML. One wrapping
+  // span keeps the title a single flex item (.t-item gaps its children).
+  function appendTitle(d, text) {
+    var line = d.appendChild(el("span")), target = line;
+    String(text).split(/(<\/?b>)/i).forEach(function (tok) {
+      if (/^<b>$/i.test(tok)) { if (target === line) target = line.appendChild(el("b")); }
+      else if (/^<\/b>$/i.test(tok)) target = line;
+      else if (tok) target.appendChild(document.createTextNode(tok));
+    });
   }
 
   function renderTickerItem(host, it) {
@@ -379,6 +397,8 @@
       d.appendChild(el("span", "vs", "vs"));
       d.appendChild(document.createTextNode(it.b));
       if (it.time) d.appendChild(el("span", "k", it.time));
+    } else if (it.kind === "title") {
+      appendTitle(d, it.text);
     } else if (it.kind === "records") {
       d.appendChild(el("span", "k", "RECORDS"));
       d.appendChild(document.createTextNode(it.a + " "));
@@ -394,9 +414,15 @@
   }
 
   function renderTicker(c) {
+    var items = buildTickerItems(c);
+    // The panel pushes the full payload on every keystroke; rebuilding an
+    // unchanged list would snap a crossfade and restart the LIVE dot pulse.
+    var sig = JSON.stringify(items);
+    if (sig === tickerSig) return;
+    tickerSig = sig;
     var host = $("tickerItems");
     host.innerHTML = "";
-    buildTickerItems(c).forEach(function (it) { renderTickerItem(host, it); });
+    items.forEach(function (it) { renderTickerItem(host, it); });
     if (tickerIdx >= host.children.length) tickerIdx = 0;
     cycleTicker(true);
     if (!tickerTimer) tickerTimer = setInterval(cycleTicker, TICKER_CYCLE_MS);
@@ -415,8 +441,9 @@
      lower third shows only for its REMAINING time, so the bus replaying
      retained state to a fresh page can never resurrect one that already ran
      out. A held one (durationSec 0) survives a browser-source refresh, which
-     is what a producer wants mid-segment, but ages out after HOLD_REPLAY_MAX
-     so yesterday's hold never haunts tonight. */
+     is what a producer wants mid-segment, but a page that first sees it older
+     than HOLD_REPLAY_MAX (a replay) skips it, so yesterday's hold never haunts
+     tonight. A page already showing the hold keeps it until Hide or a new call. */
   var HOLD_REPLAY_MAX_S = 300;
   var l3Timer = null;
   var l3LastShownAt = 0;
@@ -430,13 +457,17 @@
     }
     var ageS = (Date.now() - Number(lt.shownAt)) / 1000;
     var hold = Number(lt.durationSec) || 0;
-    var expired = hold > 0 ? ageS >= hold : ageS >= HOLD_REPLAY_MAX_S;
+    var firstSight = lt.shownAt !== l3LastShownAt;
+    // The hold age-out is for a page REPLAYING retained state. The panel
+    // re-pushes the full payload on every keystroke, so judging an on-air hold
+    // by its age would drop it mid-segment.
+    var expired = hold > 0 ? ageS >= hold : (firstSight && ageS >= HOLD_REPLAY_MAX_S);
     if (expired) {
       clearTimeout(l3Timer);
       host.classList.remove("on");
       return;
     }
-    if (lt.shownAt === l3LastShownAt) return; // merge repeat of the same call
+    if (!firstSight) return; // merge repeat of the same call
     l3LastShownAt = lt.shownAt;
     $("l3Title").textContent = lt.title || "";
     $("l3Sub").textContent = lt.subtitle || "";
@@ -449,12 +480,16 @@
   }
 
   /* ---- wipe ---- */
+  var wipeTimer = null;
   function runWipe() {
     var w = $("wipe");
+    // A second deck switch inside 1.6 s restarts the sweep; the first call's
+    // timer must not cut the new one off mid-canvas.
+    clearTimeout(wipeTimer);
     w.classList.remove("run");
     void w.offsetWidth;
     w.classList.add("run");
-    setTimeout(function () { w.classList.remove("run"); }, 1600);
+    wipeTimer = setTimeout(function () { w.classList.remove("run"); }, 1600);
   }
 
   /* ---- render from control state ---- */

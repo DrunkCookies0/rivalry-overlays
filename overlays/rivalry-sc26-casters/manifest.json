@@ -15,9 +15,9 @@
   "opaque": true,
   "approval": {
     "algo": "ed25519",
-    "contentHash": "8ebbc4b785c8bd5f49e63efa7e8d2bbb02c325feeda0365ab84f31aad4250e12",
-    "signature": "zyzx920uTzMk3JmD5iqAsRYZ9+ilAQJNPaw/ghhEFx7jttde2VbAHMVZXNKnK16aB5SzHDAZ2BZIRwKGRCZ3AQ==",
+    "contentHash": "54db5bb48dc58f87ca240382cb88433a9243c1dd1c41f9ed4ad830170dfcbc53",
+    "signature": "BZHiHv0XmLirYmbOGmfnkjqXLplowxJTzesyTNGluRjDsTgBS6i8SRnoVGKpq8knzsxF7t57Z8kdvEzSbBqqAQ==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-08-12T14:12:30.851Z"
+    "signedAt": "2026-11-09T03:07:39.020Z"
   }
 }

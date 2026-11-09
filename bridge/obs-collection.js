@@ -29,6 +29,8 @@
 
 const crypto = require("crypto");
 const { SAFE_AREA } = require("./broadcast-geometry");
+const { planCasterCams, CAM_INPUT_SETTINGS } = require("./caster-cams");
+const { RECTS: CAM_RECTS } = require("../overlays/shared/rivalry-caster-cams");
 
 // The chrome overlay (persistent frame) is NOT a scene of its own: it is one
 // browser source layered on TOP of every scene. Identified by manifest scene
@@ -121,23 +123,17 @@ function sourceEnvelope() {
 
 // 1080p60 browser source. Settings mirror what the obs-websocket path creates
 // (see bridge/obs-controller.js createSceneWithBrowserSource) so a producer
-// gets identical sources whichever setup route they took.
-function makeBrowserSource(sourceName, url) {
+// gets identical sources whichever setup route they took. Caster cams pass
+// their own settings (CAM_INPUT_SETTINGS, shared with bridge/caster-cams.js).
+const OVERLAY_SETTINGS = { width: 1920, height: 1080, fps: 60, fps_custom: true, shutdown: false, reroute_audio: false };
+function makeBrowserSource(sourceName, url, settings = OVERLAY_SETTINGS) {
   return {
     prev_ver: OBS_PREV_VER,
     name: sourceName,
     uuid: crypto.randomUUID(),
     id: "browser_source",
     versioned_id: "browser_source",
-    settings: {
-      url,
-      width: 1920,
-      height: 1080,
-      fps: 60,
-      fps_custom: true,
-      shutdown: false,
-      reroute_audio: false,
-    },
+    settings: { url, ...settings },
     ...sourceEnvelope(),
   };
 }
@@ -160,15 +156,28 @@ function makeGameCapture(sourceName) {
 // One scene item. `fill:true` scales a source of unknown native size
 // (game/video capture) via bounds; overlays (already authored at 1920x1080)
 // use no bounds. `rect` narrows a fill to a sub-rectangle of the canvas (the
-// chrome safe area) instead of the full frame. Capture sources stay unlocked
-// so the operator can nudge/reconfigure; overlays are locked to hold 1:1.
+// chrome safe area, a caster cam's hole) instead of the full frame. Capture
+// and cam sources stay unlocked so the operator can nudge/reconfigure;
+// overlays are locked to hold 1:1.
+//
+// OBS 31 loads the *_rel fields IN PREFERENCE to pos/bounds whenever they are
+// present (libobs scene_load_item), so they must carry the real geometry:
+// canvas-height units on the 1920x1080 scale_ref, pos (x, y) ->
+// ((2x - 1920) / 1080, 2y / 1080 - 1) and size (w, h) -> (2w / 1080, 2h / 1080)
+// (libobs pos_from_absolute / size_from_absolute). Being relative, they also
+// land in proportion on a 720p or 1440p canvas.
+const REF = { width: 1920, height: 1080 };
+const relPos = (p) => ({ x: (2 * p.x - REF.width) / REF.height, y: (2 * p.y) / REF.height - 1 });
+const relSize = (s) => ({ x: (2 * s.x) / REF.height, y: (2 * s.y) / REF.height });
 function makeSceneItem(source, id, opts = {}) {
   const fill = !!opts.fill;
   const rect = opts.rect || { x: 0, y: 0, width: 1920, height: 1080 };
+  const pos = { x: fill ? rect.x : 0, y: fill ? rect.y : 0 };
+  const bounds = fill ? { x: rect.width, y: rect.height } : { x: 0, y: 0 };
   return {
     name: source.name,
     source_uuid: source.uuid,
-    visible: true,
+    visible: opts.visible !== false,
     locked: opts.locked !== false,
     rot: 0,
     scale_ref: { x: 1920, y: 1080 },
@@ -182,15 +191,12 @@ function makeSceneItem(source, id, opts = {}) {
     crop_bottom: 0,
     id,
     group_item_backup: false,
-    pos: { x: fill ? rect.x : 0, y: fill ? rect.y : 0 },
-    // *_rel are OBS 31's canvas-relative coordinates. For a full-frame item at
-    // 0,0 with top-left align, top-left in 16:9 relative space is (-16/9, -1).
-    // OBS recomputes these on load, so approximate values are fine.
-    pos_rel: { x: -1.7777777910232544, y: -1 },
+    pos,
+    pos_rel: relPos(pos),
     scale: { x: 1, y: 1 },
     scale_rel: { x: 1, y: 1 },
-    bounds: fill ? { x: rect.width, y: rect.height } : { x: 0, y: 0 },
-    bounds_rel: { x: 0, y: 0 },
+    bounds,
+    bounds_rel: relSize(bounds),
     scale_filter: "disable",
     blend_method: "default",
     blend_type: "normal",
@@ -200,22 +206,20 @@ function makeSceneItem(source, id, opts = {}) {
   };
 }
 
-// Scene stack, front-to-back (index 0 renders on top):
-//   chrome frame (when present) > overlay browser source > capture underlay.
-// The capture underlay scales into the chrome safe area when the chrome is in
-// the stack, full canvas otherwise (chrome-less fallback keeps working).
-function makeScene(sceneName, browserSource, underlaySource, chromeSource) {
+// Scene stack, BOTTOM first: OBS appends each loaded item on top of the last
+// and draws from the first item up (libobs obs-scene.c, scene_load_item /
+// scene_video_render), so items[0] is the back layer. The order is:
+//   underlays (game capture, caster cams) < overlay browser source < chrome.
+// Each underlay is { source, rect, visible }: rect {x, y, width, height} on
+// the canvas, filled by scale-to-fit bounds.
+function makeScene(sceneName, browserSource, underlays, chromeSource) {
   const items = [];
   let id = 1;
-  if (chromeSource) items.push(makeSceneItem(chromeSource, id++, { locked: true }));
-  items.push(makeSceneItem(browserSource, id++, { locked: true }));
-  if (underlaySource) {
-    items.push(makeSceneItem(underlaySource, id++, {
-      fill: true,
-      locked: false,
-      rect: chromeSource ? SAFE_AREA : undefined,
-    }));
+  for (const u of underlays) {
+    items.push(makeSceneItem(u.source, id++, { fill: true, locked: false, rect: u.rect, visible: u.visible }));
   }
+  items.push(makeSceneItem(browserSource, id++, { locked: true }));
+  if (chromeSource) items.push(makeSceneItem(chromeSource, id++, { locked: true }));
   return {
     prev_ver: OBS_PREV_VER,
     name: sceneName,
@@ -226,6 +230,10 @@ function makeScene(sceneName, browserSource, underlaySource, chromeSource) {
     ...sourceEnvelope(),
     canvas_uuid: MAIN_CANVAS_UUID,
   };
+}
+
+function isCastersOverlay(folder) {
+  return Object.prototype.hasOwnProperty.call(CAM_RECTS, folder);
 }
 
 // OBS requires globally unique source names (scenes are sources too), so
@@ -244,7 +252,10 @@ function uniqueName(base, taken) {
 // Scene order follows OBS_SCENE_NAMES key order (Starting Soon first), then any
 // unmapped scenes in input order. The gameplay scene also gets a game-capture
 // underlay.
-function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTION_NAME, preferredSet = "" } = {}) {
+//   control:  the retained control payload; the Casters scene's cam sources
+//             take their feeds and cam count from it (a snapshot: the live,
+//             kept-in-step version needs the obs-websocket path)
+function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTION_NAME, preferredSet = "", control = null } = {}) {
   const keyOrder = Object.keys(OBS_SCENE_NAMES);
   const base = String(baseUrl).replace(/\/+$/, ""); // entry urls start with "/"
 
@@ -287,14 +298,29 @@ function buildSceneCollection({ overlays = [], baseUrl = "", name = OBS_COLLECTI
     mediaSources.push(src);
     // The gameplay scene ships with a game capture pre-placed under the
     // scorebug overlay, so the operator never hand-adds a capture source.
-    let underlay = null;
+    const underlays = [];
     if (o.scene === "gameplay") {
-      underlay = makeGameCapture(uniqueName("Rocket League (Game Capture)", takenSourceNames));
-      mediaSources.push(underlay);
+      const cap = makeGameCapture(uniqueName("Rocket League (Game Capture)", takenSourceNames));
+      mediaSources.push(cap);
+      underlays.push({ source: cap, rect: chromeSource && !o.opaque ? SAFE_AREA : undefined, visible: true });
+    }
+    // The Casters scene ships its caster cams under the overlay's holes, for
+    // the overlays whose cam geometry is known (overlays/shared/rivalry-caster-cams.js).
+    if (o.scene === "caster" && isCastersOverlay(o.folder)) {
+      // A frame without a feed yet still gets its (hidden, empty) source, ready
+      // for a link; a caster who shares a frame keeps their feed on a hidden
+      // spare so they are still heard.
+      for (const cam of planCasterCams({ id: o.folder, pinned: 0 }, control || {})) {
+        if (!cam.rect && !cam.url) continue;
+        const r = cam.rect || { x: 0, y: 0, w: 1920, h: 1080 };
+        const src = makeBrowserSource(uniqueName(cam.sourceName, takenSourceNames), cam.url, CAM_INPUT_SETTINGS);
+        mediaSources.push(src);
+        underlays.push({ source: src, rect: { x: r.x, y: r.y, width: r.w, height: r.h }, visible: cam.enabled });
+      }
     }
     // Opaque scenes paint the full canvas themselves — pinning the chrome on
     // top would composite one look's frame over another look's art.
-    sceneSources.push(makeScene(sceneName, src, underlay, o.opaque ? null : chromeSource));
+    sceneSources.push(makeScene(sceneName, src, underlays, o.opaque ? null : chromeSource));
   }
 
   const firstScene = sceneSources.length ? sceneSources[0].name : "";

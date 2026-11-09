@@ -39,6 +39,9 @@ const obsSettingsStore = require("./bridge/obs-settings");
 const devSettingsStore = require("./bridge/dev-settings");
 const { getMeta } = require("./bridge/app-meta");
 const overlayRegistry = require("./bridge/overlay-registry");
+const httpGuard = require("./bridge/http-guard");
+const { createDeckSwitcher } = require("./bridge/deck-switch");
+const { createCasterCamSync } = require("./bridge/caster-cams");
 const { createApiRouter } = require("./bridge/http-api");
 const leagueSettingsStore = require("./bridge/league-settings");
 const { createLeagueClient } = require("./bridge/league-client");
@@ -81,6 +84,7 @@ const MIME = {
   ".css": "text/css",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".webp": "image/webp",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
   ".json": "application/json",
@@ -146,22 +150,20 @@ if(r&&r.locked)location.reload();}catch{}},3000);</script>`;
 function startHttpServer(rootDir) {
   setHttpRoot(rootDir);
   const server = http.createServer((req, res) => {
-    // Malformed percent-encoding ("/%zz") throws; an uncaught throw here kills
-    // the whole broadcast stack, so it must be a 400, never an exception.
-    let urlPath;
-    try {
-      urlPath = decodeURIComponent((req.url || "/").split("?")[0]);
-    } catch {
+    // Host + Origin + path checks run before any routing (bridge/http-guard.js).
+    if (!httpGuard.isAllowedHost(req.headers.host)) {
+      res.writeHead(403);
+      return res.end("forbidden");
+    }
+    if (!["GET", "HEAD"].includes(req.method) && !httpGuard.isAllowedOrigin(req.headers.origin, HTTP_PORT)) {
+      res.writeHead(403);
+      return res.end("forbidden");
+    }
+    let urlPath = httpGuard.normalizeUrlPath(req.url);
+    if (urlPath === null) {
       res.writeHead(400);
       return res.end("bad request");
     }
-    // Canonicalize BEFORE any gate reads the path. The match gate and the
-    // signing gate classify by prefix/first-segment; resolving ".." only at
-    // filesystem time would let "/control/..%2Foverlays/x" be gated as
-    // /control/ but served from /overlays/. Backslashes are folded first so
-    // Windows path joining cannot reintroduce a separator the gates never saw.
-    urlPath = path.posix.normalize(urlPath.replace(/\\/g, "/"));
-    if (!urlPath.startsWith("/")) urlPath = "/" + urlPath;
     // App API endpoints (status, setup, uploads, league proxy...) live in the
     // router; static serving + the overlay gate below stay untouched.
     if (apiRouter && apiRouter.handle(req, res, urlPath)) return;
@@ -200,9 +202,7 @@ function startHttpServer(rootDir) {
     }
     const root = httpRootDir;
     const filePath = path.normalize(path.join(root, urlPath));
-    // Separator-anchored containment: a bare prefix test passes for sibling
-    // directories like "<root>-backup".
-    if (filePath !== root && !filePath.startsWith(root + path.sep)) {
+    if (!httpGuard.isInsideRoot(root, filePath)) {
       res.writeHead(403);
       return res.end("forbidden");
     }
@@ -238,6 +238,8 @@ let bridgeHandle = null;
 let apiRouter = null;
 let leagueSettings = null;
 let leagueClient = null;
+let casterCamSync = null; // created with the OBS controller (setupObsIntegration)
+let lastCasterCamStatus = null; // replayed to a panel when it connects
 // Last runSetup() result, surfaced through /status.json so the setup wizard
 // can show ini state instead of the old console-only logging.
 let setupInfo = { ok: false, dirFound: false, written: [], checked: [] };
@@ -573,7 +575,9 @@ async function setupObsScenes() {
       const ours = new Set(scenes.map((s) => s.sceneName));
       for (const name of defaults) if (!ours.has(name)) await obsController.removeScene(name);
     }
-    return { ok: true, created, collection: OBS_COLLECTION_NAME, sceneCount };
+    // Caster cams go in under the Casters overlay, fed from the Casters card.
+    const cams = casterCamSync ? await casterCamSync.syncNow() : null;
+    return { ok: true, created, collection: OBS_COLLECTION_NAME, sceneCount, cams };
   } catch (e) {
     console.error("[rivalry] OBS scene collection setup failed:", e.message);
     return { ok: false, error: e.message };
@@ -865,11 +869,11 @@ function setupObsIntegration() {
   obsController.applySettings(obsSettings).catch(() => {});
 
   // The obs-status payload goes over the shared control bus. The saved
-  // password never rides along — a panel only needs to know one exists.
+  // password never rides along (obsSettingsStore.publicView): a panel only
+  // needs to know one exists.
   function obsStatusPayload() {
-    const { password, ...rest } = obsSettings || {};
     return {
-      settings: { ...rest, passwordSet: !!password },
+      settings: obsSettingsStore.publicView(obsSettings),
       status: obsController.status,
     };
   }
@@ -879,17 +883,53 @@ function setupObsIntegration() {
     }
   }
 
+  // Caster cams: the app keeps the Casters scene's "Caster Cam N" sources in
+  // step with the Casters card (bridge/caster-cams.js). Synced after a scene
+  // build, on every OBS (re)connect, and when the control state changes.
+  casterCamSync = createCasterCamSync({
+    call: (type, data) => obsController.call(type, data),
+    isEnabled: () => !!(obsSettings && obsSettings.enabled),
+    isConnected: () => !!(obsController && obsController.status.connected),
+    getControl: () => (bridgeHandle && bridgeHandle.getControlState ? bridgeHandle.getControlState() : null),
+    sceneName: OBS_SCENE_NAMES.caster,
+    onResult: (r) => {
+      lastCasterCamStatus = r;
+      if (bridgeHandle && bridgeHandle.broadcastControl) bridgeHandle.broadcastControl({ type: "caster-cams-status", payload: r });
+    },
+  });
+
   // Status changes -> repaint tray + tell the panels LIVE, not only as an echo
   // of their own edits (a dock otherwise shows "connecting..." after OBS has
-  // long connected, and "connected" after OBS quit).
-  obsController.on("status", () => { refreshTrayMenu(); broadcastObsStatus(); });
+  // long connected, and "connected" after OBS quit). The cams re-sync on any
+  // change of connected/enabled: placed on connect, and the panel's cam line
+  // says so at once when OBS drops or is switched off.
+  let obsLink = "";
+  obsController.on("status", (s) => {
+    refreshTrayMenu();
+    broadcastObsStatus();
+    const link = `${!!(s && s.connected)}|${!!(obsSettings && obsSettings.enabled)}`;
+    if (link !== obsLink) casterCamSync.request(true);
+    obsLink = link;
+  });
+  // OBS changed under the app: a collection switch, a rename, or a source
+  // removed (a Caster Cam, or the producer's copy of a feed) re-places the cams.
+  // An item shown or hidden in the Casters scene (often the app's own cams)
+  // only re-checks; elsewhere it is none of the cams' business, and a blinking
+  // item in another scene would otherwise keep pushing a pending sync back.
+  obsController.on("obs-event", (ev, data) => {
+    if (ev !== "SceneItemEnableStateChanged") casterCamSync.request(true);
+    else if (data && data.sceneName === OBS_SCENE_NAMES.caster) casterCamSync.request();
+  });
 
   // Control panel -> main process messages.
   if (bridgeHandle && bridgeHandle.events) {
     // Hydrate every fresh control client with settings + live status, so the
     // panel never has to (and never does) push its HTML defaults at us.
     bridgeHandle.events.on("control-client", (ws) => {
-      try { ws.send(JSON.stringify({ type: "obs-status", payload: obsStatusPayload() })); }
+      try {
+        ws.send(JSON.stringify({ type: "obs-status", payload: obsStatusPayload() }));
+        if (lastCasterCamStatus) ws.send(JSON.stringify({ type: "caster-cams-status", payload: lastCasterCamStatus }));
+      }
       catch { /* client already gone */ }
     });
     bridgeHandle.events.on("control", (msg) => {
@@ -930,6 +970,8 @@ function setupObsIntegration() {
         broadcastObsStatus();
       } else if (msg && msg.type === "obs-action") {
         handleObsAction(msg.payload || {});
+      } else if (msg && msg.type === "control") {
+        casterCamSync.request(); // debounced; skipped when the cams' plan is unchanged
       }
     });
 
@@ -975,27 +1017,30 @@ async function handleObsAction(payload) {
   // full auto-switching — the producer drives the cut). With the chrome
   // present, the branded wipe covers the frame first and the switch lands
   // under it; game-event auto-switches (onGameEventForObs) deliberately skip
-  // the wipe because their timing is part of the goal sequence.
-  if (action === "switch" && payload.scene) {
-    let ok = false;
-    try {
-      if (chromeAvailable() && bridgeHandle && bridgeHandle.broadcastControl) {
-        bridgeHandle.broadcastControl({ type: "chrome-wipe", payload: {} });
-        // The wipe panel fully covers the canvas ~450ms into its 1s sweep.
-        await new Promise((r) => setTimeout(r, 450));
-      }
-      ok = await obsController.switchScene(payload.scene);
-    } catch (e) { /* fall through to the failure report */ }
+  // the wipe because their timing is part of the goal sequence. Clicks are
+  // serialized so a double-click never cuts on an uncovered canvas
+  // (bridge/deck-switch.js).
+  if (action === "switch" && payload.scene) deckSwitch(payload.scene);
+}
+
+const deckSwitch = createDeckSwitcher({
+  wipe: () => {
+    if (!(chromeAvailable() && bridgeHandle && bridgeHandle.broadcastControl)) return false;
+    bridgeHandle.broadcastControl({ type: "chrome-wipe", payload: {} });
+    return true;
+  },
+  switchScene: async (scene) => {
+    const ok = await obsController.switchScene(scene);
     if (!ok && bridgeHandle && bridgeHandle.broadcastControl) {
       // A cut that silently doesn't happen mid-show reads as "panel broken";
       // name the scene so a renamed collection is diagnosable from the dock.
       bridgeHandle.broadcastControl({
         type: "obs-action-result",
-        payload: { action, ok: false, error: `OBS could not switch to "${payload.scene}"` },
+        payload: { action: "switch", ok: false, error: `OBS could not switch to "${scene}"` },
       });
     }
-  }
-}
+  },
+});
 
 // The wipe only makes sense when the chrome overlay is actually servable
 // (present and, under the gate, approved) — otherwise a deck switch would

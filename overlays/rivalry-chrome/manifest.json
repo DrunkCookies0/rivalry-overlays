@@ -13,9 +13,9 @@
   "description": "Always-on broadcast frame: side rails, bottom ticker, lower thirds and the branded wipe. Added once in OBS, layered above every scene.",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "cf3e5ae8a7d76854591c1b0e21450f072e9ac89f0ab52273567781dd21160bae",
-    "signature": "vkMwfwF2cz4nLXmqKmmf4OGLk6ht59eeFpMGcv0Hmhei6yDA4ZjQLlE3y+LU1nGaLmb3/9FRzrx5YiBiILRqCA==",
+    "contentHash": "c44d1b55626de5c678ad43cf2a89611bbce19ab1a31c6df73f6d21631b36be66",
+    "signature": "NwgkbKNMkDTy85pee1EepL8ZRuu02p0wlrcXpLWE66/Zc1k7f5UqW5kEQKx4Dtu9DHn93GzuWreLcwHOnmrzCw==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-08-01T12:46:45.685Z"
+    "signedAt": "2026-11-09T03:07:39.010Z"
   }
 }

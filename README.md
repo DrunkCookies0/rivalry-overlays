@@ -50,7 +50,7 @@ There is no Bracket scene in v1.0. It lives in git history and returns for playo
 
 ### Match-first (the only mode)
 
-The control panel opens on the **match finder**, and loading a real league match is the way into a broadcast: the packaged app serves no overlay scene until one is loaded. Enter your league API key once (issued from the league site, starts with `rv_`, sent in the `x-api-key` header), search for tonight's match, and load it. Loading locks the broadcast to that match and fills team names, logos, records, rosters, and event metadata across every scene at once. Logos are served through a local proxy because the upstream logo URLs expire in about 15 minutes.
+The control panel opens on the **match finder**, and loading a real league match is the way into a broadcast: the packaged app serves no overlay scene until one is loaded. Enter your league API key once (issued from the league site, starts with `rv_`, sent in the `x-api-key` header), search for tonight's match, and load it. Loading locks the broadcast to that match and fills team names, logos, records, rosters, player titles (each player's title on therivalry.gg, shown on their goal banner), and event metadata across every scene at once. Logos are served through a local proxy because the upstream logo URLs expire in about 15 minutes.
 
 **Load once, then cache.** The loaded match and its logos are cached to disk the moment they load. If the league site goes down mid-show (or the app restarts), the broadcast keeps running on the cached match; only *switching to a different match* needs the league reachable.
 
@@ -66,7 +66,7 @@ Overlays ship in visual families. **Kinetic Bold** is the house look; community 
 
 ### Caster cams
 
-Caster cams run through VDO.Ninja, free and browser-based. Set a room name in the Casters card, click **Generate caster links**, send each caster their personal push link, and their cams appear on the Casters scene.
+Caster cams run through VDO.Ninja, free and browser-based. Set a room name in the Casters card, click **Generate caster links**, and send each caster their personal push link. With OBS connected, the app puts each caster's cam into the Casters scene itself (one "Caster Cam N" browser source per cam that has a link, behind the overlay's hole) and keeps it in step as you edit the card: links, how many cams, who shares one. **Cams on screen** picks the count: Auto (one frame per caster; the house look keeps its two frames for a lone caster) or 1, 2 or 3. With one cam, two casters at one desk share it and its name plate, and a sharing caster's own feed stays loaded off screen so they are still heard. The app owns its **Caster Cam** sources and leaves the rest of the scene alone. Cams added by hand in an older version should be deleted from the Casters scene: the app won't load a feed one of them already plays, and the card names it. The downloadable scene collection carries the cams as they stand when you download it.
 
 ### Replay archive
 

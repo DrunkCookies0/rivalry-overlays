@@ -17,18 +17,21 @@
         "userId": "u-sun-1",
         "name": "Perrin",
         "teamRole": "captain",
+        "title": null,
         "stats": null
       },
       {
         "userId": "u-sun-2",
         "name": "Lyric",
         "teamRole": null,
+        "title": null,
         "stats": null
       },
       {
         "userId": "u-sun-3",
         "name": "Crake",
         "teamRole": null,
+        "title": null,
         "stats": null
       }
     ]
@@ -44,18 +47,21 @@
         "userId": "u-iron-1",
         "name": "Halvard",
         "teamRole": "captain",
+        "title": null,
         "stats": null
       },
       {
         "userId": "u-iron-2",
         "name": "Quill",
         "teamRole": null,
+        "title": null,
         "stats": null
       },
       {
         "userId": "u-iron-3",
         "name": "Bastion",
         "teamRole": null,
+        "title": null,
         "stats": null
       }
     ]

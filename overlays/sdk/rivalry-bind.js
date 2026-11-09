@@ -5,7 +5,7 @@
  * RivalryBind(root, rl) once; it keeps the DOM in sync with the control bus
  * (and, on file://, the SDK's built-in mock) with zero per-field wiring.
  *
- *   <span data-field="teamA.name">GUARDIANS</span>      <!-- textContent -->
+ *   <span data-field="teamA.name">GUARDIANS</span>      <!-- textContent (eventTitle: bare <b> kept) -->
  *   <div  data-bg="teamA.logo"><span data-mono="teamA.name">G</span></div>
  *   <div  data-slot="upNext.2">...</div>                <!-- hidden if empty -->
  *
@@ -42,12 +42,22 @@
     return parent != null && typeof parent === "object";
   }
 
+  // eventTitle may carry bare <b>...</b> emphasis (CONTRACT.md), as the gameplay
+  // eventbar has always shown it. It is free text (producer-typed or the league
+  // API's title), so it is escaped in full and only bare <b>/</b> come back.
+  function titleHtml(s) {
+    return String(s)
+      .replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; })
+      .replace(/&lt;(\/?)b&gt;/gi, "<$1b>");
+  }
+
   function apply(root, data, live) {
     root.querySelectorAll("[data-field]").forEach(function (el) {
       var path = el.getAttribute("data-field");
       var v = resolve(data, path);
       if (v != null && v !== "") {
-        el.textContent = String(v);
+        if (path === "eventTitle") el.innerHTML = titleHtml(v);
+        else el.textContent = String(v);
         if (el.dataset.rvCleared) { el.style.display = el.dataset.rvDisplay || ""; delete el.dataset.rvCleared; }
       } else if (live && ownedByPayload(data, path)) {
         // Hidden as well as emptied: a chip or pill with padding still paints a

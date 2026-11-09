@@ -366,6 +366,12 @@ function startBridge(opts = {}) {
       iniWritten: !!(info && info.ok),
       rlConfigDirFound: !!(info && info.dirFound),
     }),
+    // The retained control payload (what a freshly loaded overlay is sent),
+    // parsed; null before the first control message.
+    getControlState: () => {
+      try { return (lastControlState && JSON.parse(lastControlState).payload) || null; }
+      catch (e) { return null; }
+    },
   };
 }
 
