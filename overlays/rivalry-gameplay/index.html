@@ -4,39 +4,37 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>RIVALRY Overlay</title>
-<!-- Stat-pop badge icons are now inlined SVG (no CDN) so they render offline —
-     critical for a broadcast tool. See SVG_ICONS near spawnStatPop. -->
+<!-- The Rivalry brand: self-hosted fonts + color tokens (no network at show
+     time). This scene keeps its own role names below, pointed at the brand. -->
+<link rel="stylesheet" href="../../assets/brand/rivalry-brand.css" />
 <style>
-  /* RIVALRY brand typography: Exo 2 italic 700 for display headlines
-     (team names, scorer text, eyebrows), Space Mono for numeric/stat
-     fields, Roboto for body. Same Google Fonts request as RIVALRY-web. */
-  @import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@1,700&family=Roboto:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap');
 
   /* RLCS-style broadcast overlay. Transparent so it composites in OBS over
      gameplay + player webcams. Designed against a 1920x1080 canvas. */
   :root{
-    --blue:#2f7dff;   /* team A accent (Rocket League BLUE team — game color, not brand) */
-    --red:#ff7601;    /* team B accent (Rocket League ORANGE team — matches brand USW orange) */
-    /* Chrome surfaces — all aligned to the RIVALRY brand palette below. */
-    --panel:rgba(19,46,59,.94);     /* jet-black @ .94, used for scorebar + player tags */
-    --panel-solid:#132E3B;           /* jet-black solid, used for subbar */
-    --bar:#1a3d4d;                   /* surface-1, used for the statfeed bar */
-    --ink:#F1EEEE;                   /* white-smoke — primary text */
-    --muted:rgba(241,238,238,.65);   /* dimmed white-smoke — secondary text */
-    --gold:#F1C40F;                  /* brand gold — goal text + accents */
-    --seg-off:#475a6e;               /* unclaimed pip — bright enough to read against panel */
-    --shadow:0 10px 34px rgba(0,0,0,.55);
+    /* Team sides: the game's blue and orange, as the brand's team tones.
+       Thin stripes and boost fills only, never surfaces. */
+    --blue:var(--rv-team-blue);
+    --red:var(--rv-team-orange);
+    /* Surfaces and type, pointed at The Rivalry brand (assets/brand). */
+    --panel:var(--rv-coal);
+    --panel-solid:var(--rv-coal);
+    --bar:var(--rv-coal-raised);
+    --ink:var(--rv-chalk);
+    --muted:var(--rv-chalk-dim);
+    --gold:var(--rv-emerald);        /* the one accent (was the old gold) */
+    --seg-off:var(--rv-slate);
+    --shadow:none;                    /* the brand has no shadows or glows */
 
-    /* RIVALRY brand tokens (sync with RIVALRY-web/brand.css). Available for
-       upcoming brand-pass restyling without re-plumbing CSS variables. */
-    --rivalry-yale-blue:#20496F;
-    --rivalry-jet-black:#132E3B;
-    --rivalry-white-smoke:#F1EEEE;
-    --rivalry-surface-1:#1a3d4d;
-    --rivalry-surface-2:#20496F;
-    --rivalry-gold:#F1C40F;
-    --rivalry-teal:#1ABC9C;
-    --rivalry-green:#2ECC71;
+    /* Old palette names kept for the rules that still use them, re-pointed. */
+    --rivalry-yale-blue:var(--rv-slate);
+    --rivalry-jet-black:var(--rv-coal);
+    --rivalry-white-smoke:var(--rv-chalk);
+    --rivalry-surface-1:var(--rv-coal-raised);
+    --rivalry-surface-2:var(--rv-slate);
+    --rivalry-gold:var(--rv-emerald);
+    --rivalry-teal:var(--rv-emerald);
+    --rivalry-green:#2ECC71;          /* status colors: still an open brand item */
     --rivalry-red:#E74C3C;
 
     /* Scorebar geometry — team blocks 340 + scores 64 + clock 120, ×2 for
@@ -46,19 +44,19 @@
        change so the eventbar cap tracks. */
     --scorebar-w: 928px;
 
-    /* Brand font stacks. Use --font-display for italic display headlines,
-       --font-stat for tabular numeric values, --font-body for everything else. */
-    --font-display:'Exo 2','Segoe UI',system-ui,sans-serif;
-    --font-stat:'Space Mono','SF Mono',Consolas,monospace;
-    --font-body:'Roboto','Segoe UI',system-ui,sans-serif;
+    /* Brand font stacks: Barlow Condensed for headlines (upright caps),
+       Space Mono for numbers and labels, Inter for everything else. */
+    --font-display:var(--rv-font-head);
+    --font-stat:var(--rv-font-mono);
+    --font-body:var(--rv-font-body);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;
     font-family:var(--font-body);color:var(--ink);
     -webkit-font-smoothing:antialiased;}
   .nums{font-family:var(--font-stat);font-weight:700;font-variant-numeric:tabular-nums;}
-  /* Display headline utility used by every italic-uppercase brand label. */
-  .headline{font-family:var(--font-display);font-style:italic;font-weight:700;}
+  /* Display headline utility used by every uppercase brand label. */
+  .headline{font-family:var(--font-display);font-weight:700;}
 
   /* ============================ TOP SCOREBAR ============================ */
   .top{position:fixed;top:0;left:50%;transform:translateX(-50%);
@@ -69,7 +67,7 @@
      flex container and drag the subbar wider than the scorebar (the subbar
      uses width:100% of .top). overflow + ellipsis handles overlong titles. */
   .eventbar{background:var(--rivalry-yale-blue);color:rgba(241,238,238,.85);
-    font-family:var(--font-display);font-style:italic;
+    font-family:var(--font-display);
     font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
     padding:5px 26px;border-radius:0 0 0 0;white-space:nowrap;
     max-width:var(--scorebar-w);overflow:hidden;text-overflow:ellipsis;
@@ -81,7 +79,7 @@
      keeps the element in layout during the soft fade-out (matches the
      kickoff countdown's exit feel); JS removes .fading after the transition. */
   .state-strip{margin:4px auto 0;padding:3px 18px;
-    font-family:var(--font-display);font-style:italic;
+    font-family:var(--font-display);
     font-size:11px;font-weight:700;letter-spacing:4px;text-transform:uppercase;
     box-shadow:0 4px 12px rgba(0,0,0,.4);
     opacity:0;transform:translateY(-4px) scale(.94);
@@ -111,7 +109,7 @@
   .team.left{justify-content:flex-end;text-align:right;}
   .team.right{flex-direction:row-reverse;justify-content:flex-end;text-align:left;}
   .team .logo{width:42px;height:42px;flex:0 0 auto;background:center/contain no-repeat;}
-  .team .name{flex:1 1 auto;min-width:0;font-family:var(--font-display);font-style:italic;
+  .team .name{flex:1 1 auto;min-width:0;font-family:var(--font-display);
     font-weight:700;font-size:24px;letter-spacing:.5px;text-transform:uppercase;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* colored accent line under the team's name side */
@@ -158,7 +156,7 @@
     85%  {opacity:1;}
     100% {left:140%;opacity:0;}
   }
-  .goal-flash .gf-text{font-family:var(--font-display);font-style:italic;
+  .goal-flash .gf-text{font-family:var(--font-display);
     font-weight:700;font-size:34px;letter-spacing:6px;text-transform:uppercase;
     color:var(--gold);position:relative;z-index:2;
     text-shadow:0 0 14px rgba(241,196,15,.65),0 2px 0 rgba(0,0,0,.55);
@@ -201,7 +199,7 @@
      each second, then GO! briefly. Each value re-mounts via key change so
      the punch-in animation restarts cleanly. */
   .kickoff-count{position:fixed;top:42%;left:50%;
-    font-family:var(--font-display);font-style:italic;font-weight:700;
+    font-family:var(--font-display);font-weight:700;
     font-size:240px;line-height:1;color:#fff;
     text-shadow:0 8px 28px rgba(0,0,0,.8),0 0 24px rgba(255,255,255,.35);
     pointer-events:none;z-index:54;
@@ -245,7 +243,7 @@
   .subside{display:flex;align-items:center;gap:10px;padding:5px 14px;
     min-width:0;overflow:hidden;}
   .subside.right{flex-direction:row-reverse;}
-  .tag{font-family:var(--font-display);font-style:italic;
+  .tag{font-family:var(--font-display);
     font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);
     background:rgba(32,73,111,.3);border:1px solid rgba(32,73,111,.45);
     padding:3px 8px;border-radius:0;
@@ -282,7 +280,7 @@
     padding:8px 12px 10px;}
   .ptag .prow{display:flex;align-items:center;gap:10px;position:relative;z-index:1;}
   .col.right .ptag .prow{flex-direction:row-reverse;text-align:right;}
-  .ptag .pname{flex:1;font-family:var(--font-display);font-style:italic;
+  .ptag .pname{flex:1;font-family:var(--font-display);
     font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;
     text-overflow:ellipsis;text-transform:uppercase;letter-spacing:.5px;
     transition:color .3s ease-out;}  /* sync to the goal gold-plate fade */
@@ -384,7 +382,7 @@
   body.goal-sequence-active .statbar,
   body.goal-sequence-active .boostgauge{opacity:0;pointer-events:none;}
   .statbar .who{display:flex;align-items:center;padding:0 20px;
-    font-family:var(--font-display);font-style:italic;
+    font-family:var(--font-display);
     font-weight:700;font-size:16px;letter-spacing:1px;text-transform:uppercase;color:#fff;}
   .statbar .who.blue{background:var(--blue);}
   .statbar .who.red{background:var(--red);}
@@ -393,7 +391,7 @@
   .statbar .stat:last-child{border-right:none;}
   .statbar .stat b{font-family:var(--font-stat);font-size:18px;font-weight:700;
     font-variant-numeric:tabular-nums;}
-  .statbar .stat span{font-family:var(--font-display);font-style:italic;
+  .statbar .stat span{font-family:var(--font-display);
     font-size:12px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
 
   /* ===================== RADIAL BOOST GAUGE ====================== */
@@ -472,7 +470,7 @@
   .goal-banner .gb-stack{position:relative;display:flex;flex-direction:column;
     align-items:flex-start;gap:6px;}
   .goal-banner .gb-text{position:relative;
-    font-family:var(--font-display);font-style:italic;
+    font-family:var(--font-display);
     font-size:92px;font-weight:700;letter-spacing:7px;line-height:1;
     text-transform:uppercase;color:#fff;
     text-shadow:0 4px 18px rgba(0,0,0,.85),0 0 2px rgba(0,0,0,.95),
@@ -489,7 +487,7 @@
      The padding/negative-margin pairs give the text shadow and the italic
      overhang room inside overflow:hidden without moving the text. */
   .goal-banner .gb-sub{position:relative;
-    font-family:var(--font-display);font-style:italic;
+    font-family:var(--font-display);
     font-size:22px;font-weight:700;letter-spacing:4px;
     text-transform:uppercase;color:rgba(255,255,255,.85);
     text-shadow:0 2px 8px rgba(0,0,0,.65);
@@ -507,7 +505,7 @@
     transition:opacity .28s .46s,transform .28s .46s;}
   .goal-banner.has-badges .gb-badges{display:flex;}
   .goal-banner.show.has-badges .gb-badges{opacity:1;transform:translateY(0);}
-  .goal-banner .gb-badge{font-family:var(--font-display);font-style:italic;
+  .goal-banner .gb-badge{font-family:var(--font-display);
     font-weight:700;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;
     padding:5px 11px;color:#fff;background:rgba(0,0,0,.55);
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.18);}
@@ -589,7 +587,7 @@
   .replay-card .rpc-header{display:flex;align-items:center;justify-content:space-between;
     padding:11px 20px;background:rgba(0,0,0,.35);
     border-bottom:1px solid rgba(0,0,0,.5);
-    font-family:var(--font-display);font-style:italic;
+    font-family:var(--font-display);
     font-size:14px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
     color:rgba(255,255,255,.8);}
   .replay-card .rpc-speed{color:var(--gold);font-variant-numeric:tabular-nums;}
@@ -609,7 +607,7 @@
       10px 100%,
       0 calc(100% - 10px));}
   .replay-card .rpc-name{flex:1 1 auto;
-    font-family:var(--font-display);font-style:italic;
+    font-family:var(--font-display);
     font-size:36px;font-weight:700;letter-spacing:.5px;
     text-transform:uppercase;color:#fff;
     text-shadow:0 2px 6px rgba(0,0,0,.6);
@@ -617,7 +615,7 @@
   /* Assister line — hidden when no assist was captured in the window before
      the goal. Sits between the name and the stat grid as a thin one-liner. */
   .replay-card .rpc-assist{padding:0 20px 10px 20px;
-    font-family:var(--font-display);font-style:italic;
+    font-family:var(--font-display);
     font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
     color:rgba(255,255,255,.78);display:none;}
   .replay-card .rpc-assist b{color:#fff;font-weight:700;}
@@ -628,7 +626,7 @@
     padding:9px 6px;}
   .replay-card .rpc-stat b{font-family:var(--font-stat);font-size:30px;font-weight:700;
     color:#fff;line-height:1;font-variant-numeric:tabular-nums;}
-  .replay-card .rpc-stat span{font-family:var(--font-display);font-style:italic;
+  .replay-card .rpc-stat span{font-family:var(--font-display);
     font-size:13px;font-weight:700;letter-spacing:1px;
     color:rgba(255,255,255,.75);margin-top:5px;text-transform:uppercase;}
 
@@ -709,7 +707,7 @@
   <div class="goal-banner" id="goalBanner">
     <div class="gb-back"></div>
     <div class="gb-bg" id="gbBg"></div>
-    <img class="gb-avatar" id="gbAvatar" src="../../assets/rivalry-logo.svg" alt="" />
+    <img class="gb-avatar" id="gbAvatar" src="../../assets/brand/logo-emerald-on-dark.svg" alt="" />
     <div class="gb-stack">
       <div class="gb-text" id="gbText">GOAL</div>
       <div class="gb-sub" id="gbSub"></div>
@@ -727,7 +725,7 @@
       <span class="rpc-speed" id="rpcSpeed"></span>
     </div>
     <div class="rpc-identity">
-      <img class="rpc-avatar" id="rpcAvatar" src="../../assets/rivalry-logo.svg" alt="" />
+      <img class="rpc-avatar" id="rpcAvatar" src="../../assets/brand/logo-emerald-on-dark.svg" alt="" />
       <div class="rpc-name" id="rpcName">-</div>
     </div>
     <div class="rpc-assist">Assist <b id="rpcAssister">-</b></div>
@@ -744,7 +742,7 @@
   <div class="stinger" id="stinger">
     <div class="panel p2"></div>
     <div class="panel p1"></div>
-    <div class="slogo" id="stingerLogo" style="background-image:url('../../assets/rivalry-logo.svg')"></div>
+    <div class="slogo" id="stingerLogo" style="background-image:url('../../assets/brand/logo-emerald-on-dark.svg')"></div>
   </div>
 
   </div>
@@ -871,10 +869,10 @@ let lastStatfeedFire = {};
 let lastCountdownBeginTime = 0;
 const COUNTDOWN_DEBOUNCE_MS = 500;
 
-// RV logo as the universal avatar/logo placeholder for team-, player-, and
+// The brand symbol as the universal avatar/logo placeholder for team-, player-, and
 // franchise-level slots that don't yet have a real asset. League API can
 // override per row when it lands.
-const RV_LOGO = "../../assets/rivalry-logo.svg";
+const RV_LOGO = "../../assets/brand/logo-emerald-on-dark.svg";
 
 // eventTitle is free text (producer-typed or the league API's title), so it is
 // escaped in full, then only bare <b>/</b> (styled by .eventbar b) is re-allowed.
