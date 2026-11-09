@@ -11,12 +11,12 @@
     "control"
   ],
   "contract": "1.x",
-  "description": "Post-match results board (box score + MVP), latched from the live feed.",
+  "description": "Post-match results: winner headline, team-total comparison and player of the game, latched from the live feed (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "93a9d5f2a726681bd0f1d4cbf52049385ee127de954da4d30ada3410617e39cc",
-    "signature": "QnqWcGa1alyruq3JOGIu1zUneSTdoI5ZeKgOz1PlwLqBHs2EcVl+CvFrQUPlFyBp9e31Caz8/cvmCmX1FWPwAA==",
+    "contentHash": "08e300fae343827959bcfc8a14e313e0ad39077c66d560e085de902d12704387",
+    "signature": "TQz0hY0IDXoksWMr2N+M8ZvxhlQJ9UV6NMRzV5b/ItTFsC28K9kyROS9i7jFc0efy7sN30rDkz6TvOvV8+8pAQ==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-09T03:07:39.017Z"
+    "signedAt": "2026-11-09T18:25:10.827Z"
   }
 }
