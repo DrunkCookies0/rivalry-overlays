@@ -7,7 +7,7 @@
 This directory is the home for **multiple overlays** (in-house and community) and
 the shared tooling to build them. The goal: let designers build their own
 overlays for the RIVALRY broadcast system, while keeping a hard gate so nothing
-goes live without Alex's review.
+goes live without DrunkCookies's review.
 
 > The shipped gameplay overlay lives here too, at
 > `overlays/rivalry-gameplay/index.html`. The legacy `overlay/overlay.html`
@@ -45,9 +45,9 @@ fill-and-crop instead. Set the Browser Source to 1920×1080 (recommended) or any
 ## Build → review → ship workflow
 
 ```
-designer copies _template/  ─►  builds against SDK + mock  ─►  hands folder to Alex
+designer copies _template/  ─►  builds against SDK + mock  ─►  hands folder to DrunkCookies
                                                                       │
-                            Alex reviews the code/visuals  ◄──────────┘
+                    DrunkCookies reviews the code/visuals  ◄──────────┘
                                        │
                        npm run overlay:sign -- overlays/their-overlay
                                        │
@@ -58,7 +58,7 @@ designer copies _template/  ─►  builds against SDK + mock  ─►  hands fol
 - An **unsigned or edited** overlay loads only in dev/preview, with a
   `PREVIEW - NOT APPROVED` badge, and is refused in production.
 
-### One-time setup (Alex)
+### One-time setup (DrunkCookies)
 
 ```
 npm run overlay:keygen        # mint the Ed25519 keypair (once, ever)
@@ -69,7 +69,7 @@ somewhere safe and never commit it (it's gitignored).
 ### Per-overlay commands
 
 ```
-npm run overlay:sign   -- overlays/<id>     # approve for production (Alex only)
+npm run overlay:sign   -- overlays/<id>     # approve for production (DrunkCookies only)
 npm run overlay:verify -- overlays/<id>     # check what the app will decide (anyone)
 ```
 

@@ -49,10 +49,10 @@ test("a picked cam count wins over the caster count", () => {
 });
 
 test("one shared cam carries every caster's name and the first feed", () => {
-  const c = { casterCams: 1, casters: [C("ALEX", { role: "PBP", stream: "" }), C("SAM", { role: "COLOR", stream: "deskcam" })] };
+  const c = { casterCams: 1, casters: [C("DRUNKCOOKIES", { role: "PBP", stream: "" }), C("SAM", { role: "COLOR", stream: "deskcam" })] };
   const s = cams.slots(c);
   assert.equal(s.length, 1);
-  assert.equal(s[0].name, "ALEX & SAM");
+  assert.equal(s[0].name, "DRUNKCOOKIES & SAM");
   assert.equal(s[0].role, "PBP / COLOR");
   assert.equal(s[0].stream, "deskcam", "the first caster with a feed lights the shared cam");
 });

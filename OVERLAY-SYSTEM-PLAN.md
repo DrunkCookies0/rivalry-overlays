@@ -37,7 +37,7 @@ All seven phases below were implemented and verified. Summary:
 
 ### Phase 0 — Foundation & packaging (unblock everything) · **S**
 Nothing downstream works until these land.
-- [ ] **Run `npm run overlay:keygen` once** (Alex). Commit `overlays/keys/rivalry-overlay-public.pem`; back up the private key off-machine (it's gitignored). *(blocks all signing/verify)*
+- [ ] **Run `npm run overlay:keygen` once** (DrunkCookies). Commit `overlays/keys/rivalry-overlay-public.pem`; back up the private key off-machine (it's gitignored). *(blocks all signing/verify)*
 - [ ] **Bundle `overlays/` in the build.** Add `overlays/**/*` to the `files` array in **both** `electron-builder.prod.js` and `electron-builder.beta.js`, with `!overlays/keys/*-private.pem` (electron-builder packs the working tree, not git — without this negation a private key on the build machine ships in the installer). Also exclude dead weight: `_template/`, `_prototype-*.html`, `*.md`.
 - [ ] **Sign the 5 baseline scenes** (`npm run overlay:sign -- overlays/rivalry-<id>`).
 - [ ] Delete/archive the stale `AUTO-UPDATE-HANDOFF.md` (wrong repo name; auto-update is already wired).
@@ -74,7 +74,7 @@ Keep it **self-contained** (do NOT adopt the SDK/bind in this step — it's 2108
 
 **Done when:** the gameplay overlay scales like the others, with zero timing/goal-sequence regression. *(Highest risk: don't perturb the tuned timing — this is layout-only.)*
 
-### Phase 4 — Post-game results scene (Alex's priority) · **L** · *after Phase 3 pattern*
+### Phase 4 — Post-game results scene (DrunkCookies's priority) · **L** · *after Phase 3 pattern*
 Built from the **live feed** (no replays). Replaces RL's in-game results screen, auto-shown at match end.
 - [ ] Scaffold `overlays/rivalry-postgame/` (scene `postgame`, needs `["game","control"]`).
 - [ ] **Latch the last-good `UpdateState`**: keep updating while live; **freeze on the FIRST of `MatchEnded`/`PodiumStart`** (RL streams a zeroed UpdateState at podium — must snapshot before that and ignore the rest).

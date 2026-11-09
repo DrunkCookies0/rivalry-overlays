@@ -3,12 +3,12 @@
  * -----------------------------------------------------------------------------
  * The curated/signed trust model: community designers get the full SDK +
  * templates to BUILD an overlay, but it can't FUNCTION in the packaged app
- * until Alex reviews it and signs it with the private key. This module is the
+ * until DrunkCookies reviews it and signs it with the private key. This module is the
  * one place that knows how an overlay is hashed, signed, and verified, so the
  * sign CLI (producer side) and the loader (app side, future) agree byte-for-byte.
  *
  * Crypto: Ed25519 via Node's built-in `crypto` — no new dependency. The public
- * key ships in the repo/app; the private key never leaves Alex's machine.
+ * key ships in the repo/app; the private key never leaves DrunkCookies's machine.
  *
  * Gate semantics:
  *   - A signature covers the manifest (minus its own `approval` block) AND every

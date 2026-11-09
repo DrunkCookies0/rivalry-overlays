@@ -38,7 +38,7 @@ const layout = require("../overlays/shared/rivalry-caster-cams");
 
 const CAM_SOURCE_PREFIX = "Caster Cam ";
 const camSourceName = (i) => CAM_SOURCE_PREFIX + (i + 1);
-// Exactly the app's names: a producer's "Caster Cam - Alex" is theirs.
+// Exactly the app's names: a producer's "Caster Cam - DrunkCookies" is theirs.
 const OWN_NAMES = Array.from({ length: layout.MAX_CAMS }, (_, i) => camSourceName(i));
 const isOwnName = (name) => OWN_NAMES.includes(name);
 

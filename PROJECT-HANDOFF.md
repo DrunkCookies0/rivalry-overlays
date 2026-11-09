@@ -318,7 +318,7 @@ of bot matches. Highlights of what each patch did:
   - Bridge mock + main.js OBS auto-switch updated to canonical RL event names.
 - **v0.5.3** - OT detection hybrid (this patch). RL's `Game.IsOT` is never set in bot/
   private/freeplay matches, so OVERTIME state strip + clock `+` prefix + `.ot` class were
-  unreachable in Alex's primary testing environment. Detector now uses explicit `IsOT`
+  unreachable in DrunkCookies's primary testing environment. Detector now uses explicit `IsOT`
   fast path + `clockHitZero` breadcrumb + N-frame ascend hysteresis. Final-10s counter
   gated on `!clockHitZero` so it stops the moment regulation ends; placeholder `OT` text
   during the limbo frame.

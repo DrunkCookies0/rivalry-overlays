@@ -67,7 +67,7 @@ Most scenes are **control-only** - they never touch live RL telemetry. Only
 ## The `approval` block (curated/signed gate)
 
 An overlay can be **built** by anyone, but only **functions in the packaged app**
-after Alex reviews and signs it. `approval` is `null` until signed; signing
+after DrunkCookies reviews and signs it. `approval` is `null` until signed; signing
 writes a block like:
 
 ```jsonc
@@ -87,7 +87,7 @@ writes a block like:
 - **Unsigned / tampered overlays** still load in **dev mode** with a
   `PREVIEW - NOT APPROVED` badge, so designers get a full local loop. The
   packaged production app refuses to serve them.
-- The signing key is held only by Alex. See [README.md](README.md) for the
+- The signing key is held only by DrunkCookies. See [README.md](README.md) for the
   review → sign → ship flow.
 - A second gate exists on top of signing: the packaged app serves scenes only
   while a league match is locked (the match gate), independent of overlay

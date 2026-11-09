@@ -1,19 +1,19 @@
 # Producer Install Checklist
 
-This is the checklist the producer runs on their own machine the first time they install RIVALRY Casterverse. It proves the whole chain works on a machine Alex has never touched, before the first real broadcast depends on it.
+This is the checklist the producer runs on their own machine the first time they install RIVALRY Casterverse. It proves the whole chain works on a machine DrunkCookies has never touched, before the first real broadcast depends on it.
 
 - Who runs it: the producer, alone, on their own Windows machine.
 - What it needs: the installer, your league API key, OBS, and Rocket League. Nothing else. No repo, no npm, no developer tools.
 - How long: well under an hour, including one exhibition match.
-- If any step's "Expected" does not happen and the "If not" line does not fix it: run the Export diagnostics step at the bottom, send the file to Alex, and stop there. Nothing later in the list will go better than the step that just failed.
+- If any step's "Expected" does not happen and the "If not" line does not fix it: run the Export diagnostics step at the bottom, send the file to DrunkCookies, and stop there. Nothing later in the list will go better than the step that just failed.
 
 Keep PRODUCER-SETUP.md open next to this; it explains each screen in more detail. This file is just the script.
 
 ---
 
-## Before you start (Alex side)
+## Before you start (DrunkCookies side)
 
-Done by Alex on the dev machine before anything ships to the producer:
+Done by DrunkCookies on the dev machine before anything ships to the producer:
 
 - [ ] Send the producer: the installer, their league API key (starts with `rv_`), PRODUCER-SETUP.md, and this checklist.
 
@@ -31,13 +31,13 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** the installer runs with no further prompts, and the app opens on its own with a RIVALRY icon in the system tray.
 
-  **If not:** if the blue screen has no "More info" link, or the app never opens, take a photo of the screen and call Alex.
+  **If not:** if the blue screen has no "More info" link, or the app never opens, take a photo of the screen and call DrunkCookies.
 
 ### 2. First launch
 
 - [ ] The app opens straight onto the 3-step setup wizard (no activation screen — access keys were retired in favor of the league key + match gate).
 
-  **If not:** if anything else appears first, take a screenshot and call Alex.
+  **If not:** if anything else appears first, take a screenshot and call DrunkCookies.
 
 ### 3. Wizard step 1: Rocket League
 
@@ -47,7 +47,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** the step turns green ("Rocket League feed is live", or "Connected to Rocket League" if you are not in a match, both count).
 
-  **If not:** click **Retry** once more with Rocket League fully closed. Still not green: Export diagnostics (step 13) and send to Alex.
+  **If not:** click **Retry** once more with Rocket League fully closed. Still not green: Export diagnostics (step 13) and send to DrunkCookies.
 
 ### 4. Wizard step 2: OBS
 
@@ -55,7 +55,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** the five checklist items tick green one by one (find OBS, switch on its connection, start OBS, connect, build the scenes). OBS ends up with a scene collection named **RIVALRY Casterverse** containing every scene, each with the chrome frame layered on top and the game capture already scaled inside the chrome's interior window.
 
-  **If not:** the checklist names the item that failed. Click **SET UP OBS FOR ME** once more (a freshly started OBS sometimes needs a second try, especially if it opened a "Crash Detected" dialog you had to answer). Still failing: open **"Do it manually instead"** in the same wizard step, click **DOWNLOAD SCENE COLLECTION**, then in OBS: **Scene Collection** menu, **Import**, pick the downloaded file, switch to **RIVALRY Casterverse**. If the imported collection is missing scenes or the chrome, Export diagnostics and send to Alex.
+  **If not:** the checklist names the item that failed. Click **SET UP OBS FOR ME** once more (a freshly started OBS sometimes needs a second try, especially if it opened a "Crash Detected" dialog you had to answer). Still failing: open **"Do it manually instead"** in the same wizard step, click **DOWNLOAD SCENE COLLECTION**, then in OBS: **Scene Collection** menu, **Import**, pick the downloaded file, switch to **RIVALRY Casterverse**. If the imported collection is missing scenes or the chrome, Export diagnostics and send to DrunkCookies.
 
 ### 5. Control panel dock
 
@@ -74,9 +74,9 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
   **If not:** the status line tells you what is wrong. What each message means:
   - **"That's an old Casterverse access key (retired — no longer needed)..."** You pasted a retired `RCV1.` key. Paste the `rv_` league key instead.
   - **"No key saved. Paste your league API key above."** The save did not take. Paste the key and click **Save key** again.
-  - **"Key rejected by the league site. Check it and save again."** The `rv_` key itself is wrong. Re-copy it from where Alex sent it, save again. Still rejected: call Alex, the key may need reissuing.
-  - **"Can't reach the league site. Check your internet connection."** Your machine is offline or the league site is down. Check that a normal website loads. If the internet is fine, the league site is the problem: call Alex. A match that was already loaded keeps broadcasting from cache; only loading a new one needs the site back.
-  - **"No matches found."** The key works but the search returned nothing. Try clicking **Find matches** with an empty search box, or the **All** chip. A between-seasons schedule can genuinely be empty; confirm with Alex what you should be seeing.
+  - **"Key rejected by the league site. Check it and save again."** The `rv_` key itself is wrong. Re-copy it from where DrunkCookies sent it, save again. Still rejected: call DrunkCookies, the key may need reissuing.
+  - **"Can't reach the league site. Check your internet connection."** Your machine is offline or the league site is down. Check that a normal website loads. If the internet is fine, the league site is the problem: call DrunkCookies. A match that was already loaded keeps broadcasting from cache; only loading a new one needs the site back.
+  - **"No matches found."** The key works but the search returned nothing. Try clicking **Find matches** with an empty search box, or the **All** chip. A between-seasons schedule can genuinely be empty; confirm with DrunkCookies what you should be seeing.
 
 ### 7. Build a 2-series schedule
 
@@ -84,7 +84,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** both series appear in the Broadcast schedule card in order, and the **Up Next** card fills itself from the schedule.
 
-  **If not:** if Add to queue does nothing, refresh the dock (right-click the dock, reload, or restart OBS) and try again. Still nothing: Export diagnostics and send to Alex.
+  **If not:** if Add to queue does nothing, refresh the dock (right-click the dock, reload, or restart OBS) and try again. Still nothing: Export diagnostics and send to DrunkCookies.
 
 ### 8. Load series 1
 
@@ -92,7 +92,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** the Team A and Team B cards fill with the first series' names, logos, and records, the series score resets to 0-0, and the change shows up everywhere: switch OBS to **RIVALRY - Starting Soon** and to **RIVALRY - Match Preview** and both show the loaded teams.
 
-  **If not:** click **PUSH TO OVERLAY** and re-check the scenes. If a scene still shows old or blank teams, right-click that scene's browser source in OBS and refresh it. Still wrong: Export diagnostics and send to Alex.
+  **If not:** click **PUSH TO OVERLAY** and re-check the scenes. If a scene still shows old or blank teams, right-click that scene's browser source in OBS and refresh it. Still wrong: Export diagnostics and send to DrunkCookies.
 
 ### 9. Play one match
 
@@ -100,7 +100,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** at kickoff, a kickoff countdown appears on the overlay. When a goal is scored: the goal flash fires, the goal banner shows the scorer, and the replay card appears over the replay. The scorebug score and clock track the game the whole way.
 
-  **If not:** if the overlay shows nothing at all during the match, wizard step 1 probably never went green: tray icon, **Setup guide**, re-check step 1 (Rocket League must have been restarted once after install). If the scorebug works but a goal graphic misbehaves, note exactly what you saw (or clip it) and send it to Alex with the diagnostics file. Boost meters showing `--` for players is normal unless you are the one spectating.
+  **If not:** if the overlay shows nothing at all during the match, wizard step 1 probably never went green: tray icon, **Setup guide**, re-check step 1 (Rocket League must have been restarted once after install). If the scorebug works but a goal graphic misbehaves, note exactly what you saw (or clip it) and send it to DrunkCookies with the diagnostics file. Boost meters showing `--` for players is normal unless you are the one spectating.
 
 ### 10. Post-game box score
 
@@ -108,7 +108,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** the box score is there, frozen from the moment the match ended, with player stats and the final score.
 
-  **If not:** if the scene is blank or shows a stale match, refresh the scene's browser source. Still wrong: Export diagnostics and send to Alex, noting how the match ended (played out vs forfeit).
+  **If not:** if the scene is blank or shows a stale match, refresh the scene's browser source. Still wrong: Export diagnostics and send to DrunkCookies, noting how the match ended (played out vs forfeit).
 
 ### 11. Advance to series 2
 
@@ -124,7 +124,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** the app comes back with no wizard, and everything is exactly as you left it: the schedule, both series, which series was on air, team names, logos, casters, all of it. The overlays in OBS reconnect on their own.
 
-  **If not:** if the wizard reappears, or any typed value is gone, that is exactly the kind of bug this checklist exists to catch. Export diagnostics and send to Alex before touching anything else.
+  **If not:** if the wizard reappears, or any typed value is gone, that is exactly the kind of bug this checklist exists to catch. Export diagnostics and send to DrunkCookies before touching anything else.
 
 ### 13. Export diagnostics
 
@@ -132,9 +132,9 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** a file named `casterverse-diagnostics.json` is saved. It contains no secrets; the league key inside is masked.
 
-  **If not:** if the export itself fails, grab the log file at `%APPDATA%\RIVALRY Casterverse\logs\casterverse.log` and send that to Alex instead, along with a note that the export failed.
+  **If not:** if the export itself fails, grab the log file at `%APPDATA%\RIVALRY Casterverse\logs\casterverse.log` and send that to DrunkCookies instead, along with a note that the export failed.
 
-Send the diagnostics file to Alex even on a clean pass, with a one-line "all green". It gives him a baseline snapshot of your machine.
+Send the diagnostics file to DrunkCookies even on a clean pass, with a one-line "all green". It gives him a baseline snapshot of your machine.
 
 ---
 

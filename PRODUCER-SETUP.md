@@ -2,7 +2,7 @@
 
 This is your copy of the broadcast software for the RIVALRY main stream. Follow this document top to bottom the first time. After that, match night is just "Your first broadcast" below.
 
-If anything in here does not go the way the document says it will, stop and call Alex. Do not fight it alone.
+If anything in here does not go the way the document says it will, stop and call DrunkCookies. Do not fight it alone.
 
 ---
 
@@ -135,7 +135,7 @@ Nothing happens to your broadcast. The moment you loaded tonight's match, the ap
 1. The match on air keeps running from the cache. Scenes, logos, series score, goal graphics: all unaffected. Even restarting the app comes back locked to the same match.
 2. What you cannot do while the league is down is **load a different match** (the next series in your schedule, for example). The app refuses with a clear error and leaves the current match on air.
 3. If the outage crosses a series boundary: stall with **Casters**, **BRB**, or **Up Next** (they all run from cached and operator data) until the league site answers again, then load the next series as normal.
-4. If the league site is still down and you never loaded tonight's match, there is no broadcast to run — call Alex. Loading the match right after the wizard, well before air time, is the habit that makes this a non-event.
+4. If the league site is still down and you never loaded tonight's match, there is no broadcast to run — call DrunkCookies. Loading the match right after the wizard, well before air time, is the habit that makes this a non-event.
 
 ---
 
@@ -145,12 +145,12 @@ Do not describe the problem from memory. Export the diagnostics file and send it
 
 1. Right-click the tray icon (or use the control panel) and click **Export diagnostics**.
    **Expected result:** it saves a file called `casterverse-diagnostics.json`. It contains no secrets; your league key is masked.
-2. Send that file to Alex, along with one sentence about what you were doing when it broke.
-3. Call Alex.
+2. Send that file to DrunkCookies, along with one sentence about what you were doing when it broke.
+3. Call DrunkCookies.
 
 Other things worth knowing:
 
-- The app also keeps a running log at `%APPDATA%\RIVALRY Casterverse\logs\casterverse.log` if Alex asks for it.
+- The app also keeps a running log at `%APPDATA%\RIVALRY Casterverse\logs\casterverse.log` if DrunkCookies asks for it.
 - If a dialog appears at launch saying a port is already in use, it names the program holding the port. Close that program and relaunch. The app only uses three local ports (49080, 49124, 49777) and they never leave your machine.
 - If an overlay looks blank in OBS: check the tray icon is there (app running), check Rocket League was restarted once after install, then right-click the browser source in OBS and refresh it.
 

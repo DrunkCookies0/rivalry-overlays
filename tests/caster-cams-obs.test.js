@@ -119,9 +119,9 @@ const vdo = (id) => `https://vdo.ninja/?view=${id}&cleanoutput&autostart`;
 
 test("two casters: two cams created under the overlay, in the duo holes, live", async () => {
   const { obs, sync, set } = setup();
-  set({ casters: [caster("ALEX", "alexcam"), caster("SAM", "https://vdo.ninja/?room=r&view=sam")] });
+  set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), caster("SAM", "https://vdo.ninja/?room=r&view=sam")] });
   const r = await sync.syncNow();
-  assert.deepEqual(r, { ok: true, scene: SCENE, overlay: "rivalry-casters", followed: true, frames: 2, names: ["ALEX", "SAM"], live: 2, hidden: [],
+  assert.deepEqual(r, { ok: true, scene: SCENE, overlay: "rivalry-casters", followed: true, frames: 2, names: ["DRUNKCOOKIES", "SAM"], live: 2, hidden: [],
     waiting: [], noCaster: [], heardOnly: [], held: [], dupes: [], repeats: [], badLinks: [], clashes: [], unplaced: [] });
   const v = obs.view();
   const overlay = v.find((x) => x.name === "Casters Overlay");
@@ -132,7 +132,7 @@ test("two casters: two cams created under the overlay, in the duo holes, live", 
     assert.deepEqual(rectOf(c.t), RECTS["rivalry-casters"][2][n - 1]);
     assert.equal(c.t.boundsType, "OBS_BOUNDS_SCALE_INNER");
   }
-  assert.equal(cam(v, 1).url, vdo("alexcam"));
+  assert.equal(cam(v, 1).url, vdo("drunkcookiescam"));
   assert.equal(cam(v, 2).url, "https://vdo.ninja/?room=r&view=sam");
   assert.equal(cam(v, 3), undefined, "no source for a cam that loads nothing");
   const settings = obs.inputs.get("Caster Cam 1").settings;
@@ -141,9 +141,9 @@ test("two casters: two cams created under the overlay, in the duo holes, live", 
 
 test("one cam picked for two remote casters: one frame, and the other caster is still heard", async () => {
   const { obs, sync, set } = setup();
-  set({ casters: [caster("ALEX", "alexcam"), caster("SAM", "samcam")] });
+  set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), caster("SAM", "samcam")] });
   await sync.syncNow();
-  set({ casterCams: 1, casters: [caster("ALEX", "alexcam"), caster("SAM", "samcam")] });
+  set({ casterCams: 1, casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), caster("SAM", "samcam")] });
   const r = await sync.syncNow();
   assert.equal(r.frames, 1);
   assert.deepEqual(r.heardOnly, ["SAM"]);
@@ -156,7 +156,7 @@ test("one cam picked for two remote casters: one frame, and the other caster is 
 
 test("two casters at one desk sharing one feed: one cam, nothing extra loaded", async () => {
   const { obs, sync, set } = setup();
-  set({ casterCams: 1, casters: [caster("ALEX"), caster("SAM", "deskcam")] });
+  set({ casterCams: 1, casters: [caster("DRUNKCOOKIES"), caster("SAM", "deskcam")] });
   const r = await sync.syncNow();
   assert.deepEqual(r.heardOnly, []);
   const v = obs.view();
@@ -166,14 +166,14 @@ test("two casters at one desk sharing one feed: one cam, nothing extra loaded", 
 
 test("auto with one caster: the classic look keeps its two frames, the SC26 look shows one", async () => {
   const classic = setup();
-  classic.set({ casters: [caster("ALEX", "alexcam")] });
+  classic.set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam")] });
   const r = await classic.sync.syncNow();
   assert.equal(r.frames, 2);
   assert.deepEqual(r.noCaster, [2], "the second frame has nobody in it");
   assert.deepEqual(r.waiting, []);
   assert.deepEqual(rectOf(cam(classic.obs.view(), 1).t), RECTS["rivalry-casters"][2][0]);
   const sc26 = setup({ overlayUrl: SC26 });
-  sc26.set({ casters: [caster("ALEX", "alexcam")] });
+  sc26.set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam")] });
   assert.equal((await sc26.sync.syncNow()).frames, 1);
   assert.deepEqual(rectOf(cam(sc26.obs.view(), 1).t), RECTS["rivalry-sc26-casters"][1][0]);
 });
@@ -225,26 +225,26 @@ test("a feed the producer's own source in the Casters scene plays is never loade
   // Cams added by hand before the app managed them, with their own extra
   // parameters, an old-domain link, and a name that only starts like the app's.
   const { obs, sync, set } = setup({ extra: [
-    { name: "Alex cam", url: "https://vdo.ninja/?view=ALEXCAM&room=x" },
+    { name: "DrunkCookies cam", url: "https://vdo.ninja/?view=DRUNKCOOKIESCAM&room=x" },
     { name: "Caster Cam - Sam", url: "https://obs.ninja/?view=samcam" },
   ] });
-  set({ casters: [caster("ALEX", "alexcam"), caster("SAM", "obs.ninja/?view=samcam")] });
+  set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), caster("SAM", "obs.ninja/?view=samcam")] });
   const r = await sync.syncNow();
-  assert.deepEqual(r.dupes, [{ cam: 1, name: "ALEX", source: "Alex cam" }, { cam: 2, name: "SAM", source: "Caster Cam - Sam" }]);
+  assert.deepEqual(r.dupes, [{ cam: 1, name: "DRUNKCOOKIES", source: "DrunkCookies cam" }, { cam: 2, name: "SAM", source: "Caster Cam - Sam" }]);
   assert.equal(r.live, 0);
   assert.ok(!obs.inputs.has("Caster Cam 1") && !obs.inputs.has("Caster Cam 2"), "no second copy of either feed");
   assert.equal(feedKey("https://vdo.ninja/?view=X&cleanoutput"), feedKey("https://obs.ninja/?view=x"));
   // Deleted from the scene: the app's cam takes over on the next sync.
   const items = obs.scenes.get(SCENE);
-  items.splice(items.findIndex((x) => x.sourceName === "Alex cam"), 1);
+  items.splice(items.findIndex((x) => x.sourceName === "DrunkCookies cam"), 1);
   assert.equal((await sync.syncNow()).live, 1);
-  assert.equal(cam(obs.view(), 1).url, vdo("alexcam"));
+  assert.equal(cam(obs.view(), 1).url, vdo("drunkcookiescam"));
 });
 
 test("a copy of a feed in another scene leaves the Casters cam alone", async () => {
   const { obs, sync, set } = setup();
-  obs.addScene("Interview", [{ name: "Alex fullscreen", url: vdo("alexcam") }]);
-  set({ casters: [caster("ALEX", "alexcam"), caster("SAM", "samcam")] });
+  obs.addScene("Interview", [{ name: "DrunkCookies fullscreen", url: vdo("drunkcookiescam") }]);
+  set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), caster("SAM", "samcam")] });
   const r = await sync.syncNow();
   assert.deepEqual(r.dupes, []);
   assert.equal(r.live, 2);
@@ -506,12 +506,12 @@ test("the overlay is still found when OBS leaves inputKind off the scene items",
 
 test("a link cleared and a name changed in one debounce window still cut the feed", async () => {
   const { obs, sync, set } = setup({ debounceMs: 60, graceMs: 5000 });
-  set({ casterCams: 1, casters: [caster("ALEX", "alexcam"), caster("SAM", "samcam")] });
+  set({ casterCams: 1, casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), caster("SAM", "samcam")] });
   await sync.syncNow();
   assert.equal(cam(obs.view(), 2).url, vdo("samcam"));
   // Replacing SAM: link cleared, then the name typed over, keystrokes 10 ms apart.
   for (const step of [caster("SAM", ""), caster("", ""), caster("K", ""), caster("KI", ""), caster("KIM", "")]) {
-    set({ casterCams: 1, casters: [caster("ALEX", "alexcam"), step].filter((c) => c.name) });
+    set({ casterCams: 1, casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), step].filter((c) => c.name) });
     sync.request();
     await sleep(10);
   }
@@ -521,12 +521,12 @@ test("a link cleared and a name changed in one debounce window still cut the fee
 
 test("a hand-made copy inside a group or nested scene in the Casters scene counts as the producer's", async () => {
   const { obs, sync, set } = setup({ extra: [
-    { name: "Cams", group: [{ name: "Alex cam", url: vdo("alexcam") }] },
+    { name: "Cams", group: [{ name: "DrunkCookies cam", url: vdo("drunkcookiescam") }] },
     { name: "Sam corner", scene: [{ name: "Sam cam", url: "https://vdo.ninja/?view=samcam" }] },
   ] });
-  set({ casters: [caster("ALEX", "alexcam"), caster("SAM", "samcam")] });
+  set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), caster("SAM", "samcam")] });
   const r = await sync.syncNow();
-  assert.deepEqual(r.dupes.map((d) => d.source), ["Alex cam", "Sam cam"]);
+  assert.deepEqual(r.dupes.map((d) => d.source), ["DrunkCookies cam", "Sam cam"]);
   assert.ok(!obs.inputs.has("Caster Cam 1") && !obs.inputs.has("Caster Cam 2"));
 });
 
@@ -545,17 +545,17 @@ test("a cam the producer hides in OBS is reported hidden, not live", async () =>
 
 test("a held feed is reported, and a new feed takes a free source before evicting it", async () => {
   const { obs, sync, set } = setup({ graceMs: 5000 });
-  set({ casters: [caster("ALEX", "alexcam"), caster("SAM", "samcam"), caster("JO", "jocam")] });
+  set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), caster("SAM", "samcam"), caster("JO", "jocam")] });
   await sync.syncNow();
-  // ALEX's name blanked to retype it while SAM's link is replaced.
+  // DRUNKCOOKIES's name blanked to retype it while SAM's link is replaced.
   set({ casters: [caster("SAM", "samcam2"), caster("JO", "jocam")] });
   const r = await sync.syncNow();
-  assert.deepEqual(r.held, ["ALEX"]);
-  assert.ok(obs.view().some((x) => !x.enabled && x.url === vdo("alexcam")), "ALEX still loaded for the retype");
+  assert.deepEqual(r.held, ["DRUNKCOOKIES"]);
+  assert.ok(obs.view().some((x) => !x.enabled && x.url === vdo("drunkcookiescam")), "DRUNKCOOKIES still loaded for the retype");
   const before = obs.writes.length;
-  set({ casters: [caster("ALEX", "alexcam"), caster("SAM", "samcam2"), caster("JO", "jocam")] });
+  set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam"), caster("SAM", "samcam2"), caster("JO", "jocam")] });
   await sync.syncNow();
-  assert.ok(!obs.writes.slice(before).some(([t]) => t === "SetInputSettings"), "ALEX back with no reload");
+  assert.ok(!obs.writes.slice(before).some(([t]) => t === "SetInputSettings"), "DRUNKCOOKIES back with no reload");
 });
 
 test("overlayPlacement follows the page's own fit inside a non-16:9 source, and refuses flips in a box", () => {

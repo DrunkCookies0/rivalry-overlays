@@ -1,5 +1,5 @@
 /* =============================================================================
- * sign-overlay.js  —  approve an overlay for production (Alex only)
+ * sign-overlay.js  —  approve an overlay for production (DrunkCookies only)
  * -----------------------------------------------------------------------------
  * After reviewing a community (or in-house) overlay folder, sign it:
  *     npm run overlay:sign -- overlays/some-overlay

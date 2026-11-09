@@ -119,7 +119,7 @@ const absSize = (r) => ({ x: (r.x * 1080) / 2, y: (r.y * 1080) / 2 });
 const close = (a, b) => Math.abs(a.x - b.x) < 1e-6 && Math.abs(a.y - b.y) < 1e-6;
 
 test("every item's OBS 31 relative coordinates decode to its real position and size", () => {
-  const control = { casters: [C("ALEX", "alexcam"), C("SAM", "samcam")] };
+  const control = { casters: [C("DRUNKCOOKIES", "drunkcookiescam"), C("SAM", "samcam")] };
   for (const col of [build(), buildSceneCollection({ overlays: fixtureWithChrome(), baseUrl: BASE, control })]) {
     for (const scene of scenesOf(col)) {
       for (const item of scene.settings.items) {
@@ -133,7 +133,7 @@ test("every item's OBS 31 relative coordinates decode to its real position and s
 });
 
 test("caster cams and the game capture decode to their holes, not 0,0 at 0x0", () => {
-  const control = { casters: [C("ALEX", "alexcam"), C("SAM", "samcam")] };
+  const control = { casters: [C("DRUNKCOOKIES", "drunkcookiescam"), C("SAM", "samcam")] };
   const col = buildSceneCollection({ overlays: fixtureWithChrome(), baseUrl: BASE, control });
   for (const [n, r] of RECTS["rivalry-casters"][2].entries()) {
     const it = castersScene(col).find((x) => x.src.name === "Caster Cam " + (n + 1)).it;
@@ -376,7 +376,7 @@ function castersScene(col) {
 }
 
 test("the Casters scene ships a cam per caster under the overlay, in its holes", () => {
-  const control = { casters: [C("ALEX", "alexcam"), C("SAM", "https://vdo.ninja/?view=sam")] };
+  const control = { casters: [C("DRUNKCOOKIES", "drunkcookiescam"), C("SAM", "https://vdo.ninja/?view=sam")] };
   const col = buildSceneCollection({ overlays: fixtureWithChrome(), baseUrl: BASE, control });
   const items = castersScene(col);
   const names = items.map((x) => x.src.name);
@@ -390,12 +390,12 @@ test("the Casters scene ships a cam per caster under the overlay, in its holes",
     assert.equal(it.visible, true);
     assert.equal(src.settings.shutdown, false);
   }
-  assert.equal(items[0].src.settings.url, "https://vdo.ninja/?view=alexcam&cleanoutput&autostart");
+  assert.equal(items[0].src.settings.url, "https://vdo.ninja/?view=drunkcookiescam&cleanoutput&autostart");
   assert.equal(items[1].src.settings.url, "https://vdo.ninja/?view=sam");
 });
 
 test("one cam picked: a single cam in the solo hole", () => {
-  const control = { casterCams: 1, casters: [C("ALEX", "deskcam"), C("SAM")] };
+  const control = { casterCams: 1, casters: [C("DRUNKCOOKIES", "deskcam"), C("SAM")] };
   const items = castersScene(buildSceneCollection({ overlays: fixture(), baseUrl: BASE, control }));
   const cams = items.filter((x) => x.src.name.startsWith("Caster Cam "));
   assert.equal(cams.length, 1);
@@ -424,7 +424,7 @@ test("the SC26 casters overlay gets its own hole geometry", () => {
 });
 
 test("a caster sharing a cam rides a hidden spare source, so they are still heard", () => {
-  const control = { casterCams: 1, casters: [C("ALEX", "alexcam"), C("SAM", "samcam")] };
+  const control = { casterCams: 1, casters: [C("DRUNKCOOKIES", "drunkcookiescam"), C("SAM", "samcam")] };
   const items = castersScene(buildSceneCollection({ overlays: fixture(), baseUrl: BASE, control }));
   const spare = items.find((x) => x.src.name === "Caster Cam 2");
   assert.ok(spare, "SAM's feed is in the collection");

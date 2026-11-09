@@ -98,7 +98,7 @@ Backend status: data exists; endpoints just need building (Cynical: fix parser i
 ### P2 - Per-roster-player linked accounts (optional soft binding aid)
 Cynical will expose each user's **linked accounts** (platform IDs + display names) from `User.linkedAccounts` / `User.discordConnections`. For us this is only a **soft binding aid**: the overlay can fuzzy-match a live in-game name against a roster player's known display names to *suggest* a slot mapping, which the producer still confirms. Low value (the live feed has no IDs, so it stays name-based) but free, since Cynical exposes them anyway.
 
-> **Integrity / alt-account detection: DROPPED** (Alex, 2026-06-17). It can't be done overlay-side (no account/platform ID in the live feed; EAC so no Bakkesmod), and we're not pursuing the server-side replay-based version either.
+> **Integrity / alt-account detection: DROPPED** (DrunkCookies, 2026-06-17). It can't be done overlay-side (no account/platform ID in the live feed; EAC so no Bakkesmod), and we're not pursuing the server-side replay-based version either.
 
 ### ~~P2 - Teams (standalone)~~ - DROPPED
 Cut per Cynical: the roster already carries everything a team needs, so a standalone `GET /teams/:id` is redundant.
@@ -106,7 +106,7 @@ Cut per Cynical: the roster already carries everything a team needs, so a standa
 **Non-RV matches: not supported.** (Superseded: at the time this was written, non-RV matches were supported via manual control-panel entry. Manual mode has since been removed; the app is match-only, so team identity comes exclusively from a locked league match and non-league matches cannot be broadcast.)
 
 ### ~~P3 - Replay upload~~ - DEFERRED (no reliable auto-capture)
-There's no reliable way to auto-save `.replay` files anymore (Alex, 2026-06-17), so an auto-upload endpoint has little value right now. Park it as a **future feature** if Psyonix restores auto-save. (`POST /api/v1/matches/:id/replays`, route key `matchId`, would wire onto the existing parse pipeline when revisited.)
+There's no reliable way to auto-save `.replay` files anymore (DrunkCookies, 2026-06-17), so an auto-upload endpoint has little value right now. Park it as a **future feature** if Psyonix restores auto-save. (`POST /api/v1/matches/:id/replays`, route key `matchId`, would wire onto the existing parse pipeline when revisited.)
 
 ### P3 - Post-game stats
 The post-game results scene (box score: goals / assists / saves / shots / demos per player, final score, MVP) is built from the **live Stats API data the overlay already collects** (`UpdateState.Players[]`), so it does **NOT** depend on replays or this API. It can be built today.
@@ -155,7 +155,7 @@ The post-game results scene (box score: goals / assists / saves / shots / demos 
 6. **Logo URLs** - image service resolves them, but they expire ~15 min -> re-fetch on reload (§3).
 7. **Teams standalone** - dropped (roster suffices).
 
-### Decisions (Alex, 2026-06-17)
+### Decisions (DrunkCookies, 2026-06-17)
 - **Non-RV match support: YES, via manual mode.** (Superseded: manual mode was later removed by the match-only pivot, so non-league matches are no longer supported.)
 - **Integrity / alt-detection: DROPPED.** Not viable overlay-side; not pursuing server-side either.
 - **Replay auto-capture: DROPPED for now.** No reliable RL auto-save; future feature only if Psyonix adds it. Post-game stats come from the live feed instead, so the post-game scene is not blocked.
