@@ -10,12 +10,12 @@
     "control"
   ],
   "contract": "1.x",
-  "description": "Match Preview scene (Kinetic Bold).",
+  "description": "Match Preview: the two teams face off with tiles, records and rosters (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "9eb7c2ca6d0fb6202a6d0902b97555dcb3edb981a9d87efc7657a6cc317c1813",
-    "signature": "q21hz4Ye/mYhOSisPLKp122EKJhKbVKEb3Y/35vozBPTNNmpF/02nSbAaRaquvdYhSjc7uPxVVDYkX/y4uwCCg==",
+    "contentHash": "3b99139a4cf01ef1b67b5327f0a1719b38cdce53365666bc8ce15d8866830acb",
+    "signature": "5M4cFgM0ry+Grh2+f3UYu+Ie/Yhr2ByJCEAh0iIKFZxJOCCqtvyXfYhp7fHBxcqu//C3zI3xKTbvoH+nXVvbDg==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-08-01T12:53:11.462Z"
+    "signedAt": "2026-11-09T18:25:10.818Z"
   }
 }

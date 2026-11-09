@@ -637,6 +637,12 @@ function hhmm(ms){
   return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
 }
 
+// The loaded match's roster for the Match Preview scene: names only (no league
+// user ids leave the panel).
+function rosterNames(t){
+  return (t.players || []).map(p => p && String(p.name || "").trim()).filter(Boolean);
+}
+
 function payload(){
   // Team identity rides from the LOCK (displayTeam), never from typed input.
   // tag stays in the contract shape but empty — same as a league fill today.
@@ -645,8 +651,8 @@ function payload(){
   return {
     type: "control",
     payload: {
-      teamA: { name:a.name, logo:a.logo, tag:"", seed:$("seedA").value.trim(), record:$("recordA").value.trim() || a.record },
-      teamB: { name:b.name, logo:b.logo, tag:"", seed:$("seedB").value.trim(), record:$("recordB").value.trim() || b.record },
+      teamA: { name:a.name, logo:a.logo, tag:"", seed:$("seedA").value.trim(), record:$("recordA").value.trim() || a.record, roster:rosterNames(a) },
+      teamB: { name:b.name, logo:b.logo, tag:"", seed:$("seedB").value.trim(), record:$("recordB").value.trim() || b.record, roster:rosterNames(b) },
       bestOf: parseInt($("bestOf").value, 10) || 5,
       series: { a: state.series.a, b: state.series.b },
       eventTitle: $("eventTitle").value,

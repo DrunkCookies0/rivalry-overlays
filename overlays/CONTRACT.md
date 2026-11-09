@@ -131,7 +131,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
 {
   "type": "control",
   "payload": {
-    "teamA": { "name": "GUARDIANS", "logo": "https://…/a.png", "tag": "NA1", "seed": "#1", "record": "12-3" },
+    "teamA": { "name": "GUARDIANS", "logo": "https://…/a.png", "tag": "NA1", "seed": "#1", "record": "12-3", "roster": ["Axiom", "Rook", "Halcyon"] },
     "teamB": { "name": "SENTINELS", "logo": "https://…/b.png", "tag": "NA2", "seed": "#4", "record": "9-6" },
     "bestOf": 5,
     "series": { "a": 0, "b": 0 },
@@ -150,7 +150,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
 
 | Field | Meaning |
 |---|---|
-| `teamA` / `teamB` | `{ name, logo (URL, may be ""), tag, seed, record }` — `seed`/`record` used by presentation scenes |
+| `teamA` / `teamB` | `{ name, logo (URL, may be ""), tag, seed, record, roster }` — `seed`/`record` used by presentation scenes. `roster` (additive, optional): the loaded league match's player names for that side, names only; Match Preview lists up to four |
 | `bestOf` | series length (odd number) |
 | `series` | wins so far `{ a, b }` |
 | `eventTitle` | free-text broadcast title. May carry bare `<b>...</b>` emphasis (no attributes); everything else is literal text. Render it escaped with only `<b>`/`</b>` restored (RivalryBind does this for `data-field="eventTitle"`), never as raw HTML |
