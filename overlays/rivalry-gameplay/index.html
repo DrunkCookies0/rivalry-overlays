@@ -309,20 +309,17 @@
   .goal-banner .gb-badge{padding:3px 8px;border:1px solid var(--rv-slate);
     font:700 12px/1.2 var(--font-stat);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
 
-  /* ===================== STINGER WIPE (masks replay cut in/out) ============ */
+  /* ===================== STINGER (masks the replay cut in and out) ========= */
+  /* The brand stinger (.rv-sting in rivalry-brand.css), the same one the
+     chrome plays on a deck switch: 900 ms, full cover from 396 to 558 ms (the
+     old sweep held 396 to 504 ms, so every replay timer below keeps at least
+     the cover it had). It is drawn in canvas px, so inside the window it sits
+     at the window's canvas offset and lines up with the chrome's exactly. */
   .stinger{position:fixed;inset:0;overflow:hidden;pointer-events:none;display:none;z-index:120;}
   .stinger.run{display:block;}
-  .stinger .panel{position:absolute;top:-20%;height:140%;width:170%;left:-210%;transform:skewX(-12deg);}
-  .stinger .panel.p1{background:var(--rivalry-yale-blue);}
-  .stinger .panel.p2{background:var(--rivalry-jet-black);}
-  .stinger .slogo{position:absolute;top:50%;left:50%;width:230px;height:155px;opacity:0;
-    transform:translate(-50%,-50%) scale(.55);background:center/contain no-repeat;}
-  .stinger.run .panel.p1{animation:stgSweep .9s cubic-bezier(.6,0,.2,1) forwards;}
-  .stinger.run .panel.p2{animation:stgSweep .9s cubic-bezier(.6,0,.2,1) .06s forwards;}
-  .stinger.run .slogo{animation:stgLogo .9s ease forwards;}
-  @keyframes stgSweep{0%{left:-210%;}44%{left:-22%;}56%{left:-22%;}100%{left:170%;}}
-  @keyframes stgLogo{0%,30%{opacity:0;transform:translate(-50%,-50%) scale(.55);}
-    46%,54%{opacity:1;transform:translate(-50%,-50%) scale(1);}78%,100%{opacity:0;}}
+  .stinger .stw{position:absolute;left:0;top:0;width:1792px;height:1008px;overflow:hidden;
+    transform:scale(1.0714285714);transform-origin:0 0;} /* the window, as .win */
+  .stinger .rv-sting{left:-64px;}
 
   /* ===================== REPLAY STATE ====================== */
   /* From GoalReplayStart (or the card's show, in matches without replay
@@ -452,11 +449,16 @@
   </div>
   </div>
 
-  <!-- STINGER WIPE (fires on replay start + end to mask the cut) -->
-  <div class="stinger" id="stinger">
-    <div class="panel p2"></div>
-    <div class="panel p1"></div>
-    <div class="slogo" id="stingerLogo" style="background-image:url('../../assets/brand/logo-emerald-on-dark.svg')"></div>
+  <!-- STINGER (fires on replay start + end to mask the cut) -->
+  <div class="stinger" id="stinger" aria-hidden="true">
+    <div class="stw">
+      <div class="rv-sting">
+        <div class="cb cbl"><i></i><i></i></div>
+        <div class="cb cbr"><i></i><i></i></div>
+        <svg class="wh whl" viewBox="0 0 280 272"><path fill="#F0EDE5" d="M0 4 137 89 70 204 0 254 0 173 58 131 0 91Z"/></svg>
+        <svg class="wh whr" viewBox="0 0 280 272"><path fill="#20B878" fill-rule="evenodd" d="M279 0 183 61 114 173 279 271 279 178 210 134 279 88Z M269 18 189 69 126 171 269 255 269 184 192 135 269 83Z"/></svg>
+      </div>
+    </div>
   </div>
 
   </div>
