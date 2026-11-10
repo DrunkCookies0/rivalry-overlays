@@ -17,11 +17,12 @@
 
 "use strict";
 
-// Mirrored from the chrome scene (overlays/rivalry-chrome):
-// the panels cover the canvas ~450 ms into the sweep, and the wipe element
-// clears at 1600 ms.
+// Mirrored from the chrome scene (overlays/rivalry-chrome): the brand stinger
+// holds full cover from 396 to 558 ms, so the switch cuts at 450 ms; the
+// animation is done at 900 ms (the element clears at 940 ms, and a new wipe
+// restarts it cleanly from either side).
 const WIPE_COVER_MS = 450;
-const WIPE_TOTAL_MS = 1600;
+const WIPE_TOTAL_MS = 900;
 
 // wipe():          broadcasts a chrome wipe; returns false when there is no
 //                  chrome to wipe with (the switch then cuts straight away)

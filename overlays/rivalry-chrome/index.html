@@ -19,8 +19,9 @@
   Coal rails and ticker on a 1px Slate edge, one fixed-width Emerald tag in the
   ticker naming the current item, the upright symbol and event line on the
   left rail (the league), follow + socials on the right rail, whose bottom is
-  kept for league-pushed sponsors. The wipe keeps its timing until the new
-  stinger lands; only its colors and mark follow the brand for now.
+  kept for league-pushed sponsors. The wipe is the brand stinger (pick F,
+  "round one + slash, splits back"): 900 ms, full cover from 396 to 558 ms,
+  so the deck switch's 450 ms cut always lands under it.
 -->
 <link rel="stylesheet" href="../shared/rivalry-theme.css">
 <link rel="stylesheet" href="../../assets/brand/rivalry-brand.css">
@@ -93,23 +94,10 @@
   .lower3 .l3-sub:empty{display:none;}
 
   /* Wipe: covers the whole canvas, driven by the transient chrome-wipe event.
-     Timing unchanged (main.js cuts the scene at 450 ms, clears at 1600 ms). */
-  .wipe{position:absolute;inset:0;z-index:60;display:none;pointer-events:none;}
+     It plays the brand stinger (.rv-sting in rivalry-brand.css): full cover
+     from 396 to 558 ms, so the deck switch's 450 ms cut lands under it. */
+  .wipe{position:absolute;inset:0;z-index:60;display:none;overflow:hidden;pointer-events:none;}
   .wipe.run{display:block;}
-  .wipe .p{position:absolute;top:0;bottom:0;width:120%;left:-130%;}
-  .wipe .p1{background:var(--rv-emerald);}
-  .wipe .p2{background:var(--rv-coal);}
-  .wipe.run .p1{animation:wSweep 1s cubic-bezier(.6,0,.2,1) forwards;}
-  .wipe.run .p2{animation:wSweep 1s cubic-bezier(.6,0,.2,1) .12s forwards;}
-  .wipe .wlogo{position:absolute;left:50%;top:50%;width:280px;height:274px;
-    transform:translate(-50%,-50%) scale(.6);opacity:0;
-    background:url("../../assets/brand/logo-emerald-on-dark.svg") center/contain no-repeat;}
-  .wipe.run .wlogo{animation:wLogo 1.12s cubic-bezier(.3,1.4,.4,1) .3s forwards;}
-  @keyframes wSweep{0%{transform:translateX(0) skewX(-12deg);}100%{transform:translateX(215%) skewX(-12deg);}}
-  @keyframes wLogo{0%{opacity:0;transform:translate(-50%,-50%) scale(.6);}
-    30%{opacity:1;transform:translate(-50%,-50%) scale(1);}
-    70%{opacity:1;transform:translate(-50%,-50%) scale(1);}
-    100%{opacity:0;transform:translate(-50%,-50%) scale(1.15);}}
 </style>
 </head>
 <body>
@@ -136,10 +124,13 @@
     <div class="l3-sub" id="l3Sub"></div>
   </div>
 
-  <div class="wipe" id="wipe">
-    <div class="p p2"></div>
-    <div class="p p1"></div>
-    <div class="wlogo"></div>
+  <div class="wipe" id="wipe" aria-hidden="true">
+    <div class="rv-sting">
+      <div class="cb cbl"><i></i><i></i></div>
+      <div class="cb cbr"><i></i><i></i></div>
+      <svg class="wh whl" viewBox="0 0 280 272"><path fill="#F0EDE5" d="M0 4 137 89 70 204 0 254 0 173 58 131 0 91Z"/></svg>
+      <svg class="wh whr" viewBox="0 0 280 272"><path fill="#20B878" fill-rule="evenodd" d="M279 0 183 61 114 173 279 271 279 178 210 134 279 88Z M269 18 189 69 126 171 269 255 269 184 192 135 269 83Z"/></svg>
+    </div>
   </div>
 </div>
 
@@ -353,13 +344,14 @@
   var wipeTimer = null;
   function runWipe() {
     var w = $("wipe");
-    // A second deck switch inside 1.6 s restarts the sweep; the first call's
-    // timer must not cut the new one off mid-canvas.
+    // A second wipe inside 0.9 s restarts the stinger; the first call's timer
+    // must not cut the new one off mid-canvas. Cleared a beat after the 900 ms
+    // animation so its last frame is never clipped.
     clearTimeout(wipeTimer);
     w.classList.remove("run");
     void w.offsetWidth;
     w.classList.add("run");
-    wipeTimer = setTimeout(function () { w.classList.remove("run"); }, 1600);
+    wipeTimer = setTimeout(function () { w.classList.remove("run"); }, 940);
   }
 
   /* ---- render from control state ---- */

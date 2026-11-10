@@ -108,3 +108,48 @@
 .rv-tile:not(.has-logo) { padding: 2px; background-image: url("logo-emerald-on-dark.svg");
   border-left: 4px solid var(--rv-side, var(--rv-slate)); }
 .rv-tile.r:not(.has-logo) { border-left: 1px solid var(--rv-slate); border-right: 4px solid var(--rv-side, var(--rv-slate)); }
+
+/* The brand stinger (pick F, "round one + slash, splits back"), shared by the
+   chrome's deck wipe and the gameplay replay stinger so both play the same
+   thing. A canvas-sized box (1920x1080, canvas px); it plays while any
+   ancestor has .run. Two slanted Coal panels ride in from both sides, a Chalk
+   edge on the left one and an outlined Emerald edge on the right; the symbol's
+   two halves ride in with them and meet in the middle. Everything lands at 44%
+   (396 ms) and holds to 62% (558 ms), so a cut at 450 ms is under full Coal.
+   Then both sides split back the way they came; done at 900 ms. The edges stop
+   short of the symbol (y 296 to 784 is clear), so it stays upright and whole
+   and nothing crosses its outlined half. The halves are the brand master's
+   own two paths, as supplied. */
+.rv-sting { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; pointer-events: none; }
+.rv-sting .cb { position: absolute; top: -20px; height: 1120px; width: 1300px; background: var(--rv-coal); transform: translateX(-1500px) skewX(-14deg); }
+.rv-sting .cbl { left: -340px; }
+.rv-sting .cbr { left: 960px; transform: translateX(1500px) skewX(-14deg); }
+.rv-sting .cb i { position: absolute; top: 0; height: 316px; width: 18px; box-sizing: border-box; }
+.rv-sting .cb i + i { top: 804px; height: auto; bottom: 0; }
+.rv-sting .cbl i { right: 0; background: var(--rv-chalk); }
+.rv-sting .cbr i { left: 0; border: 4px solid var(--rv-emerald); }
+.rv-sting .wh { position: absolute; top: 336px; left: 750px; width: 420px; height: 408px; opacity: 0; }
+.run .rv-sting .cbl { animation: rvStingL .9s both; }
+.run .rv-sting .cbr { animation: rvStingR .9s both; }
+.run .rv-sting .whl { animation: rvStingHalfL .9s both; }
+.run .rv-sting .whr { animation: rvStingHalfR .9s both; }
+@keyframes rvStingL {
+  0% { transform: translateX(-1500px) skewX(-14deg); animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+  44% { transform: skewX(-14deg); }
+  62% { transform: skewX(-14deg); animation-timing-function: cubic-bezier(.6,0,.8,.4); }
+  100% { transform: translateX(-1500px) skewX(-14deg); } }
+@keyframes rvStingR {
+  0% { transform: translateX(1500px) skewX(-14deg); animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+  44% { transform: skewX(-14deg); }
+  62% { transform: skewX(-14deg); animation-timing-function: cubic-bezier(.6,0,.8,.4); }
+  100% { transform: translateX(1500px) skewX(-14deg); } }
+@keyframes rvStingHalfL {
+  0% { transform: translateX(-800px); opacity: 0; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+  12% { opacity: 1; } 44% { transform: none; }
+  62% { transform: none; animation-timing-function: cubic-bezier(.6,0,.8,.4); }
+  88% { opacity: 1; } 100% { transform: translateX(-800px); opacity: 0; } }
+@keyframes rvStingHalfR {
+  0% { transform: translateX(800px); opacity: 0; animation-timing-function: cubic-bezier(.2,.8,.2,1); }
+  12% { opacity: 1; } 44% { transform: none; }
+  62% { transform: none; animation-timing-function: cubic-bezier(.6,0,.8,.4); }
+  88% { opacity: 1; } 100% { transform: translateX(800px); opacity: 0; } }
