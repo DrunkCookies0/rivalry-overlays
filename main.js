@@ -41,6 +41,7 @@ const { getMeta } = require("./bridge/app-meta");
 const overlayRegistry = require("./bridge/overlay-registry");
 const httpGuard = require("./bridge/http-guard");
 const { createDeckSwitcher } = require("./bridge/deck-switch");
+const { createGameResultCatcher } = require("./bridge/game-results");
 const { createCasterCamSync } = require("./bridge/caster-cams");
 const { createApiRouter } = require("./bridge/http-api");
 const leagueSettingsStore = require("./bridge/league-settings");
@@ -1088,6 +1089,37 @@ function onGameEventForObs(env) {
   }
 }
 
+// Finished games for the series update (bridge/game-results.js). The catcher
+// reports each one; the app holds the latest until a panel adds it to the
+// series or dismisses it, so a panel opened after the game still gets it.
+// Nothing reaches an overlay from here: the producer's Add puts the game in
+// control.series.games, like any other panel edit.
+let pendingGameResult = null;
+let gameResultSeq = 0;
+function wireGameResults(handle) {
+  const send = (target) => {
+    const msg = JSON.stringify({ type: "game-result", payload: pendingGameResult });
+    try { target ? target.send(msg) : handle.broadcastControl({ type: "game-result", payload: pendingGameResult }); }
+    catch { /* client already gone */ }
+  };
+  const feed = createGameResultCatcher({
+    onResult: (r) => {
+      pendingGameResult = { id: ++gameResultSeq, ...r };
+      send();
+    },
+  });
+  handle.events.on("game", feed);
+  handle.events.on("control-client", (ws) => { if (pendingGameResult) send(ws); });
+  // A panel added or dismissed it: clear it on every other open panel too.
+  handle.events.on("control", (msg) => {
+    if (msg && msg.type === "game-result-done" && msg.payload && pendingGameResult &&
+        msg.payload.id === pendingGameResult.id) {
+      pendingGameResult = null;
+      send();
+    }
+  });
+}
+
 // Toast notification on startup so the user has visible confirmation the app
 // is running in the tray. Clicking it opens the control panel.
 function notifyReady() {
@@ -1171,6 +1203,7 @@ if (!app.requestSingleInstanceLock()) {
         reportPortConflict(info.port, `${info.server} WebSocket server`);
       }
     });
+    wireGameResults(bridgeHandle);
     collector = startReplayCollector({});
 
     leagueSettings = leagueSettingsStore.load(app.getPath("userData"));
