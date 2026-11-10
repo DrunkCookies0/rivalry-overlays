@@ -4,7 +4,7 @@
  * Builds an importable OBS scene collection (OBS: Scene Collection -> Import)
  * from the overlay registry: one scene per overlay, each with its browser
  * source pre-wired. Producers who can't (or won't) enable obs-websocket get
- * the same 8 broadcast scenes as a one-file import instead. Generated at
+ * the same broadcast scenes as a one-file import instead. Generated at
  * runtime from the registry so scene names and URLs can never drift from what
  * the app actually serves.
  *
@@ -62,6 +62,7 @@ const OBS_SCENE_NAMES = {
   "match-preview": "RIVALRY - Match Preview",
   "gameplay": "RIVALRY - Live",
   "postgame": "RIVALRY - Post-Game",
+  "series-update": "RIVALRY - Series Update",
   "up-next": "RIVALRY - Up Next",
   "brb": "RIVALRY - BRB",
 };

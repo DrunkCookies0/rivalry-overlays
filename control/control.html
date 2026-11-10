@@ -1143,10 +1143,10 @@ function connect(){
 const SCENE_LABELS = {
   "chrome": "Chrome (always-on frame)",
   "starting-soon": "Starting Soon", "caster": "Casters", "match-preview": "Match Preview",
-  "gameplay": "Gameplay", "postgame": "Post-Game Results", "up-next": "Up Next",
+  "gameplay": "Gameplay", "postgame": "Post-Game Results", "series-update": "Series Update", "up-next": "Up Next",
   "brb": "Be Right Back", "standings": "Standings (waiting on league API)",
 };
-const SCENE_ORDER = ["chrome", "starting-soon", "caster", "match-preview", "gameplay", "postgame", "up-next", "brb", "standings"];
+const SCENE_ORDER = ["chrome", "starting-soon", "caster", "match-preview", "gameplay", "postgame", "series-update", "up-next", "brb", "standings"];
 
 // ---- Look (overlay set) picker ---------------------------------------------
 // Overlays ship in visual families; the picker chooses which family the OBS
@@ -1639,7 +1639,7 @@ $("vdoGen").addEventListener("click", generateVdo);
 (function buildDeck(){
   const decks = [["RIVALRY - Starting Soon","Starting Soon"],["RIVALRY - Casters","Casters"],
     ["RIVALRY - Match Preview","Match Preview"],["RIVALRY - Live","Live"],
-    ["RIVALRY - Post-Game","Post-Game"],["RIVALRY - Up Next","Up Next"],["RIVALRY - BRB","BRB"]];
+    ["RIVALRY - Post-Game","Post-Game"],["RIVALRY - Series Update","Series"],["RIVALRY - Up Next","Up Next"],["RIVALRY - BRB","BRB"]];
   $("sceneDeck").innerHTML = decks.map(d => '<button class="mini deck-btn" data-scene="' + d[0] + '" style="background:var(--line);color:var(--ink);">' + d[1] + "</button>").join("");
   document.querySelectorAll("#sceneDeck .deck-btn").forEach(b => b.addEventListener("click", () => {
     if (connected && ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: "obs-action", payload: { action: "switch", scene: b.dataset.scene } }));

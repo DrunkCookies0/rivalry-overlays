@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>RIVALRY · Series Update</title>
+<link rel="stylesheet" href="../shared/rivalry-theme.css" />
+<link rel="stylesheet" href="../../assets/brand/rivalry-brand.css" />
+<style>
+/* The Rivalry brand (2026-11 rebrand), after the broadcast concept's series
+   update: the series score big between the two tiles with RLCS pips under it,
+   then each finished game (winner, score, overtime) and the game up next. On
+   the right, who is on the call and the series MVP so far. The concept's live
+   caster cam is left out on purpose: the names plate stands in for it.
+
+   Games come from series.games (CONTRACT.md): the producer adds each one in
+   the panel, from what the app caught off the RL feed. The series score
+   itself stays series.a / series.b, the panel's steppers. The chrome sits on
+   top of this scene, so everything stays inside the 1792x1008 window. */
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+.su{position:absolute;inset:0;overflow:hidden;background:var(--rv-coal);color:var(--rv-chalk);font-family:var(--rv-font-body);}
+@keyframes suIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+
+.su-left{position:absolute;left:150px;top:214px;width:880px;}
+/* Tile, score, tile; under each tile its team's name and RLCS pips (the
+   placeholder tile is the same symbol for both teams, so the name is what
+   says who is who). The names and pips each span into the middle column, so
+   a long name has room, and stop short of each other at 300px. */
+.su-score{display:grid;grid-template-columns:150px auto 150px;justify-content:start;align-items:center;
+  column-gap:36px;row-gap:14px;margin-top:16px;animation:suIn .45s cubic-bezier(.2,.8,.2,1) both;}
+.su-score .rv-tile{grid-row:1;width:150px;height:150px;padding:14px;}
+#tileA{grid-column:1;}
+#tileB{grid-column:3;}
+.su-num{grid-row:1;grid-column:2;}
+.su-name{grid-row:2;max-width:300px;font-size:34px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.su-name.a{grid-column:1 / span 2;justify-self:start;}
+.su-name.b{grid-column:2 / span 2;justify-self:end;text-align:right;}
+.su-score .rv-tile:not(.has-logo){padding:4px;}
+.su-tile-a{--rv-side:var(--rv-team-blue);}
+.su-tile-b{--rv-side:var(--rv-team-orange);}
+.su-num{font-size:200px;line-height:.8;white-space:nowrap;padding-top:14px;}
+.su-num i{font-style:normal;padding:0 .06em;}
+
+/* RLCS pips: one box per win needed, each side lit in its team color. */
+.su-pips{grid-row:3;display:flex;gap:10px;}
+.su-pips.a{grid-column:1 / span 2;justify-self:start;}
+.su-pips.b{grid-column:2 / span 2;justify-self:end;}
+.su-pips span{width:22px;height:22px;box-sizing:border-box;border:2px solid var(--rv-slate);}
+.su-pips.a .on{background:var(--rv-team-blue);border-color:var(--rv-team-blue);}
+.su-pips.b .on{background:var(--rv-team-orange);border-color:var(--rv-team-orange);}
+
+.su-games{margin-top:32px;border-top:1px solid var(--rv-slate);}
+.su-game{display:grid;grid-template-columns:120px 44px 1fr 140px 160px;align-items:center;column-gap:18px;
+  height:64px;border-bottom:1px solid var(--rv-slate);animation:suIn .4s cubic-bezier(.2,.8,.2,1) both;}
+.su-game .g-n{font:400 15px/1 var(--rv-font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--rv-chalk-dim);}
+.su-game .rv-tile{width:40px;height:40px;padding:3px;}
+.su-game .rv-tile:not(.has-logo){padding:1px;}
+.su-game .g-name{min-width:0;font-size:36px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.su-game .g-score{font:700 30px/1 var(--rv-font-mono);white-space:nowrap;}
+.su-game .g-ot{font:400 16px/1 var(--rv-font-mono);letter-spacing:.1em;color:var(--rv-emerald);white-space:nowrap;}
+.su-game .g-next{grid-column:3 / -1;font:400 15px/1 var(--rv-font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--rv-chalk-dim);}
+
+.su-right{position:absolute;left:1110px;top:214px;width:660px;display:flex;flex-direction:column;gap:28px;}
+.su-card{box-sizing:border-box;padding:26px 30px;background:var(--rv-coal-raised);border:1px solid var(--rv-slate);
+  animation:suIn .45s .1s cubic-bezier(.2,.8,.2,1) both;}
+.su-call-names{margin-top:14px;font-size:56px;line-height:.95;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+.su-mvp{border-left:4px solid var(--rv-side,var(--rv-slate));}
+.su-mvp-name{margin-top:14px;font-size:88px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.su-mvp-line{margin-top:12px;font:600 28px/1.2 var(--rv-font-body);}
+.su-mvp-line i{font-style:normal;color:var(--rv-chalk-dim);padding:0 10px;}
+</style>
+</head>
+<body>
+  <div class="rv-stage">
+    <div class="scene-root su" data-scene="series-update">
+      <img class="rv-lockup" src="../../assets/brand/lockup-horizontal-emerald-on-dark.svg" alt="The Rivalry" />
+      <div class="rv-tags">
+        <span class="rv-tag em">Series</span>
+        <span class="rv-tag ln" id="suFormat">Best of&nbsp;<b>5</b>&nbsp;· first to&nbsp;<b>3</b></span>
+        <span class="rv-tag ln" id="suRound" data-field="round">UPPER BRACKET • ROUND 1</span>
+      </div>
+
+      <section class="su-left">
+        <div class="rv-lab" id="suLabel">Series score</div>
+        <div class="su-score">
+          <span class="rv-tile su-tile-a" id="tileA"></span>
+          <span class="su-num rv-hd"><span id="numA">0</span><i>-</i><span id="numB">0</span></span>
+          <span class="rv-tile r su-tile-b" id="tileB"></span>
+          <span class="su-name a rv-hd" id="nameA" data-field="teamA.name">GUARDIANS</span>
+          <span class="su-name b rv-hd" id="nameB" data-field="teamB.name">SENTINELS</span>
+          <div class="su-pips a" id="pipsA"></div>
+          <div class="su-pips b" id="pipsB"></div>
+        </div>
+        <div class="su-games" id="suGames"></div>
+      </section>
+
+      <aside class="su-right">
+        <div class="su-card" id="suCall">
+          <div class="rv-lab">On the call</div>
+          <div class="su-call-names rv-hd" id="suCallNames"></div>
+        </div>
+        <div class="su-card su-mvp" id="suMvp">
+          <div class="rv-lab" id="suMvpLab">Series MVP so far</div>
+          <div class="su-mvp-name rv-hd" id="suMvpName"></div>
+          <div class="su-mvp-line" id="suMvpLine"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
+  <script src="../sdk/rivalry-bind.js"></script>
+  <script src="../sdk/rivalry-fit.js"></script>
+  <script>
+  (function () {
+    "use strict";
+    var $ = function (id) { return document.getElementById(id); };
+    var SIDE = { a: "var(--rv-team-blue)", b: "var(--rv-team-orange)" };
+
+    function el(tag, cls, text) {
+      var d = document.createElement(tag);
+      if (cls) d.className = cls;
+      if (text !== undefined && text !== null) d.textContent = String(text);
+      return d;
+    }
+    function setTile(node, team) {
+      var logo = (team && team.logo) || "";
+      node.classList.toggle("has-logo", !!logo);
+      node.style.backgroundImage = logo ? 'url("' + logo + '")' : "";
+    }
+    function n(v) { v = parseInt(v, 10); return isNaN(v) || v < 0 ? 0 : v; }
+    function otText(g) {
+      if (!g.ot) return "";
+      var s = n(g.otSeconds);
+      return s ? "OT +" + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") : "OT";
+    }
+    function plural(k, word) { return k + " " + word + (k === 1 ? "" : "s"); }
+
+    // Finished games as the panel sends them; anything malformed is skipped.
+    function gamesOf(c) {
+      var s = c.series || {};
+      return (Array.isArray(s.games) ? s.games : []).filter(function (g) {
+        return g && (g.winner === "a" || g.winner === "b");
+      });
+    }
+
+    // Series MVP: each player's stats summed over the games that carry them,
+    // highest total RL score first (it already weighs goals, saves and
+    // assists), then goals, then saves. Keyed by name AND side, so the same
+    // IGN on both teams never merges.
+    function seriesMvp(games) {
+      var tally = {};
+      games.forEach(function (g) {
+        (Array.isArray(g.players) ? g.players : []).forEach(function (p) {
+          if (!p || !p.name) return;
+          var key = p.side + "|" + p.name;
+          var t = tally[key] || (tally[key] = { name: p.name, side: p.side, score: 0, goals: 0, assists: 0, saves: 0 });
+          t.score += n(p.score); t.goals += n(p.goals); t.assists += n(p.assists); t.saves += n(p.saves);
+        });
+      });
+      var all = Object.keys(tally).map(function (k) { return tally[k]; });
+      all.sort(function (x, y) { return y.score - x.score || y.goals - x.goals || y.saves - x.saves; });
+      return all[0] || null;
+    }
+
+    function casterNames(c) {
+      var names = (Array.isArray(c.casters) ? c.casters : []).map(function (x) {
+        return x && String(x.name || "").trim();
+      }).filter(Boolean);
+      if (names.length < 2) return names.join("");
+      return names.slice(0, -1).join(", ") + " & " + names[names.length - 1];
+    }
+
+    var lastGamesKey = null;
+
+    function render(c) {
+      c = c || {};
+      var A = c.teamA || {}, B = c.teamB || {};
+      var bo = Math.max(1, n(c.bestOf) || 5);
+      var cap = Math.ceil((bo + 1) / 2);
+      var s = c.series || {};
+      var a = Math.min(cap, n(s.a)), b = Math.min(cap, n(s.b));
+      var decided = a >= cap || b >= cap;
+
+      // &nbsp;: the tag is inline-flex, which drops plain spaces next to the <b>s.
+      $("suFormat").innerHTML = "Best of&nbsp;<b>" + bo + "</b>&nbsp;· first to&nbsp;<b>" + cap + "</b>";
+      $("suRound").style.display = c.round ? "" : "none";
+      $("suLabel").textContent = decided ? "Series final" : "Series score";
+      $("numA").textContent = a;
+      $("numB").textContent = b;
+      setTile($("tileA"), A);
+      setTile($("tileB"), B);
+      ["a", "b"].forEach(function (side) {
+        var host = $("pips" + side.toUpperCase()), won = side === "a" ? a : b;
+        if (host.childElementCount !== cap) {
+          host.innerHTML = "";
+          for (var i = 0; i < cap; i++) host.appendChild(el("span"));
+        }
+        // Each side lights from its outside edge in, as on the gameplay scorebug.
+        Array.prototype.forEach.call(host.children, function (p, i) {
+          p.classList.toggle("on", side === "a" ? i < won : i >= cap - won);
+        });
+      });
+
+      // The game list rebuilds only when what it shows changed: the panel pushes
+      // the full payload on every keystroke, and a rebuild replays the entrance.
+      var games = gamesOf(c);
+      var next = Math.max(games.length, a + b) + 1;
+      var showNext = !decided && next <= bo;
+      var key = JSON.stringify([games.map(function (g) { return [g.winner, g.a, g.b, g.ot, g.otSeconds]; }),
+        A.name, B.name, A.logo, B.logo, showNext ? next : 0]);
+      if (key !== lastGamesKey) {
+        lastGamesKey = key;
+        var list = $("suGames");
+        list.innerHTML = "";
+        games.forEach(function (g, i) {
+          var team = g.winner === "a" ? A : B;
+          var row = el("div", "su-game");
+          row.style.animationDelay = (0.15 + i * 0.06) + "s";
+          row.appendChild(el("span", "g-n", "Game " + (i + 1)));
+          var tile = el("span", "rv-tile" + (g.winner === "b" ? " r" : ""));
+          tile.style.setProperty("--rv-side", SIDE[g.winner]);
+          setTile(tile, team);
+          row.appendChild(tile);
+          row.appendChild(el("span", "g-name rv-hd", team.name || (g.winner === "a" ? "Blue" : "Orange")));
+          row.appendChild(el("span", "g-score", n(g.a) + "-" + n(g.b)));
+          row.appendChild(el("span", "g-ot", otText(g)));
+          list.appendChild(row);
+        });
+        if (showNext) {
+          var up = el("div", "su-game");
+          up.style.animationDelay = (0.15 + games.length * 0.06) + "s";
+          up.appendChild(el("span", "g-n", "Game " + next));
+          up.appendChild(el("span"));
+          up.appendChild(el("span", "g-next", "Up next"));
+          list.appendChild(up);
+        }
+      }
+
+      var call = casterNames(c);
+      $("suCall").style.display = call ? "" : "none";
+      $("suCallNames").textContent = call;
+
+      var mvp = seriesMvp(games);
+      $("suMvp").style.display = mvp ? "" : "none";
+      if (mvp) {
+        $("suMvpLab").textContent = decided ? "Series MVP" : "Series MVP so far";
+        $("suMvp").style.setProperty("--rv-side", SIDE[mvp.side] || "var(--rv-slate)");
+        $("suMvpName").textContent = mvp.name;
+        var line = $("suMvpLine");
+        line.textContent = "";
+        [plural(mvp.goals, "goal"), plural(mvp.assists, "assist"), plural(mvp.saves, "save")].forEach(function (part, i) {
+          if (i) line.appendChild(el("i", "", "·"));
+          line.appendChild(document.createTextNode(part));
+        });
+      }
+    }
+
+    // Control-only scene: subscribe to the control bus (auto-mocks on file://).
+    var rl = RivalryOverlay.connect({ game: false });
+    RivalryBind(document.querySelector(".scene-root"), rl); // round tag
+    rl.onControl(render);
+    RivalryFit(".rv-stage");
+  })();
+  </script>
+</body>
+</html>

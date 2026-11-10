@@ -354,7 +354,31 @@
       startTime: "8:00 PM ET",
       teamA: { name: "GUARDIANS", logo: "", tag: "NA1", seed: "#1", record: "12-3" },
       teamB: { name: "SENTINELS", logo: "", tag: "NA2", seed: "#4", record: "9-6" },
-      series: { a: 1, b: 2 },
+      // The games behind the 1-2, as the panel sends them once added (the
+      // Series Update scene's list and series MVP).
+      series: { a: 1, b: 2, games: [
+        { a: 3, b: 1, winner: "a", ot: false, otSeconds: null, players: [
+          { name: "Comet", side: "a", goals: 2, assists: 0, saves: 1, shots: 4, score: 480, demos: 0 },
+          { name: "Volt", side: "a", goals: 1, assists: 1, saves: 2, shots: 2, score: 360, demos: 1 },
+          { name: "Nova", side: "a", goals: 0, assists: 2, saves: 3, shots: 1, score: 330, demos: 0 },
+          { name: "Razor", side: "b", goals: 1, assists: 0, saves: 2, shots: 3, score: 290, demos: 0 },
+          { name: "Echo", side: "b", goals: 0, assists: 1, saves: 2, shots: 2, score: 210, demos: 1 },
+          { name: "Drift", side: "b", goals: 0, assists: 0, saves: 1, shots: 1, score: 150, demos: 0 } ] },
+        { a: 2, b: 4, winner: "b", ot: false, otSeconds: null, players: [
+          { name: "Comet", side: "a", goals: 1, assists: 1, saves: 1, shots: 3, score: 360, demos: 0 },
+          { name: "Volt", side: "a", goals: 1, assists: 0, saves: 0, shots: 2, score: 250, demos: 0 },
+          { name: "Nova", side: "a", goals: 0, assists: 1, saves: 2, shots: 1, score: 230, demos: 1 },
+          { name: "Razor", side: "b", goals: 2, assists: 1, saves: 2, shots: 5, score: 560, demos: 0 },
+          { name: "Echo", side: "b", goals: 1, assists: 1, saves: 1, shots: 2, score: 340, demos: 0 },
+          { name: "Drift", side: "b", goals: 1, assists: 0, saves: 3, shots: 2, score: 330, demos: 1 } ] },
+        { a: 1, b: 2, winner: "b", ot: true, otSeconds: 72, players: [
+          { name: "Comet", side: "a", goals: 1, assists: 0, saves: 2, shots: 3, score: 350, demos: 0 },
+          { name: "Volt", side: "a", goals: 0, assists: 1, saves: 1, shots: 1, score: 210, demos: 0 },
+          { name: "Nova", side: "a", goals: 0, assists: 0, saves: 4, shots: 2, score: 300, demos: 0 },
+          { name: "Razor", side: "b", goals: 1, assists: 0, saves: 1, shots: 4, score: 380, demos: 1 },
+          { name: "Echo", side: "b", goals: 1, assists: 1, saves: 2, shots: 3, score: 400, demos: 0 },
+          { name: "Drift", side: "b", goals: 0, assists: 1, saves: 2, shots: 1, score: 240, demos: 0 } ] },
+      ] },
       casters: [
         { name: "MASTER CHIEF", role: "PLAY-BY-PLAY", handle: "@masterchief", avatar: "" },
         { name: "LARA CROFT", role: "COLOR", handle: "@laracroft", avatar: "" },

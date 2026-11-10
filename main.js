@@ -1012,7 +1012,7 @@ async function handleObsAction(payload) {
   if (action === "setup-scenes") {
     const result = await setupObsScenes();
     // Report back so the control panel / setup wizard can confirm the one-click
-    // build ("Created 7 scenes in a new RIVALRY Casterverse collection") or show
+    // build ("Created 8 scenes in a new RIVALRY Casterverse collection") or show
     // the error, instead of the button firing into a void.
     if (bridgeHandle && bridgeHandle.broadcastControl) {
       bridgeHandle.broadcastControl({ type: "obs-action-result", payload: { action, ...result } });

@@ -57,6 +57,7 @@ scene so a producer can pick one per slot.
 | `up-next` | Schedule / upcoming matches | `["control"]` |
 | `gameplay` | Live in-match overlay (scorebug, boost, stat pops) | `["game", "control"]` |
 | `postgame` | Post-match results / stats (replaces in-game screen) | `["game", "control"]` |
+| `series-update` | Between games: series score, each game's result, series MVP so far | `["control"]` |
 | `chrome` | Always-on persistent frame (rails, ticker, lower thirds, wipe), layered over every scene | `["control"]` |
 | `standings` | Circuit standings table (dark-launched; renders once the league API serves standings) | `["control"]` |
 | `bracket` | Playoff bracket (type reserved; no shipped scene in v1.0, returns for playoffs) | `["control"]` |

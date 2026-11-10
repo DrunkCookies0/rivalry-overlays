@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "rivalry-series-update",
+  "name": "Series Update",
+  "author": "RIVALRY",
+  "version": "1.0.0",
+  "scene": "series-update",
+  "entry": "index.html",
+  "needs": [
+    "control"
+  ],
+  "contract": "1.x",
+  "description": "Series Update: the series score, each game's result and the series MVP so far (The Rivalry brand).",
+  "approval": {
+    "algo": "ed25519",
+    "contentHash": "b413d6d2a3a7f13c6a0a61b7d95af7c72960eb3b0c2fcb47d47e5cf373803c34",
+    "signature": "MoxY/4Ap7ulbuf17m6eE6Hkzp0tZUnjZz2VSwpnURe5Iqqa3ZYZb081U7jYgvkGSG3z/baCH52bDHZ2Qwl+iCQ==",
+    "keyId": "c0a7dcbac0f9b754",
+    "signedAt": "2026-11-10T14:27:50.227Z"
+  }
+}

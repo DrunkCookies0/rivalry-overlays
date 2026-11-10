@@ -104,6 +104,7 @@ const SCENE_CHECKS = {
   "rivalry-match-preview": { selector: ".mp-name", description: "team name node" },
   "rivalry-starting-soon": { selector: ".ss-name", description: "team name node" },
   "rivalry-up-next": { selector: ".un-list", description: "up-next match list" },
+  "rivalry-series-update": { selector: ".su-games", description: "series game list" },
   "rivalry-casters": { selector: ".cs-frame", description: "caster cam frame" },
   "rivalry-postgame": { selector: ".pg-boards", description: "team stat boards" },
   "rivalry-brb": { selector: ".brb-title", description: "BE RIGHT BACK title" },

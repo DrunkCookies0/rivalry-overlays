@@ -287,9 +287,9 @@ test("duplicate overlay names get suffixed source names that scene items still r
   }
 });
 
-test("OBS_SCENE_NAMES covers the 7 switchable broadcast scenes, Starting Soon first, no bracket", () => {
+test("OBS_SCENE_NAMES covers the 8 switchable broadcast scenes, Starting Soon first, no bracket", () => {
   const keys = Object.keys(OBS_SCENE_NAMES);
-  assert.equal(keys.length, 7);
+  assert.equal(keys.length, 8);
   assert.equal(keys[0], "starting-soon");
   assert.equal(OBS_SCENE_NAMES["gameplay"], "RIVALRY - Live");
   assert.ok(!("bracket" in OBS_SCENE_NAMES), "bracket is removed until playoffs");
