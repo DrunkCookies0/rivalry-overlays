@@ -308,6 +308,31 @@
       </details>
     </div>
 
+    <!-- Finished games for the Series Update scene (game list + series MVP).
+         The app catches each game's result from Rocket League; nothing reaches
+         the scene until it is added here. -->
+    <div class="card full v-show">
+      <h2>Game results <span class="muted-note">(Series Update scene)</span></h2>
+      <div id="gameCatch" style="display:none;margin:4px 0 10px;padding:10px 12px;border:1px solid var(--rivalry);">
+        <div id="gameCatchText"></div>
+        <div class="row" style="gap:8px;margin-top:8px;">
+          <button class="mini" id="gameCatchAdd" type="button" style="background:var(--rivalry);color:var(--on-accent);">Add to series</button>
+          <button class="mini" id="gameCatchDismiss" type="button">Dismiss</button>
+        </div>
+      </div>
+      <div id="gamesList"></div>
+      <div class="muted-note" id="gamesNote" style="margin-top:8px;">When a game ends, the app catches the final score and stats from Rocket League and asks here first. Adding a game gives its winner a series win; Remove takes it back.</div>
+      <details class="adv">
+        <summary>Add a game by hand</summary>
+        <div class="row" style="gap:10px;align-items:flex-end;">
+          <div style="flex:1"><label>Team A goals</label><input type="number" id="gmA" min="0" max="99" value="0" /></div>
+          <div style="flex:1"><label>Team B goals</label><input type="number" id="gmB" min="0" max="99" value="0" /></div>
+          <div style="flex:1"><label><input type="checkbox" id="gmOT" /> Overtime</label></div>
+          <div style="flex:1"><button class="mini" id="gmAdd" type="button">Add game</button></div>
+        </div>
+      </details>
+    </div>
+
     <div class="card full v-setup">
       <h2>Casters <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:11px;">(1-3 casters, blank rows hide)</span></h2>
       <div class="muted-note" style="line-height:1.65;margin-bottom:12px;">
@@ -485,7 +510,8 @@ const CONTROL_WS = "ws://localhost:49777";
 let ws = null, connected = false;
 const $ = (id) => document.getElementById(id);
 const state = {
-  series:{a:0,b:0}, queue:[], queueActive:null,
+  // games: the finished games the producer added (Game results card).
+  series:{a:0,b:0,games:[]}, queue:[], queueActive:null,
   // The loaded league match (server lock status: GET /league/lock shape).
   // This is the ONLY source of team identity — there is no manual entry.
   match: null,
@@ -654,7 +680,7 @@ function payload(){
       teamA: { name:a.name, logo:a.logo, tag:"", seed:$("seedA").value.trim(), record:$("recordA").value.trim() || a.record, roster:rosterNames(a) },
       teamB: { name:b.name, logo:b.logo, tag:"", seed:$("seedB").value.trim(), record:$("recordB").value.trim() || b.record, roster:rosterNames(b) },
       bestOf: parseInt($("bestOf").value, 10) || 5,
-      series: { a: state.series.a, b: state.series.b },
+      series: { a: state.series.a, b: state.series.b, games: state.series.games },
       eventTitle: $("eventTitle").value,
       round: $("round").value,
       startTime: $("startTime").value,
@@ -1006,6 +1032,8 @@ function hydrateControlForm(p){
   if (p.series){
     state.series.a = p.series.a|0; state.series.b = p.series.b|0;
     $("seriesA").textContent = state.series.a; $("seriesB").textContent = state.series.b;
+    state.series.games = (Array.isArray(p.series.games) ? p.series.games : []).map(cleanGame).filter(Boolean);
+    renderGames();
   }
   setVal("eventTitle", p.eventTitle); setVal("round", p.round); setVal("startTime", p.startTime);
   setVal("kickoff", hhmm(p.kickoffAt));
@@ -1090,6 +1118,10 @@ function connect(){
         const el = $("obsSetupResult");
         el.style.color = "#f1c40f";
         el.textContent = "Scene switch failed: " + (m.payload.error || "unknown error");
+      } else if (m && m.type === "game-result") {
+        // The app caught a finished game (or another panel just handled it: null).
+        pendingResult = m.payload || null;
+        renderPendingResult();
       } else if (m && m.type === "rl-status") {
         rlLive = !!(m.payload && m.payload.connected);
         setStatus();
@@ -1223,6 +1255,9 @@ function renderMatchLock(){
     if (t.logo){ img.src = t.logo; img.style.display = "inline-block"; }
     else { img.removeAttribute("src"); img.style.display = "none"; }
   });
+  // The game list and a caught result name the winners by team.
+  renderGames();
+  renderPendingResult();
 }
 
 function leagueErrorText(err){
@@ -1464,8 +1499,9 @@ async function useLeagueMatch(matchId){
       $("seedA").value = ""; $("seedB").value = "";
       // Series score is tonight's count, which the league doesn't track: a
       // freshly locked match always starts 0-0 and the operator drives it.
-      state.series.a = 0; state.series.b = 0;
+      state.series.a = 0; state.series.b = 0; state.series.games = [];
       $("seriesA").textContent = "0"; $("seriesB").textContent = "0";
+      renderGames();
       if (d.event && d.event.composedTitle) $("eventTitle").value = d.event.composedTitle.toUpperCase();
       if (d.event && d.event.roundLabel) $("round").value = d.event.roundLabel.toUpperCase();
       if (d.scheduledDate) $("startTime").value = new Date(d.scheduledDate).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
@@ -1620,17 +1656,127 @@ $("swapTeams").addEventListener("click", () => {
   });
   const s = state.series.a; state.series.a = state.series.b; state.series.b = s;
   $("seriesA").textContent = state.series.a; $("seriesB").textContent = state.series.b;
+  // The games follow their teams too: goals, winner and each player's side.
+  const flip = (t) => (t === "a" ? "b" : "a");
+  state.series.games = state.series.games.map(g => ({ ...g, a: g.b, b: g.a, winner: flip(g.winner),
+    players: g.players.map(p => ({ ...p, side: flip(p.side) })) }));
+  renderGames();
   renderMatchLock();
   push();
 });
 $("resetSeries").addEventListener("click", () => {
-  state.series.a = 0; state.series.b = 0;
+  state.series.a = 0; state.series.b = 0; state.series.games = [];
   $("seriesA").textContent = "0"; $("seriesB").textContent = "0";
+  renderGames();
   push();
+});
+
+// ---- Game results (Series Update scene) -----------------------------------
+// Each finished game rides in series.games (CONTRACT.md): the Series Update
+// scene's game list and series MVP. The app catches results off the RL feed
+// (bridge/game-results.js) and sends them here as "game-result"; nothing is
+// added until the producer says so. Adding a game gives its winner a series
+// win and Remove takes it back, so the list and the steppers agree.
+let pendingResult = null;
+function otText(g){
+  if (!g.ot) return "";
+  const s = g.otSeconds | 0;
+  return s ? "OT +" + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") : "OT";
+}
+function cleanGame(g){
+  if (!g || typeof g !== "object") return null;
+  const n = (v, max) => Math.max(0, Math.min(max, parseInt(v, 10) || 0));
+  const a = n(g.a, 99), b = n(g.b, 99);
+  const winner = g.winner === "a" || g.winner === "b" ? g.winner : (a !== b ? (a > b ? "a" : "b") : null);
+  if (!winner) return null;
+  const players = (Array.isArray(g.players) ? g.players : [])
+    .filter(p => p && String(p.name || "").trim() && (p.side === "a" || p.side === "b")).slice(0, 8)
+    .map(p => ({ name: String(p.name).trim().slice(0, 40), side: p.side, goals: n(p.goals, 99), assists: n(p.assists, 99),
+      saves: n(p.saves, 99), shots: n(p.shots, 99), score: n(p.score, 99999), demos: n(p.demos, 99) }));
+  return { a, b, winner, ot: !!g.ot, otSeconds: g.ot && g.otSeconds > 0 ? Math.round(g.otSeconds) : null, players };
+}
+function gamesNote(text){
+  const el = $("gamesNote");
+  if (!gamesNote._base) gamesNote._base = el.textContent;
+  el.textContent = text;
+  clearTimeout(gamesNote._t);
+  gamesNote._t = setTimeout(() => { el.textContent = gamesNote._base; }, 5000);
+}
+function addGame(raw){
+  const g = cleanGame(raw);
+  if (!g) { gamesNote("A game can't end level: one team needs more goals."); return false; }
+  const bo = Math.max(1, parseInt($("bestOf").value, 10) || 5);
+  if (state.series.games.length >= bo) { gamesNote("That's every game of a best of " + bo + " already."); return false; }
+  state.series.games.push(g);
+  const t = g.winner;
+  state.series[t] = Math.min(maxFor(t), state.series[t] + 1);
+  $("series" + t.toUpperCase()).textContent = state.series[t];
+  renderGames(); push();
+  return true;
+}
+function removeGame(i){
+  const g = state.series.games.splice(i, 1)[0];
+  if (g){
+    state.series[g.winner] = Math.max(0, state.series[g.winner] - 1);
+    $("series" + g.winner.toUpperCase()).textContent = state.series[g.winner];
+  }
+  renderGames(); push();
+}
+function renderGames(){
+  const key = JSON.stringify([state.series.games, displayTeam("a").name, displayTeam("b").name]);
+  if (key === renderGames._key) return;
+  renderGames._key = key;
+  const host = $("gamesList");
+  host.innerHTML = "";
+  if (!state.series.games.length){
+    host.innerHTML = '<span class="muted-note">No games added yet.</span>';
+    return;
+  }
+  state.series.games.forEach((g, i) => {
+    const row = document.createElement("div");
+    row.className = "scene-row";
+    const nm = document.createElement("span");
+    nm.className = "nm"; nm.style.minWidth = "80px";
+    nm.textContent = "Game " + (i + 1);
+    row.appendChild(nm);
+    const info = document.createElement("span");
+    info.className = "muted-note"; info.style.flex = "1";
+    info.textContent = (displayTeam(g.winner).name || "Team " + g.winner.toUpperCase()) + " won  ·  " + g.a + "-" + g.b +
+      (g.ot ? "  ·  " + otText(g) : "") + (g.players.length ? "" : "  ·  added by hand");
+    row.appendChild(info);
+    const del = document.createElement("button");
+    del.className = "mini"; del.textContent = "Remove";
+    del.addEventListener("click", () => removeGame(i));
+    row.appendChild(del);
+    host.appendChild(row);
+  });
+}
+function renderPendingResult(){
+  const box = $("gameCatch");
+  const g = pendingResult && cleanGame(pendingResult);
+  box.style.display = g ? "" : "none";
+  if (!g) return;
+  const who = displayTeam(g.winner).name || "Team " + g.winner.toUpperCase();
+  $("gameCatchText").textContent = "Game " + (state.series.games.length + 1) + " just ended: " + who + " won " +
+    g.a + "-" + g.b + (g.ot ? ", " + otText(g) : "") + ". Add it to the series?";
+}
+function resultDone(){
+  if (pendingResult && connected && ws.readyState === ws.OPEN)
+    ws.send(JSON.stringify({ type: "game-result-done", payload: { id: pendingResult.id } }));
+  pendingResult = null;
+  renderPendingResult();
+}
+$("gameCatchAdd").addEventListener("click", () => { if (pendingResult && addGame(pendingResult)) resultDone(); });
+$("gameCatchDismiss").addEventListener("click", resultDone);
+$("gmAdd").addEventListener("click", () => {
+  if (addGame({ a: $("gmA").value, b: $("gmB").value, ot: $("gmOT").checked })){
+    $("gmA").value = 0; $("gmB").value = 0; $("gmOT").checked = false;
+  }
 });
 
 renderScenes();
 renderQueue();
+renderGames();
 
 // The lock is server state: seed it before (and independent of) the control
 // bus, so a reopened panel shows the on-air match even if the bus is slow.
