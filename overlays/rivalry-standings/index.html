@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>RIVALRY — Standings</title>
+<title>RIVALRY · Standings</title>
 <!--
   DARK-LAUNCHED (2026-08-01): built against Ask 1 in ASKS-FOR-CYNICAL.md
   before the standings endpoint exists. The scene is signed and testable (mock
@@ -14,75 +14,63 @@
   Consumes the additive `standings` control field (see overlays/CONTRACT.md):
   rows arrive in the server's official order and are NEVER re-sorted here, so
   the broadcast cannot disagree with the site about positions.
+
+  The Rivalry brand (2026-11 rebrand), after the broadcast concept's
+  standings: the top band, "Standings." and a ruled table (# · team · W · L ·
+  win% · GW · GL · +/-, plus points when the league sends them, since they may
+  be what the order is by). The two teams on air get the Emerald tint. The
+  concept's "this week" panel waits on Ask 3 (no results route yet), and its
+  playoff line waits on the league saying how many teams advance. The chrome
+  sits on top of this scene, so everything stays inside the 1792x1008 window.
 -->
 <link rel="stylesheet" href="../shared/rivalry-theme.css" />
+<link rel="stylesheet" href="../../assets/brand/rivalry-brand.css" />
 <style>
 html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;}
-.scene-root[data-scene="standings"]{position:absolute;inset:0;overflow:hidden;font-family:var(--rv-font-body);color:var(--rv-ink);background:var(--rv-jet-black);}
-.st-bg{position:absolute;inset:0;background:radial-gradient(120% 100% at 16% 0%,var(--rv-surface-2) 0%,var(--rv-yale-blue) 34%,var(--rv-jet-black) 80%,#091820 100%);}
-.st-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(47,125,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(47,125,255,.05) 1px,transparent 1px);background-size:44px 44px;-webkit-mask-image:radial-gradient(120% 100% at 30% 30%,#000 55%,transparent 100%);mask-image:radial-gradient(120% 100% at 30% 30%,#000 55%,transparent 100%);}
-.st-lines{position:absolute;inset:-20%;background:repeating-linear-gradient(115deg,transparent 0 100px,rgba(241,238,238,.03) 100px 102px);animation:stDrift 21s linear infinite;}
-@keyframes stDrift{from{transform:translateX(0);}to{transform:translateX(102px);}}
-.st-glow{position:absolute;right:-6%;top:8%;width:680px;height:680px;border-radius:50%;background:radial-gradient(circle,rgba(241,196,15,.18),transparent 64%);filter:blur(8px);}
+.scene-root[data-scene="standings"]{position:absolute;inset:0;overflow:hidden;background:var(--rv-coal);color:var(--rv-chalk);font-family:var(--rv-font-body);}
+.st-h{position:absolute;left:150px;top:206px;margin:0;font-size:130px;line-height:.86;}
 
-/* Frame insets respect the chrome safe area (rails 64, ticker 72) plus
-   breathing room; see overlays/shared/rivalry-geometry.js. */
-.st-frame{position:absolute;left:112px;right:112px;top:44px;bottom:110px;display:flex;flex-direction:column;}
-.st-top{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:24px;}
-.st-kick{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:26px;letter-spacing:.34em;text-transform:uppercase;color:var(--rv-muted);margin-bottom:2px;display:block;}
-.st-title{margin:0;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:96px;line-height:.88;text-transform:uppercase;color:var(--rv-white-smoke);text-shadow:0 10px 28px rgba(0,0,0,.65);animation:stIn .7s var(--rv-ease-bounce) both;}
-.st-title em{font-style:italic;color:var(--rv-gold);text-shadow:0 0 30px rgba(241,196,15,.5),0 10px 28px rgba(0,0,0,.65);}
-@keyframes stIn{from{opacity:0;transform:translateX(-40px) skewX(-8deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
-.st-underbar{display:block;margin-top:12px;width:340px;height:7px;background:linear-gradient(90deg,var(--rv-blue),var(--rv-teal) 60%,var(--rv-gold));transform:skewX(-12deg);transform-origin:left;box-shadow:0 0 20px rgba(47,125,255,.5);animation:stWipe .8s .2s var(--rv-ease-wipe) both;}
-@keyframes stWipe{from{transform:skewX(-12deg) scaleX(0);}to{transform:skewX(-12deg) scaleX(1);}}
-.st-brand{display:flex;flex-direction:column;gap:3px;text-align:right;padding-bottom:8px;}
-.st-league{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:24px;letter-spacing:.14em;text-transform:uppercase;}
-.st-circuit{font-family:var(--rv-font-display);font-style:italic;font-weight:700;font-size:15px;letter-spacing:.20em;text-transform:uppercase;color:var(--rv-gold);}
-/* <b> in the event title: one Exo 2 step up (800 is loaded) from the 700 line */
-.st-circuit b{font-weight:800;}
+/* The table: a mono header row, then 52px rows on 1px Slate rules. Fixed
+   columns so every row lines up; the team name takes whatever is left. */
+.st-table{position:absolute;left:150px;right:150px;top:350px;}
+.st-head,.st-row{display:grid;grid-template-columns:80px 1fr 90px 90px 150px 100px 100px 110px var(--st-pts,0px);align-items:center;column-gap:12px;padding:0 16px;box-sizing:border-box;}
+.st-table:not(.has-pts){--st-pts:0px;}
+.st-table.has-pts{--st-pts:110px;}
+.st-head{height:36px;border-bottom:1px solid var(--rv-slate);}
+.st-head span{font:400 13px/1 var(--rv-font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--rv-chalk-dim);}
+.st-head .n,.st-row .n{text-align:right;}
+.st-table:not(.has-pts) .pts{display:none;}
+.st-list{display:flex;flex-direction:column;}
+.st-row{height:52px;border-bottom:1px solid var(--rv-slate);animation:stIn .4s cubic-bezier(.2,.8,.2,1) both;}
+@keyframes stIn{from{opacity:0;transform:translateX(-12px);}to{opacity:1;transform:none;}}
+.st-row.live{background:var(--rv-emerald-tint);}
+.st-pos{font:700 24px/1 var(--rv-font-mono);color:var(--rv-chalk-dim);}
+.st-row.live .st-pos{color:var(--rv-emerald);}
+.st-name{min-width:0;font:600 26px/1 var(--rv-font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.st-num{font:400 24px/1 var(--rv-font-mono);text-align:right;white-space:nowrap;}
+.st-num.pts{font-weight:700;}
 
-.st-list{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:12px;}
-.st-row{flex:0 1 84px;min-height:56px;display:flex;align-items:center;gap:24px;padding:0 34px;background:linear-gradient(100deg,var(--rv-surface-1),var(--rv-jet-black));box-shadow:0 10px 28px rgba(0,0,0,.45);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));border-left:8px solid var(--rv-blue);animation:stRow .55s var(--rv-ease-wipe) both;}
-.st-row.p1{border-left-color:var(--rv-gold);}
-.st-row.p2{border-left-color:var(--rv-teal);}
-@keyframes stRow{from{opacity:0;transform:translateX(-36px) skewX(-3deg);}to{opacity:1;transform:translateX(0) skewX(0);}}
-.st-pos{font-family:var(--rv-font-stat);font-weight:700;font-size:38px;color:rgba(241,196,15,.6);min-width:58px;}
-.st-name{flex:1 1 auto;font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:42px;line-height:1;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--rv-white-smoke);text-shadow:0 4px 14px rgba(0,0,0,.7);}
-.st-rec{font-family:var(--rv-font-stat);font-weight:700;font-size:34px;min-width:130px;text-align:right;color:var(--rv-white-smoke);}
-.st-games{font-family:var(--rv-font-stat);font-size:20px;min-width:120px;text-align:right;color:var(--rv-muted);}
-.st-streak{font-family:var(--rv-font-stat);font-weight:700;font-size:20px;min-width:64px;text-align:right;}
-.st-streak.w{color:var(--rv-green);} .st-streak.l{color:var(--rv-red);}
-/* Never shrinks: a very long roster name squeezed "12 PTS" onto two lines; the
-   name (ellipsized) now takes all of the squeeze. */
-.st-pts{flex:0 0 auto;font-family:var(--rv-font-stat);font-weight:700;font-size:30px;min-width:90px;text-align:right;color:var(--rv-gold);}
-
-.st-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
-.st-empty .e1{font-family:var(--rv-font-display);font-style:italic;font-weight:800;font-size:34px;letter-spacing:.08em;text-transform:uppercase;color:var(--rv-muted);}
-.st-empty .e2{font-family:var(--rv-font-stat);font-size:16px;letter-spacing:.14em;color:rgba(138,160,182,.7);}
-.st-updated{font-family:var(--rv-font-stat);font-size:13px;letter-spacing:.16em;color:rgba(138,160,182,.7);text-align:right;margin-top:12px;}
+.st-empty{display:flex;align-items:center;height:104px;padding:0 16px;border-bottom:1px solid var(--rv-slate);
+  font:400 18px/1.2 var(--rv-font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--rv-chalk-dim);}
+.st-updated{margin-top:16px;padding:0 16px;}
 </style>
 </head>
 <body>
   <div class="rv-stage">
     <div class="scene-root" data-scene="standings">
-      <div class="st-bg"></div>
-      <div class="st-grid"></div>
-      <div class="st-lines"></div>
-      <div class="st-glow"></div>
-      <div class="st-frame">
-        <header class="st-top">
-          <div>
-            <span class="st-kick" id="stKick">CIRCUIT</span>
-            <h1 class="st-title">STAND<em>INGS</em></h1>
-            <span class="st-underbar"></span>
-          </div>
-          <div class="st-brand">
-            <span class="st-league" id="stLeague">RIVALRY</span>
-            <span class="st-circuit" id="stCircuit"></span>
-          </div>
-        </header>
+      <img class="rv-lockup" src="../../assets/brand/lockup-horizontal-emerald-on-dark.svg" alt="The Rivalry" />
+      <div class="rv-tags">
+        <span class="rv-tag ln" id="stCircuit"></span>
+      </div>
+      <h1 class="st-h rv-hd">Standings.</h1>
+      <div class="st-table" id="stTable">
+        <div class="st-head">
+          <span>#</span><span>Team</span>
+          <span class="n">W</span><span class="n">L</span><span class="n">Win%</span>
+          <span class="n">GW</span><span class="n">GL</span><span class="n">+/-</span><span class="n pts">Pts</span>
+        </div>
         <section class="st-list" id="stList"></section>
-        <div class="st-updated" id="stUpdated"></div>
+        <div class="st-updated rv-lab" id="stUpdated"></div>
       </div>
     </div>
   </div>
@@ -92,7 +80,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   <script>
   (function () {
     "use strict";
-    var MAX_ROWS = 8;
+    // Ten rows fill the window above the ticker; the league's order beyond that
+    // is cut, never re-sorted.
+    var MAX_ROWS = 10;
     var $ = function (id) { return document.getElementById(id); };
 
     function el(tag, cls, text) {
@@ -109,55 +99,81 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
         .replace(/&lt;(\/?)b&gt;/gi, "<$1b>");
     }
 
+    // gamesRecord is "GW-GL" from the normalizer (league-client.js); "" when the
+    // league sent no game counts, and then GW, GL and +/- stay blank.
+    function games(r) {
+      var m = /^(\d+)-(\d+)$/.exec(String(r.gamesRecord || ""));
+      return m ? { w: +m[1], l: +m[2] } : null;
+    }
+    function winPct(r) {
+      var w = Number(r.wins) || 0, l = Number(r.losses) || 0;
+      return w + l ? (100 * w / (w + l)).toFixed(1) + "%" : "";
+    }
+    function diff(g) {
+      if (!g) return "";
+      var d = g.w - g.l;
+      return d > 0 ? "+" + d : String(d);
+    }
+    function norm(s) { return String(s || "").trim().toLowerCase(); }
+
     var lastRowsKey = null;
 
     function render(c) {
-      var brand = (c.brand && c.brand.leagueName) || "RIVALRY";
-      $("stLeague").textContent = brand.toUpperCase();
+      c = c || {};
       var s = c.standings;
       var list = $("stList");
-      var rows = s && Array.isArray(s.rows) ? s.rows : [];
+      var rows = s && Array.isArray(s.rows) ? s.rows.slice(0, MAX_ROWS) : [];
       var circuitLine = s && s.circuit
-        ? [s.circuit.season, s.circuit.nameShort || s.circuit.name, s.circuit.tier].filter(Boolean).join(" • ")
+        ? [s.circuit.season, s.circuit.nameShort || s.circuit.name, s.circuit.tier].filter(Boolean).join(" · ")
         : "";
-      $("stCircuit").innerHTML = titleHtml((circuitLine || c.eventTitle || "").toUpperCase());
-      $("stKick").textContent = rows.length ? "CIRCUIT" : "";
+      var tag = circuitLine || c.eventTitle || "";
+      $("stCircuit").innerHTML = titleHtml(tag);
+      $("stCircuit").style.display = tag ? "" : "none";
       // An unparseable updatedAt (e.g. epoch digits) would air "UPDATED INVALID DATE".
       var updated = rows.length && s.updatedAt ? new Date(s.updatedAt) : null;
       $("stUpdated").textContent = updated && !isNaN(updated)
-        ? "UPDATED " + updated.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).toUpperCase()
+        ? "Updated " + updated.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
         : "";
+      var hasPts = rows.some(function (r) { return r.points !== null && r.points !== undefined; });
+      $("stTable").classList.toggle("has-pts", hasPts);
+
       // The panel pushes the FULL payload on every keystroke and the bridge replays
-      // it on reconnect: rebuilding every time restarted each row's stRow entrance,
+      // it on reconnect: rebuilding every time restarted each row's entrance,
       // blanking the board on air during any unrelated edit. Rebuild only when what
       // the rows render actually changed.
-      var key = JSON.stringify(rows.slice(0, MAX_ROWS).map(function (r) {
-        return [r.position, r.name, r.record, r.gamesRecord, r.streak, r.points];
+      var key = JSON.stringify(rows.map(function (r) {
+        return [r.position, r.name, r.wins, r.losses, r.gamesRecord, r.points];
       }));
-      if (key === lastRowsKey) return;
-      lastRowsKey = key;
-      list.innerHTML = "";
-      if (!rows.length) {
-        var empty = el("div", "st-empty");
-        empty.appendChild(el("div", "e1", "Waiting for league standings"));
-        empty.appendChild(el("div", "e2", "THIS BOARD FILLS ITSELF ONCE THE LEAGUE PUBLISHES STANDINGS"));
-        list.appendChild(empty);
-        return;
+      if (key !== lastRowsKey) {
+        lastRowsKey = key;
+        list.innerHTML = "";
+        if (!rows.length) {
+          list.appendChild(el("div", "st-empty", "Standings fill in once the league publishes them"));
+        }
+        rows.forEach(function (r, i) {
+          // Server order IS the official order; position renders as sent.
+          var g = games(r);
+          var row = el("div", "st-row");
+          row.style.animationDelay = (0.1 + i * 0.05) + "s";
+          row.setAttribute("data-name", norm(r.name));
+          row.appendChild(el("span", "st-pos", r.position !== null && r.position !== undefined ? String(r.position).padStart(2, "0") : "--"));
+          row.appendChild(el("span", "st-name", r.name || "TBD"));
+          row.appendChild(el("span", "st-num", r.wins !== undefined && r.wins !== null ? r.wins : ""));
+          row.appendChild(el("span", "st-num", r.losses !== undefined && r.losses !== null ? r.losses : ""));
+          row.appendChild(el("span", "st-num", winPct(r)));
+          row.appendChild(el("span", "st-num", g ? g.w : ""));
+          row.appendChild(el("span", "st-num", g ? g.l : ""));
+          row.appendChild(el("span", "st-num", diff(g)));
+          row.appendChild(el("span", "st-num pts", hasPts && r.points !== null && r.points !== undefined ? r.points : ""));
+          list.appendChild(row);
+        });
       }
-      rows.slice(0, MAX_ROWS).forEach(function (r, i) {
-        // Server order IS the official order; position renders as sent.
-        var row = el("div", "st-row" + (r.position === 1 ? " p1" : r.position === 2 ? " p2" : ""));
-        row.style.animationDelay = (0.2 + i * 0.07) + "s";
-        row.appendChild(el("span", "st-pos", r.position !== null && r.position !== undefined ? String(r.position).padStart(2, "0") : "--"));
-        row.appendChild(el("span", "st-name", r.name || "TBD"));
-        row.appendChild(el("span", "st-rec", r.record || ""));
-        row.appendChild(el("span", "st-games", r.gamesRecord ? "(" + r.gamesRecord + ")" : ""));
-        var streak = el("span", "st-streak", r.streak || "");
-        if (/^W/i.test(r.streak || "")) streak.classList.add("w");
-        if (/^L/i.test(r.streak || "")) streak.classList.add("l");
-        row.appendChild(streak);
-        row.appendChild(el("span", "st-pts", r.points !== null && r.points !== undefined ? r.points + " PTS" : ""));
-        list.appendChild(row);
+      // The two teams on air, matched by name (the standings rows and the loaded
+      // match both carry the league's team name). Toggled on every push, so a
+      // team swap never rebuilds the board.
+      var live = [norm(c.teamA && c.teamA.name), norm(c.teamB && c.teamB.name)].filter(Boolean);
+      Array.prototype.forEach.call(list.querySelectorAll(".st-row"), function (row) {
+        row.classList.toggle("live", live.indexOf(row.getAttribute("data-name")) !== -1);
       });
     }
 
