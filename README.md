@@ -1,8 +1,8 @@
 # RIVALRY Casterverse
 
-The RIVALRY league's broadcast suite for Rocket League, shipped as a single Windows installer. It reads Rocket League's official Stats API (Psyonix's sanctioned broadcast interface), so it is EAC-safe: no mods, no injection, nothing touches the game. One install gives you 8 broadcast scenes, a control panel that docks inside OBS, live RIVALRY league data, and OBS integration that builds and switches your scenes for you.
+The RIVALRY league's broadcast suite for Rocket League, shipped as a single Windows installer. It reads Rocket League's official Stats API (Psyonix's sanctioned broadcast interface), so it is EAC-safe: no mods, no injection, nothing touches the game. One install gives you 8 broadcast scenes and an always-on frame in The Rivalry's brand, a control panel that docks inside OBS, live RIVALRY league data, and OBS integration that builds and switches your scenes for you.
 
-Current version: 0.6.x, heading to 1.0.0.
+Current version: 0.7.0 beta (The Rivalry rebrand), heading to 1.0.0.
 
 ---
 
@@ -27,22 +27,33 @@ To re-run the wizard later: tray icon, **Setup guide**. The app lives in the sys
 
 ## The scenes
 
-Each scene is a 1920x1080 OBS Browser Source. The scene collection wires all of them; URLs are one click away in the panel's Scenes card.
+Each scene is a 1920x1080 OBS Browser Source. The scene collection wires all of them; URLs are one click away in the panel's Scenes card. Every scene is drawn in The Rivalry brand; [DESIGN-SPEC.md](DESIGN-SPEC.md) has the colors, type, sizes and timings.
 
 | Scene | What it shows |
 |---|---|
-| Starting Soon | Pre-stream holding screen with event title, teams, and start time. |
-| Match Preview | Pre-match VS graphic with team names, logos, seeds, and records. |
-| Casters | Caster cam wall via VDO.Ninja (names, roles, handles, live cams). |
-| Gameplay | The tuned live overlay: scorebug, series pips, clock, boost, player tags, stat pops, kickoff countdown, and the full goal sequence. |
-| Post-Game Results | Box score and MVP built from the live feed, frozen the moment the match ends. |
-| Up Next | Upcoming matches, filled automatically from the broadcast schedule. |
-| Be Right Back | Break screen. |
-| Chrome | Always-on persistent frame: side rails, bottom ticker, lower thirds, and the branded wipe. |
+| Starting Soon | Pre-stream holding screen: a countdown to the first kickoff, tonight's first series and the casters. |
+| Casters | Caster cam desk via VDO.Ninja: one frame per cam, each caster's name and role on a plate below it. |
+| Match Preview | The two teams side by side: logos, names, records, seeds and rosters. |
+| Gameplay | The live overlay: scorebug, series boxes, clock, player boards with boost, stat pops, the spectated player's card and boost, kickoff countdown, and the full goal sequence with replay and stinger. |
+| Post-Game Results | Team totals and the player of the game, built from the live feed and frozen the moment the match ends. |
+| Series Update | Between games: the series score, every finished game, the next game, who's on the call and the series MVP so far. |
+| Up Next | Upcoming series, filled automatically from the broadcast schedule. |
+| Be Right Back | Break screen with the series score. |
+| Chrome | Always-on frame: the league on the left rail, socials on the right rail, the bottom ticker, lower thirds, and the brand stinger on scene switches. |
+
+Screenshots use made-up teams and casters. Every scene sits under the chrome, as it does in OBS.
+
+| | |
+|---|---|
+| [<img src="docs/img/scene-starting-soon.jpg" alt="Starting Soon" width="420">](docs/img/scene-starting-soon.jpg)<br>**Starting Soon** | [<img src="docs/img/scene-casters.jpg" alt="Casters" width="420">](docs/img/scene-casters.jpg)<br>**Casters** (the cams show through the frames) |
+| [<img src="docs/img/scene-match-preview.jpg" alt="Match Preview" width="420">](docs/img/scene-match-preview.jpg)<br>**Match Preview** | [<img src="docs/img/scene-gameplay.jpg" alt="Gameplay" width="420">](docs/img/scene-gameplay.jpg)<br>**Gameplay** (the game capture sits in the window) |
+| [<img src="docs/img/scene-gameplay-goal.jpg" alt="Gameplay goal banner" width="420">](docs/img/scene-gameplay-goal.jpg)<br>**Gameplay**, goal banner | [<img src="docs/img/scene-postgame.jpg" alt="Post-Game Results" width="420">](docs/img/scene-postgame.jpg)<br>**Post-Game Results** |
+| [<img src="docs/img/scene-series-update.jpg" alt="Series Update" width="420">](docs/img/scene-series-update.jpg)<br>**Series Update** | [<img src="docs/img/scene-up-next.jpg" alt="Up Next" width="420">](docs/img/scene-up-next.jpg)<br>**Up Next** |
+| [<img src="docs/img/scene-brb.jpg" alt="Be Right Back" width="420">](docs/img/scene-brb.jpg)<br>**Be Right Back** | |
 
 **About the Chrome scene:** it is not a scene you switch to. It is added in OBS as one browser source layered on top of every scene, so the rails, ticker, and lower thirds persist through scene switches. **Build RIVALRY scene collection** (and the downloadable scene-collection file) place it automatically, and the game capture is pre-scaled into the chrome's interior window: 1792x1008 at position 64,0, exactly 16:9, no letterboxing.
 
-There is no Bracket scene in v1.0. It lives in git history and returns for playoffs.
+There is no Bracket scene in v1.0. It lives in git history and returns for playoffs. A Standings scene is built but stays switched off until the league publishes standings.
 
 ---
 
@@ -60,9 +71,13 @@ Fields that stay operator-entered because the API does not carry them: **best-of
 
 The **Broadcast schedule** card lines up the whole night: add each series with its start time, and set the once-per-night season, circuit, and tier fields once. Loading a series from the schedule updates every scene at once, and the Up Next scene fills itself from the schedule. An importable JSON shape for schedules is documented in [SCHEDULE-SPEC.md](SCHEDULE-SPEC.md) (spec only for now).
 
+### Series results
+
+When a game ends, the app catches the final score, overtime and every player's stats from Rocket League, and the **Game results** card on the Show tab asks before anything changes. **Add to series** gives the winner a series win and lists the game on the Series Update scene; **Dismiss** drops it (a warm-up or a scrim, say). A missed game can be added by hand, and **Remove** takes a game and its series win back. Nothing reaches a scene until the producer adds it.
+
 ### Overlay looks (sets)
 
-Overlays ship in visual families. **Kinetic Bold** is the house look; community sets can provide alternate looks for some scene types. (Moldybanana's SC26 summer look was retired with the 0.7.0 rebrand.) Pick a look in the Overlays / Scenes card and rebuild the OBS scene collection; scene types the chosen look doesn't cover fall back to the house look automatically.
+Every scene ships in **The Rivalry** brand, the house look. Its set id stays `kinetic-bold` so saved settings keep working; the Kinetic Bold look itself and Moldybanana's SC26 summer look were retired with the 0.7.0 rebrand. Community sets can provide alternate looks for some scene types: with more than one look installed, pick one in the Overlays / Scenes card and rebuild the OBS scene collection, and scene types the chosen look doesn't cover fall back to the house look automatically.
 
 ### Caster cams
 

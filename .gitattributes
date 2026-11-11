@@ -35,3 +35,7 @@ overlays/**/*.ico   binary
 overlays/**/*.woff  binary
 overlays/**/*.woff2 binary
 overlays/**/*.ttf   binary
+
+# Repo screenshots (docs/img): never convert.
+docs/**/*.png       binary
+docs/**/*.jpg       binary
