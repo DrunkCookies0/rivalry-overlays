@@ -37,11 +37,13 @@ overlays/
 
 ### `set` (overlay looks)
 
-Overlays ship in visual families. `kinetic-bold` is the house set; community
+Overlays ship in visual families. `kinetic-bold` is the house set's id: since
+the 0.7.0 rebrand its scenes are drawn in The Rivalry brand, and the id stays so
+saved settings and manifests keep working. Community
 sets provide alternate looks for some or all scene
 types. The producer picks a look in the control panel; the OBS scene build
-takes ONE overlay per scene type — the preferred set's when it has one, the
-house set's otherwise — so a partial set still yields a complete show.
+takes ONE overlay per scene type (the preferred set's when it has one, the
+house set's otherwise), so a partial set still yields a complete show.
 
 ### `scene` types
 

@@ -11,7 +11,7 @@ a tag, what was installed locally, and the open decisions still on the table.
 | Thing                                 | State                                                                |
 | ------------------------------------- | -------------------------------------------------------------------- |
 | Repo                                  | github.com/DrunkCookies0/rivalry-overlays (default branch: `main`)   |
-| Current version                       | `0.6.x` on `feat/overlay-system`, heading to `1.0.0`                 |
+| Current version                       | `0.7.0` beta on `feat/overlay-system` (rebrand), heading to `1.0.0` |
 | Git tags                              | 37+ exist                                                            |
 | GitHub Releases                       | Beta prereleases exist, published by `pr-build.yml`                  |
 | CI workflow runs                      | Has fired many times (beta channel)                                  |

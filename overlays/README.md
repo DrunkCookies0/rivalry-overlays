@@ -22,7 +22,7 @@ goes live without DrunkCookies's review.
 | [sdk/rivalry-overlay-sdk.js](sdk/rivalry-overlay-sdk.js) | The browser runtime: connect, reconnect, normalize, mock, helpers. |
 | [sdk/rivalry-bind.js](sdk/rivalry-bind.js) | Declarative binder: `data-field`/`data-bg`/`data-mono`/`data-slot` → control feed. |
 | [sdk/rivalry-fit.js](sdk/rivalry-fit.js) | Scale-to-fit: scales the 1920×1080 design to any source size (16:9 preserved). |
-| [shared/rivalry-theme.css](shared/rivalry-theme.css) | Shared RIVALRY design tokens (`--rv-*`, fonts, Rivalry Cut). |
+| [shared/rivalry-theme.css](shared/rivalry-theme.css) | Shared RIVALRY design tokens (`--rv-*`). The house scenes then load [../assets/brand/rivalry-brand.css](../assets/brand/rivalry-brand.css), The Rivalry brand's colors, fonts and stinger (see [DESIGN-SPEC.md](../DESIGN-SPEC.md)). |
 | [_template/](_template/) | Copy this folder to start a new overlay. Works out of the box. |
 | keys/ | Signing keys (public committed, private gitignored). |
 

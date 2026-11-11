@@ -80,10 +80,10 @@ A useful community reference: https://github.com/zomlit/rocket-league-stats-api
 Project root (the repo root of `DrunkCookies0/rivalry-overlays`):
 
 > **Update:** the app is now multi-scene. The current scenes live in
-> `overlays/`, one signed folder per scene: 17 shipped scenes, 9 in the house
-> "Kinetic Bold" look (including the chrome frame and the dark-launched
-> standings scene) plus 8 in Moldybanana's "SC26" look (`rivalry-sc26-*`),
-> with a shared SDK (`overlays/sdk/`), a designer template
+> `overlays/`, one signed folder per scene: 10 shipped scenes in The Rivalry
+> brand (8 broadcast scenes, the chrome frame and the dark-launched standings
+> scene; the Kinetic Bold and SC26 looks were retired in 0.7.0; see
+> DESIGN-SPEC.md), with a shared SDK (`overlays/sdk/`), a designer template
 > (`overlays/_template/`), an Ed25519 signing gate enforced at serve time, and
 > a first-run setup wizard at `control/setup.html`. The `overlay/overlay.html`
 > described below has been removed from the repo; all work happens in
@@ -129,9 +129,11 @@ Project root (the repo root of `DrunkCookies0/rivalry-overlays`):
   (best-of, seeds, series score, casters) stay editable. Pushes state live over the relay
   (49777). Responsive so it works docked narrow.
 - `config/DefaultStatsAPI.ini` - reference copy of the snippet the app writes.
-- `assets/` - `tray.png` (system tray icon), `rivalry-logo.svg` (RV monogram, used by the
-  stinger), `rivalry-wordmark.svg` (used in the control panel header).
-- `build/icon.ico` - app + installer icon (RV monogram on the navy tile).
+- `assets/` - `brand/` (The Rivalry logo SVGs plus `rivalry-brand.css`, the brand's tokens,
+  fonts and the shared stinger), `fonts/` (self-hosted, OFL), `tray.png` (system tray icon).
+  `rivalry-logo.svg` and `rivalry-wordmark.svg` are pre-rebrand leftovers no scene draws.
+- `build/icon.ico` - app + installer icon (The Rivalry avatar; `tools/build-icons.js`
+  rasterizes it and `assets/tray.png` from `assets/brand/avatar-dark.svg`).
 - `README.md` - end-user + build + dock instructions.
 - `AUTO-UPDATE-HANDOFF.md` - deleted. Auto-update + CI shipped; see RELEASE-HANDOFF.md.
 
@@ -215,14 +217,15 @@ Add a Custom Browser Dock at `http://localhost:49080/`. The app must be running 
 
 ## 7. Theming / customization quick reference
 
-- Team names, logos, and colors come from the locked league match (match-only; no manual
-  team entry). Operator-owned fields (best-of, seeds, series score, casters, event title)
-  are set live in the control panel (no code change).
-- Overlay visual style lives in the `<style>` block of `overlays/rivalry-gameplay/index.html`
-  (CSS variables at the top: `--blue`, `--red`, `--panel`, `--gold`, etc.). Team accent
-  colors are driven by the loaded match via CSS variables.
-- The stinger uses `assets/rivalry-logo.svg`; swap that file to rebrand it.
-- App/installer icon is `build/icon.ico`; tray icon is `assets/tray.png`.
+- Team names and logos come from the locked league match (match-only; no manual team
+  entry). Team colors are the brand's fixed Blue (Team A) and Orange (Team B).
+  Operator-owned fields (best-of, seeds, series score, casters, event title) are set live
+  in the control panel (no code change).
+- The look lives in `assets/brand/rivalry-brand.css` (colors, fonts, the shared stinger);
+  each scene's layout is in its own `overlays/<scene>/index.html`. DESIGN-SPEC.md has the
+  whole spec. Re-sign a scene folder after any edit.
+- App/installer icon is `build/icon.ico`; tray icon is `assets/tray.png`. Both are built
+  from `assets/brand/avatar-dark.svg` by `tools/build-icons.js`.
 
 ---
 
