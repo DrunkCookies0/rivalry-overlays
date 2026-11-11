@@ -222,6 +222,12 @@ const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), "rivalry-verify-"));
 // The marker makes the migration a no-op, so hermetic actually means hermetic.
 const { MARKER } = require(path.join(REPO_ROOT, "bridge", "userdata-migrate"));
 fs.writeFileSync(path.join(userDataDir, MARKER), new Date().toISOString());
+// OBS off in the throwaway profile. The app's OBS link is on by default and
+// needs no password when OBS's WebSocket server has auth off, so without this a
+// gate run joins whatever OBS is open on this machine and keeps its Caster Cam
+// sources in step with the mock (re-pointing or removing a producer's real cams).
+// No check here needs OBS.
+fs.writeFileSync(path.join(userDataDir, "obs-settings.json"), JSON.stringify({ enabled: false }));
 
 function portInUse(port) {
   return new Promise((resolve) => {
