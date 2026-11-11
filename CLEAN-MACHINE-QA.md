@@ -35,7 +35,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
 ### 2. First launch
 
-- [ ] The app opens straight onto the 3-step setup wizard (no activation screen — access keys were retired in favor of the league key + match gate).
+- [ ] The app opens straight onto the 3-step setup wizard (no activation screen: access keys were retired in favor of the league key and match gate).
 
   **If not:** if anything else appears first, take a screenshot and call DrunkCookies.
 
@@ -47,7 +47,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **Expected:** the step turns green ("Rocket League feed is live", or "Connected to Rocket League" if you are not in a match, both count).
 
-  **If not:** click **Retry** once more with Rocket League fully closed. Still not green: Export diagnostics (step 13) and send to DrunkCookies.
+  **If not:** click **Retry** once more with Rocket League fully closed. Still not green: Export diagnostics (step 14) and send to DrunkCookies.
 
 ### 4. Wizard step 2: OBS
 
@@ -98,27 +98,35 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
 - [ ] Set **Best of** and seeds by hand (the league does not send those). Switch OBS to the **Live** scene. Start an exhibition or private match in Rocket League (playing or spectating, either works) and watch the overlay through at least one goal.
 
-  **Expected:** at kickoff, a kickoff countdown appears on the overlay. When a goal is scored: the goal flash fires, the goal banner shows the scorer, and the replay card appears over the replay. The scorebug score and clock track the game the whole way.
+  **Expected:** at kickoff, a kickoff countdown appears on the overlay. When a goal is scored: GOAL flashes over the scorebug, the goal banner shows the scorer, the replay gets a green frame and a replay card, and the stinger covers the cut back to live. The scorebug score and clock track the game the whole way.
 
   **If not:** if the overlay shows nothing at all during the match, wizard step 1 probably never went green: tray icon, **Setup guide**, re-check step 1 (Rocket League must have been restarted once after install). If the scorebug works but a goal graphic misbehaves, note exactly what you saw (or clip it) and send it to DrunkCookies with the diagnostics file. Boost meters showing `--` for players is normal unless you are the one spectating.
 
-### 10. Post-game box score
+### 10. Post-game stats
 
 - [ ] Finish the match (play it out or forfeit). Switch OBS to the **Post-Game** scene.
 
-  **Expected:** the box score is there, frozen from the moment the match ended, with player stats and the final score.
+  **Expected:** the stats are there, frozen from the moment the match ended: the final score, the team totals and the player of the game.
 
   **If not:** if the scene is blank or shows a stale match, refresh the scene's browser source. Still wrong: Export diagnostics and send to DrunkCookies, noting how the match ended (played out vs forfeit).
 
-### 11. Advance to series 2
+### 11. Add the game to the series
+
+- [ ] On the control panel's **Show** tab, find the **Game results** card. Click **Add to series**. Then switch OBS to **RIVALRY - Series Update**.
+
+  **Expected:** the card had already noticed the match end on its own and was asking "Game 1 just ended: ... Add it to the series?" with the right winner and score. After **Add to series**, the series score shows 1-0 to the winner, and the Series Update scene lists Game 1 with its score and the series MVP so far.
+
+  **If not:** if the card never asked, note how the match ended (played out vs forfeit) and add the game by hand under **Add a game by hand** so the rest of the checklist can go on. Send that note with the diagnostics file at the end: the app is meant to catch every finished game by itself.
+
+### 12. Advance to series 2
 
 - [ ] Click **Load next series** again.
 
-  **Expected:** the team cards flip to the second series' teams, the series score resets to 0-0, and Up Next updates.
+  **Expected:** the team cards flip to the second series' teams, the series score resets to 0-0, the Game results list empties, and Up Next updates.
 
   **If not:** same recovery as step 8: PUSH TO OVERLAY, refresh the affected browser source, then diagnostics if still wrong.
 
-### 12. Restart the app
+### 13. Restart the app
 
 - [ ] Right-click the tray icon, **Quit**. Confirm the tray icon is gone, then start RIVALRY Casterverse again from the Start menu.
 
@@ -126,7 +134,7 @@ Work top to bottom. Tick each box only when the "Expected" line actually happene
 
   **If not:** if the wizard reappears, or any typed value is gone, that is exactly the kind of bug this checklist exists to catch. Export diagnostics and send to DrunkCookies before touching anything else.
 
-### 13. Export diagnostics
+### 14. Export diagnostics
 
 - [ ] Right-click the tray icon and click **Export diagnostics** (it is also in the control panel).
 

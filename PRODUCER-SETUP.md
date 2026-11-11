@@ -95,11 +95,17 @@ The control panel is laid out top to bottom in the order you use it on a match n
    **Expected result:** the status reads **"Key OK"** followed by the masked key.
 2. Switch to the **Show** tab and, in the **Load your match** card, click **Find matches** (optionally type a team name first to narrow it).
    **Expected result:** tonight's real schedule appears, with circuit and "when" filter chips you can click to narrow the list.
+
+   ![The Load your match card listing matches, with circuit and "when" filter chips](docs/img/panel-match-finder.png)
+
 3. In the **Broadcast schedule** card, fill in **Season**, **Circuit**, and **Tier** once for the night.
 4. For each series on tonight's slate, in schedule order: find it in the match list and click **Add to queue** (or **Use now** for the one starting first).
    **Expected result:** the Broadcast schedule card lists the night's series in order, and **Up Next** fills itself from the schedule.
-5. Click **Load next series** to put series 1 on air. **Do this well before the stream starts** — until a match is loaded, the overlay sources in OBS show a "No league match is loaded" notice instead of scenes (they wake up on their own once you load one). Loading also caches the match to disk, which is what makes a league outage mid-show a non-event.
-   **Expected result:** the banner at the top of the match card shows the on-air pairing, and the Team A / Team B cards show names, logos, and records from the league; the series score resets to 0-0. The **Player Titles** card fills with each player's name and the title they picked on therivalry.gg, which is the line under their name on their goal banner; a player with no title there gets no line. The banner finds players by in-game name, so fix any name that differs. Loading or refreshing the match puts the site's names and titles back, so redo those fixes after each load.
+5. Click **Load next series** to put series 1 on air. **Do this well before the stream starts.** Until a match is loaded, the overlay sources in OBS show a "No league match is loaded" notice instead of scenes (they wake up on their own once you load one). Loading also caches the match to disk, which is what makes a league outage mid-show a non-event.
+   **Expected result:** the banner at the top of the match card shows the on-air pairing, and the Team A / Team B cards show names, logos, and records from the league; the series score resets to 0-0, and the schedule marks that series **ON AIR**. The **Player Titles** card fills with each player's name and the title they picked on therivalry.gg, which is the line under their name on their goal banner; a player with no title there gets no line. The banner finds players by in-game name, so fix any name that differs. Loading or refreshing the match puts the site's names and titles back, so redo those fixes after each load.
+
+   ![The Broadcast schedule card with series 1 on air and series 2 queued](docs/img/panel-schedule.png)
+
 6. Set **Best of** and the seeds by hand. The league data does not carry those, so they are always typed.
 7. Team names and logos are locked to the loaded match (that is the point). Records are editable if the league's number looks off. Then click **PUSH TO OVERLAY**.
 8. In the **Casters** card (on the **Setup** tab): set the VDO.Ninja room name, click **Generate caster links**, and send each caster their personal link (no accounts or installs on their end). Pick **Cams on screen**: Auto gives each caster their own frame (the house look keeps its two frames for a lone caster, so pick **1 cam** for one big frame); **1 cam** also puts two casters at one desk in a single frame with both names on its plate. A caster who shares a cam keeps their own feed loaded in OBS out of sight, so they are still heard. To cut a caster's cam and sound at once, clear their link before their name: a blanked name keeps their feed loaded for 15 seconds, so retyping it doesn't reconnect them.
@@ -110,17 +116,32 @@ The control panel is laid out top to bottom in the order you use it on a match n
 
 ### During the stream
 
-Use the scene deck buttons in the **OBS integration** card on the **Setup** tab (or click scenes in OBS directly, same thing). A typical night:
+Use the scene deck buttons in the **OBS integration** card on the **Setup** tab (or click scenes in OBS directly, same thing). Each switch runs under the brand stinger.
 
-1. **Starting Soon** while you wait for the hour.
+![The scene deck: one button per scene](docs/img/panel-scene-deck.png)
+
+A typical night:
+
+1. **Starting Soon** while you wait for the hour. It counts down to the first kickoff.
 2. **Casters** for the desk open.
 3. **Match Preview** for the head-to-head graphic.
-4. **Live** for the games. The scorebug, clock, boost, goal banners, replay cards, and kickoff countdown all run themselves off the game feed.
-5. **Post-Game** after each series; the box score freezes itself the moment the match ends.
-6. **Up Next** to tease what follows.
-7. Click **Load next series** in the Broadcast schedule card. The whole broadcast advances: teams, score reset, Up Next, all of it.
-8. Repeat from **Match Preview** (or **Casters**) for each series.
-9. **BRB** whenever you need a break.
+4. **Live** for each game. The scorebug, clock, boost, goal banners, replays, the stinger and the kickoff countdown all run themselves off the game feed.
+5. **Post-Game** when a game ends. Its stats freeze the moment the game ends.
+6. Back on the **Show** tab, the **Game results** card asks about the game that just ended. Check the score and click **Add to series**: the winner gets a series win and the game is listed on the Series Update scene. Click **Dismiss** for a game that doesn't count (a warm-up, say).
+7. **Series** between games: the series score, every game so far, the next game, who's on the call and the series MVP. Then back to **Live** for the next game.
+8. When the series is decided: **Up Next** to tease what follows.
+9. Click **Load next series** in the Broadcast schedule card. The whole broadcast advances: teams, score reset, the game list cleared, Up Next, all of it.
+10. Repeat from **Match Preview** (or **Casters**) for each series.
+11. **BRB** whenever you need a break.
+
+![The Game results card asking whether to add the game that just ended](docs/img/panel-game-results.png)
+
+**About the Game results card:**
+
+- Nothing reaches a scene until you click **Add to series**. A game the app saw by accident never lands in the series on its own.
+- A missed game: open **Add a game by hand**, type both scores, tick **Overtime** if it went there, and click **Add game**.
+- A wrong game: click **Remove** on its row. That also takes its series win back.
+- **Swap teams A / B** moves the games with their teams; **Reset series 0-0** clears them.
 
 Replays are collected for you automatically into `Documents\RIVALRY Replays`, organized by event and matchup. Nothing to click.
 
@@ -130,12 +151,12 @@ One more thing that runs itself: the app checks for updates every 30 minutes and
 
 ## If the league site goes down mid-show
 
-Nothing happens to your broadcast. The moment you loaded tonight's match, the app cached it — teams, logos, records, rosters — to disk.
+Nothing happens to your broadcast. The moment you loaded tonight's match, the app cached it to disk: teams, logos, records, rosters.
 
 1. The match on air keeps running from the cache. Scenes, logos, series score, goal graphics: all unaffected. Even restarting the app comes back locked to the same match.
 2. What you cannot do while the league is down is **load a different match** (the next series in your schedule, for example). The app refuses with a clear error and leaves the current match on air.
 3. If the outage crosses a series boundary: stall with **Casters**, **BRB**, or **Up Next** (they all run from cached and operator data) until the league site answers again, then load the next series as normal.
-4. If the league site is still down and you never loaded tonight's match, there is no broadcast to run — call DrunkCookies. Loading the match right after the wizard, well before air time, is the habit that makes this a non-event.
+4. If the league site is still down and you never loaded tonight's match, there is no broadcast to run, so call DrunkCookies. Loading the match right after the wizard, well before air time, is the habit that makes this a non-event.
 
 ---
 
