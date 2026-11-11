@@ -1154,7 +1154,7 @@ const SCENE_ORDER = ["chrome", "starting-soon", "caster", "match-preview", "game
 // the house look, so a partial community set still yields a full show.
 let preferredSet = "";
 let lastOverlays = [];
-function setLabel(s){ return s === "kinetic-bold" ? "Kinetic Bold (house)" : (s || "").toUpperCase(); }
+function setLabel(s){ return s === "kinetic-bold" ? "The Rivalry (house)" : (s || "").toUpperCase(); }
 function renderLookChips(){
   const host = $("lookChips");
   const sets = [...new Set(lastOverlays.map(o => o.set || "kinetic-bold"))];
