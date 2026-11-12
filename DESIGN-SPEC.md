@@ -21,10 +21,10 @@ Everything below comes from one file, [`assets/brand/rivalry-brand.css`](assets/
 | `--rv-coal-raised` | `#1F2229` | Raised rows and sub-bars (UI only) |
 | `--rv-chalk-dim` | `#A9A79F` | Labels and secondary text (UI only) |
 | `--rv-emerald-tint` | `#1B3329` | Highlighted rows, such as the teams on air in Standings (UI only) |
-| `--rv-team-blue` | `#2D8CFF` | Team A (Blue). Thin stripes and boost fills only |
-| `--rv-team-orange` | `#FF8A1F` | Team B (Orange). Thin stripes and boost fills only |
+| `--rv-team-blue` | `#2D8CFF` | Team A (Blue). Stripes, bars and boost fills only |
+| `--rv-team-orange` | `#FF8A1F` | Team B (Orange). Stripes, bars and boost fills only |
 
-Team colors never fill a panel; a team shows as a 4 to 10px stripe, its series boxes and its boost fill. Status colors (a red for errors, a green for OK) are still an open brand item.
+Team colors never fill a panel; a team shows as a 4 to 10px stripe, the bar under its tile, its series boxes, its Post-Game stat bars and its boost fill. Status colors (a red for errors, a green for OK) are still an open brand item.
 
 ### Type
 
@@ -55,7 +55,7 @@ All three are OFL-licensed; the licenses sit next to the files in `assets/fonts/
 
 ### Team tiles
 
-Every team appears as a square tile: the league logo when the loaded match has one, otherwise the brand symbol on Coal. The logo comes through the app's local logo proxy, because the league's own logo URLs expire after about 15 minutes.
+Every team appears as a square tile: the league logo when the loaded match has one, otherwise the brand symbol on Coal. The tile itself never carries team color, so a team with a logo and a team without one read alike; scenes put a team-color bar under each tile (gameplay uses its own stripes instead). Long team and player names shrink to fit their box (`overlays/shared/rivalry-fit-text.js`) before they cut off. The logo comes through the app's local logo proxy, because the league's own logo URLs expire after about 15 minutes.
 
 ---
 
@@ -102,9 +102,9 @@ Everything here sits inside the window. Coordinates in this section are measured
 | Element | Place and size | Detail |
 |---|---|---|
 | Scorebug | Top center, 22px down, 940 x 66 | Team blocks with a 6px team stripe, a 42px tile and the name (Barlow 32). Scores in Space Mono 44. The clock is a 160px Chalk slab, Space Mono 38; in overtime it counts up with a `+` in front |
-| Info row | Under the scorebug, 30px tall | The game label ("GAME 4 · BEST OF 5"), the series boxes (one 32 x 14 box per possible game, each team filling from its own side) and the event title |
+| Info row | Under the scorebug, 30px tall | The game label ("GAME 4 · BEST OF 5"), the series boxes (one 32 x 14 box per possible game, each team filling from its own side) and the round ("ROUND 6"). Season and circuit are on the left rail |
 | State tab | Under the clock, 160 x 30 | KICKOFF (outlined) or OVERTIME (solid Emerald) |
-| Player boards | Top corners, 22px down, 340 wide | A header with the team name, then one 44px row per player: name (Inter 600, 17), boost bar, boost number. The spectated player's row is lit and tagged CAM |
+| Player boards | Top corners, 22px down, 340 wide | One 44px row per player: team stripe, name (Inter 600, 17), boost bar, boost number. The spectated player's row is lit Emerald |
 | Spectated player card | Bottom left, 28px in, 640 wide | The player's tile and name (Barlow 40), then score, goals, assists, saves, shots and demos. Shows while RL is spectating a player |
 | Boost block | Bottom right, 28px in, 300 wide | The spectated player's boost as a big number (Space Mono 62) over 10 segments |
 
@@ -119,7 +119,7 @@ Boost only exists on the PC that is spectating; everywhere else the boost slots 
 | Final 10 | Under the scorebug | The last 10 seconds of regulation as a big ticking Chalk number (Space Mono 160). Hidden in overtime |
 | GOAL flash | Over the scoring team's scorebug block | A Chalk slab reading GOAL wipes in from the score side and out the far side |
 | Goal banner | Center, 330px down | A solid Chalk GOAL block (Barlow 170) with the scoring team's stripe, then the scorer's card: tile, name (Barlow 72), their title from therivalry.gg, and a line with the assist, the shot speed (MPH in NA, KPH elsewhere) and the new score |
-| Replay | Whole window | A 6px Emerald frame and a REPLAY tag at the top left, then a replay card at the bottom center: scorer, assist, speed and the score |
+| Replay | Whole window | A 6px Emerald frame and a REPLAY tag at the top left, then a replay card at the bottom center: scorer, assist and speed |
 | Stinger | Whole canvas | Covers the cut from the replay back to live (see below) |
 
 ### The goal sequence, in order
