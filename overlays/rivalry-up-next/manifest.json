@@ -13,9 +13,9 @@
   "description": "Up Next: the night's series as rows (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "f7025e9f3f0ecf5aa631c467acd5aed60131db617a2d1e0ab5da1ddc4dd83f01",
-    "signature": "V0RmqOaM48MVyEBzdFTurv7Y9KxV9uDAJsgRqDU0ie44I2TgrXC0L89LHGjl4X5INWmuuJzrlvbrGI+EamAWDA==",
+    "contentHash": "0c3b14c5eae8d7ac855768de28e62adc0d0cc45401ef439d9ed482dac53f459b",
+    "signature": "SrtekIHdo2HiTbu8J4H8pkPfZ3De4aFR6bQB5L/XIUy7Hp+XhI5wJ+nSSjSnw4Mf2SkCBMBpBDGqonLLjCCbAw==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-09T18:25:10.794Z"
+    "signedAt": "2026-11-12T17:08:11.296Z"
   }
 }

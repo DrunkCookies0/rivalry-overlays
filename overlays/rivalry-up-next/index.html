@@ -14,7 +14,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .un{position:absolute;inset:0;overflow:hidden;background:var(--rv-coal);color:var(--rv-chalk);font-family:var(--rv-font-body);}
 .un-h{position:absolute;left:150px;top:236px;margin:0;font-size:150px;line-height:.86;}
 .un-list{position:absolute;left:150px;right:150px;top:430px;display:flex;flex-direction:column;gap:12px;}
-.un-row{display:grid;grid-template-columns:64px 400px 1fr 60px 1fr 200px;align-items:center;column-gap:20px;
+/* Index, circuit over round, then each team as tile + name (tiles on the
+   outside, names facing the "vs"), then the time. */
+.un-row{display:grid;grid-template-columns:56px 190px 64px 1fr 48px 1fr 64px 200px;align-items:center;column-gap:18px;
   height:104px;padding:0 28px;box-sizing:border-box;background:var(--rv-coal-raised);border:1px solid var(--rv-slate);
   animation:unIn .45s cubic-bezier(.2,.8,.2,1) both;}
 .un-row:nth-child(2){animation-delay:.06s;}
@@ -22,13 +24,21 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .un-row:nth-child(4){animation-delay:.18s;}
 @keyframes unIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
 .un-idx{font:700 28px/1 var(--rv-font-mono);color:var(--rv-chalk-dim);}
-/* The panel queues "Season | Circuit | Round N", so the round number is at the
-   end; the tag clips with an ellipsis rather than pushing the row. */
-.un-tag{justify-self:start;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+/* The circuit over the round. The night's season is the top-right tag, so a
+   row carries only what can differ from row to row. */
+.un-ev{display:flex;flex-direction:column;gap:8px;min-width:0;font:400 17px/1.1 var(--rv-font-mono);
+  letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;}
+.un-ev span{overflow:hidden;text-overflow:ellipsis;}
+.un-ev .c{color:var(--rv-chalk-dim);}
+.un-ev .c:empty{display:none;}
+.un-ev .r{font-weight:700;}
+.un-row .rv-tile{width:64px;height:64px;}
+.un-row .rv-tile.a{--rv-side:var(--rv-team-blue);}
+.un-row .rv-tile.b{--rv-side:var(--rv-team-orange);}
 .un-team{min-width:0;font-size:56px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .un-a{text-align:right;}
 .un-vs{font:400 18px/1 var(--rv-font-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--rv-chalk-dim);text-align:center;}
-.un-time{font:700 32px/1 var(--rv-font-mono);text-align:right;white-space:nowrap;}
+.un-time{font:700 28px/1 var(--rv-font-mono);text-align:right;white-space:nowrap;}
 /* Empty schedule (nothing queued, or the night's last series on air): one row so
    the scene never airs a bare title. Shown by the script below; it is not an
    .un-row, so the nth-child delays above are unaffected. */
@@ -41,42 +51,50 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   <div class="rv-stage">
     <div class="scene-root un" data-scene="up-next">
       <img class="rv-lockup" src="../../assets/brand/lockup-horizontal-emerald-on-dark.svg" alt="The Rivalry" />
-      <div class="rv-tags"><span class="rv-tag ln" data-field="eventTitle">RIVALRY SEASON 1</span></div>
+      <div class="rv-tags"><span class="rv-tag ln" id="unSeason" data-field="eventTitle">RIVALRY SEASON 1</span></div>
 
       <h1 class="un-h rv-hd">Up <span class="rv-o">next.</span></h1>
 
       <section class="un-list">
         <div class="un-row" data-slot="upNext.0">
           <span class="un-idx">01</span>
-          <span class="rv-tag ln un-tag" data-field="upNext.0.round">UB R1</span>
-          <span class="rv-hd un-team un-a" data-field="upNext.0.teamA">NOVA</span>
+          <span class="un-ev"><span class="c" data-field="upNext.0.circuit"></span><span class="r" data-field="upNext.0.round">Round 1</span></span>
+          <span class="rv-tile rv-tbar a"></span>
+          <span class="rv-hd un-team un-a" data-fit data-field="upNext.0.teamA">NOVA</span>
           <span class="un-vs">vs</span>
-          <span class="rv-hd un-team un-b" data-field="upNext.0.teamB">ECLIPSE</span>
-          <span class="un-time" data-field="upNext.0.time">9:30 ET</span>
+          <span class="rv-hd un-team un-b" data-fit data-field="upNext.0.teamB">ECLIPSE</span>
+          <span class="rv-tile rv-tbar b"></span>
+          <span class="un-time" data-field="upNext.0.time">9:30 PM ET</span>
         </div>
         <div class="un-row" data-slot="upNext.1">
           <span class="un-idx">02</span>
-          <span class="rv-tag ln un-tag" data-field="upNext.1.round">LB R1</span>
-          <span class="rv-hd un-team un-a" data-field="upNext.1.teamA">VOLT</span>
+          <span class="un-ev"><span class="c" data-field="upNext.1.circuit"></span><span class="r" data-field="upNext.1.round">Round 2</span></span>
+          <span class="rv-tile rv-tbar a"></span>
+          <span class="rv-hd un-team un-a" data-fit data-field="upNext.1.teamA">VOLT</span>
           <span class="un-vs">vs</span>
-          <span class="rv-hd un-team un-b" data-field="upNext.1.teamB">DRIFT</span>
-          <span class="un-time" data-field="upNext.1.time">10:00 ET</span>
+          <span class="rv-hd un-team un-b" data-fit data-field="upNext.1.teamB">DRIFT</span>
+          <span class="rv-tile rv-tbar b"></span>
+          <span class="un-time" data-field="upNext.1.time">10 PM ET</span>
         </div>
         <div class="un-row" data-slot="upNext.2">
           <span class="un-idx">03</span>
-          <span class="rv-tag ln un-tag" data-field="upNext.2.round">LB R1</span>
-          <span class="rv-hd un-team un-a" data-field="upNext.2.teamA">APEX</span>
+          <span class="un-ev"><span class="c" data-field="upNext.2.circuit"></span><span class="r" data-field="upNext.2.round">Round 3</span></span>
+          <span class="rv-tile rv-tbar a"></span>
+          <span class="rv-hd un-team un-a" data-fit data-field="upNext.2.teamA">APEX</span>
           <span class="un-vs">vs</span>
-          <span class="rv-hd un-team un-b" data-field="upNext.2.teamB">ZENITH</span>
-          <span class="un-time" data-field="upNext.2.time">10:30 ET</span>
+          <span class="rv-hd un-team un-b" data-fit data-field="upNext.2.teamB">ZENITH</span>
+          <span class="rv-tile rv-tbar b"></span>
+          <span class="un-time" data-field="upNext.2.time">10:30 PM ET</span>
         </div>
         <div class="un-row" data-slot="upNext.3">
           <span class="un-idx">04</span>
-          <span class="rv-tag ln un-tag" data-field="upNext.3.round">LB R1</span>
-          <span class="rv-hd un-team un-a" data-field="upNext.3.teamA">TEAM A</span>
+          <span class="un-ev"><span class="c" data-field="upNext.3.circuit"></span><span class="r" data-field="upNext.3.round">Round 4</span></span>
+          <span class="rv-tile rv-tbar a"></span>
+          <span class="rv-hd un-team un-a" data-fit data-field="upNext.3.teamA">TEAM A</span>
           <span class="un-vs">vs</span>
-          <span class="rv-hd un-team un-b" data-field="upNext.3.teamB">TEAM B</span>
-          <span class="un-time" data-field="upNext.3.time">11:00 ET</span>
+          <span class="rv-hd un-team un-b" data-fit data-field="upNext.3.teamB">TEAM B</span>
+          <span class="rv-tile rv-tbar b"></span>
+          <span class="un-time" data-field="upNext.3.time">11 PM ET</span>
         </div>
         <div class="un-empty rv-hd">More matches to be announced</div>
       </section>
@@ -105,9 +123,43 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       });
       if (isEmpty !== wasEmpty) { emptyEl.style.display = isEmpty ? 'flex' : ''; wasEmpty = isEmpty; }
     });
+    // Team tiles: the league logo once it has loaded, else the brand symbol.
+    // Loaded first, so a logo URL that fails (a queued series whose team has
+    // no logo) leaves the symbol rather than an empty tile.
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.un-row'));
+    function paintTile(tile, url) {
+      url = url || '';
+      if (tile._url === url) return;
+      tile._url = url;
+      tile.classList.remove('has-logo');
+      tile.style.backgroundImage = '';
+      if (!url) return;
+      var img = new Image();
+      img.onload = function () {
+        if (tile._url !== url) return;
+        tile.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")';
+        tile.classList.add('has-logo');
+      };
+      img.src = url;
+    }
+    rl.onControl(function (c) {
+      // The top tag is the night's season alone: rows can be different
+      // circuits, so the loaded match's "Season | Circuit" title would mislabel
+      // them. No season set: the event title RivalryBind already wrote stays.
+      var season = c.schedule && c.schedule.event && c.schedule.event.season;
+      if (season) document.getElementById('unSeason').textContent = season;
+      var list = Array.isArray(c.upNext) ? c.upNext : [];
+      rows.forEach(function (row, i) {
+        var v = list[i] || {};
+        paintTile(row.querySelector('.rv-tile.a'), v.logoA);
+        paintTile(row.querySelector('.rv-tile.b'), v.logoB);
+      });
+    });
     // Resolution-independent: scale the 1920x1080 design to fill any source size.
     // Append ?fit=cover to the source URL to fill+crop instead of letterbox on non-16:9.
     RivalryFit('.rv-stage');
   </script>
+  <script src="../shared/rivalry-fit-text.js"></script>
+  <script>RivalryFitText(document.querySelector(".scene-root"));</script>
 </body>
 </html>
