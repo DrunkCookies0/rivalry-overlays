@@ -86,8 +86,8 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
           <span class="rv-tile rv-tbar su-tile-a" id="tileA"></span>
           <span class="su-num rv-hd"><span id="numA">0</span><i>-</i><span id="numB">0</span></span>
           <span class="rv-tile rv-tbar su-tile-b" id="tileB"></span>
-          <span class="su-name a rv-hd" id="nameA" data-field="teamA.name">GUARDIANS</span>
-          <span class="su-name b rv-hd" id="nameB" data-field="teamB.name">SENTINELS</span>
+          <span class="su-name a rv-hd" id="nameA" data-fit data-field="teamA.name">GUARDIANS</span>
+          <span class="su-name b rv-hd" id="nameB" data-fit data-field="teamB.name">SENTINELS</span>
           <div class="su-pips a" id="pipsA"></div>
           <div class="su-pips b" id="pipsB"></div>
         </div>
@@ -101,7 +101,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
         </div>
         <div class="su-card su-mvp" id="suMvp">
           <div class="rv-lab" id="suMvpLab">Series MVP so far</div>
-          <div class="su-mvp-name rv-hd" id="suMvpName"></div>
+          <div class="su-mvp-name rv-hd" id="suMvpName" data-fit></div>
           <div class="su-mvp-line" id="suMvpLine"></div>
         </div>
       </aside>
@@ -262,5 +262,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     RivalryFit(".rv-stage");
   })();
   </script>
+  <script src="../shared/rivalry-fit-text.js"></script>
+  <script>RivalryFitText(document.querySelector(".scene-root"));</script>
 </body>
 </html>

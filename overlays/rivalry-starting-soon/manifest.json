@@ -13,9 +13,9 @@
   "description": "Starting Soon: the lockup, a kickoff countdown and the first match on a card (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "7919e7b61c6a1d6e34d3ef4f2ac58bf723d2d936bc0070b0fe569beb93d91204",
-    "signature": "IDTnY+tH8kgJaqzRzGyQKYiIsyBt2+cw5oVOrhdRSqXzqpfrghfOVVpz2OoUKVqxklMHrbcFiBRQmkx91avzCw==",
+    "contentHash": "a1497445c37191d4696b5aae647f68c9c867a60b5695a989e7a43ae9bb85c1e9",
+    "signature": "b5GrcqZBY6d2SumdBwnHRSlo0sHpaFQgK96EPYabtik/ujeTU0xJ6hkezav97YsFmxeW+LHmeYnpBiNAaF/VAA==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-12T17:02:05.432Z"
+    "signedAt": "2026-11-12T17:03:30.869Z"
   }
 }

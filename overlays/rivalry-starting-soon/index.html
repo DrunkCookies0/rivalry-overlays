@@ -66,12 +66,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
         </div>
         <div class="nr a">
           <span class="rv-tile rv-tbar" id="tileA" data-bg="teamA.logo"></span>
-          <span class="hd ss-name" data-field="teamA.name">GUARDIANS</span>
+          <span class="hd ss-name" data-fit data-field="teamA.name">GUARDIANS</span>
           <span class="meta"><span data-field="teamA.seed">#1</span><span data-field="teamA.record">12-3</span></span>
         </div>
         <div class="nr b">
           <span class="rv-tile rv-tbar" id="tileB" data-bg="teamB.logo"></span>
-          <span class="hd ss-name" data-field="teamB.name">SENTINELS</span>
+          <span class="hd ss-name" data-fit data-field="teamB.name">SENTINELS</span>
           <span class="meta"><span data-field="teamB.seed">#4</span><span data-field="teamB.record">9-6</span></span>
         </div>
         <div class="nr cs" id="castersRow" style="display:none">
@@ -139,5 +139,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     setInterval(tick, 250);
   })();
   </script>
+  <script src="../shared/rivalry-fit-text.js"></script>
+  <script>RivalryFitText(document.querySelector(".scene-root"));</script>
 </body>
 </html>

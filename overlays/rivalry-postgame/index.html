@@ -67,18 +67,18 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 
       <section class="pg-boards">
         <div class="pg-hdr">
-          <span class="pg-team a"><span class="rv-tile rv-tbar" id="tileA"></span><span class="rv-hd nm" data-field="teamA.name">GUARDIANS</span></span>
+          <span class="pg-team a"><span class="rv-tile rv-tbar" id="tileA"></span><span class="rv-hd nm" data-fit data-field="teamA.name">GUARDIANS</span></span>
           <span class="pg-tot" data-field="teamA.score">4</span>
           <span class="rv-lab pg-totlab">Team totals</span>
           <span class="pg-tot" data-field="teamB.score">2</span>
-          <span class="pg-team b"><span class="rv-hd nm" data-field="teamB.name">SENTINELS</span><span class="rv-tile rv-tbar" id="tileB"></span></span>
+          <span class="pg-team b"><span class="rv-hd nm" data-fit data-field="teamB.name">SENTINELS</span><span class="rv-tile rv-tbar" id="tileB"></span></span>
         </div>
         <div id="pgRows"></div>
       </section>
 
       <section class="pg-potg a" id="potg">
         <div class="ph"><span class="rv-tag em">Player of the game</span><span class="rv-tile rv-tbar" id="potgTile"></span></div>
-        <div class="pn"><div class="rv-hd nm" data-field="mvp.name">VECTOR</div><div class="rv-lab" data-field="mvp.team">GUARDIANS</div></div>
+        <div class="pn"><div class="rv-hd nm" data-fit data-field="mvp.name">VECTOR</div><div class="rv-lab" data-field="mvp.team">GUARDIANS</div></div>
         <div class="pgrid" id="potgGrid"></div>
       </section>
     </div>
@@ -270,5 +270,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
   rebuild();
 })();
 </script>
+  <script src="../shared/rivalry-fit-text.js"></script>
+  <script>RivalryFitText(document.querySelector(".scene-root"));</script>
 </body>
 </html>

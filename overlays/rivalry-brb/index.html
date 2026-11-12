@@ -49,12 +49,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
         <div class="nh"><span class="rv-tag em">Series</span><span class="rv-lab">Best of <span data-field="bestOf">5</span></span></div>
         <div class="nr a">
           <span class="rv-tile rv-tbar" id="tileA" data-bg="teamA.logo"></span>
-          <span class="rv-hd nm" data-field="teamA.name">GUARDIANS</span>
+          <span class="rv-hd nm" data-fit data-field="teamA.name">GUARDIANS</span>
           <span class="wins" data-field="series.a">1</span>
         </div>
         <div class="nr b">
           <span class="rv-tile rv-tbar" id="tileB" data-bg="teamB.logo"></span>
-          <span class="rv-hd nm" data-field="teamB.name">SENTINELS</span>
+          <span class="rv-hd nm" data-fit data-field="teamB.name">SENTINELS</span>
           <span class="wins" data-field="series.b">1</span>
         </div>
       </section>
@@ -77,5 +77,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     // Append ?fit=cover to the source URL to fill+crop instead of letterbox on non-16:9.
     RivalryFit('.rv-stage');
   </script>
+  <script src="../shared/rivalry-fit-text.js"></script>
+  <script>RivalryFitText(document.querySelector(".scene-root"));</script>
 </body>
 </html>
