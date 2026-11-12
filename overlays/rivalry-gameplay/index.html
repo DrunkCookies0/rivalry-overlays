@@ -84,16 +84,13 @@
   .team .name{min-width:0;font:700 32px/1 var(--font-display);text-transform:uppercase;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* Team / player tile: the league logo first. Without one, the brand symbol
-     as supplied (never recolored: brand rule) on a Coal tile whose 4px outer
-     edge carries the team color, so the slot still reads as that team's.
-     --side comes from the container (team block, card, banner). .r puts the
-     edge on the right, for right-side placements. */
+     as supplied (never recolored: brand rule) on the same Coal tile. The tile
+     never carries team color, logo or not: the team block, card and banner
+     each have their own stripe, and an edge here doubled it. */
   .tile{display:inline-block;flex:none;width:42px;height:42px;box-sizing:border-box;padding:4px;
     background-color:var(--rv-coal-raised);background-position:center;background-size:contain;
     background-repeat:no-repeat;background-origin:content-box;border:1px solid var(--rv-slate);}
-  .tile:not(.has-logo){padding:1px;background-image:url("../../assets/brand/logo-emerald-on-dark.svg");
-    border-left:4px solid var(--side,var(--rv-slate));}
-  .tile.r:not(.has-logo){border-left:1px solid var(--rv-slate);border-right:4px solid var(--side,var(--rv-slate));}
+  .tile:not(.has-logo){padding:1px;background-image:url("../../assets/brand/logo-emerald-on-dark.svg");}
 
   /* GOAL flash over the scoring team's block: a solid Chalk slab wipes in from
      the score side, GOAL in Coal, then wipes on out the far side. */
@@ -379,7 +376,7 @@
       <div class="score" id="scoreB">0</div>
       <div class="team right">
         <span class="name" id="nameB">ORANGE</span>
-        <span class="tile r" id="logoB"></span>
+        <span class="tile" id="logoB"></span>
         <i class="stripe"></i>
         <div class="goal-flash" id="goalFlashB"><span class="gf-text">GOAL</span></div>
       </div>

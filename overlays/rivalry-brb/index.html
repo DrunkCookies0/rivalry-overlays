@@ -48,12 +48,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
       <section class="brb-card">
         <div class="nh"><span class="rv-tag em">Series</span><span class="rv-lab">Best of <span data-field="bestOf">5</span></span></div>
         <div class="nr a">
-          <span class="rv-tile" id="tileA" data-bg="teamA.logo"></span>
+          <span class="rv-tile rv-tbar" id="tileA" data-bg="teamA.logo"></span>
           <span class="rv-hd nm" data-field="teamA.name">GUARDIANS</span>
           <span class="wins" data-field="series.a">1</span>
         </div>
         <div class="nr b">
-          <span class="rv-tile" id="tileB" data-bg="teamB.logo"></span>
+          <span class="rv-tile rv-tbar" id="tileB" data-bg="teamB.logo"></span>
           <span class="rv-hd nm" data-field="teamB.name">SENTINELS</span>
           <span class="wins" data-field="series.b">1</span>
         </div>
@@ -67,7 +67,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     // Control-only scene: subscribe to the control bus (auto-mocks on file://).
     var rl = RivalryOverlay.connect({ game: false });
     RivalryBind(document.querySelector('.scene-root'), rl);
-    // Tiles: RivalryBind paints the logo; .has-logo drops the placeholder's edge.
+    // Tiles: RivalryBind paints the logo; .has-logo swaps out the brand symbol.
     rl.onControl(function (c) {
       c = c || {};
       document.getElementById('tileA').classList.toggle('has-logo', !!(c.teamA && c.teamA.logo));

@@ -13,9 +13,9 @@
   "description": "Be Right Back, with the series on a card (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "2d91895a8323d9a0526fcadc9ec8fd9209fa7c7df753240d8576370229df5317",
-    "signature": "4PJMo9W5D18z4ZTHgsTQi2YO9ihU4rZoiSPWdx9WtfbzkYl/dpjIBqZx2Zcb3tnhHVWQyPg83irkxEe+7AYsBg==",
+    "contentHash": "dc47b7bf3ea112ed2fe2a0ee6f761b44a6e6ad7812df6951236630c49de446ef",
+    "signature": "Cc0oi+a/sT7v3TR1cDNegUcPtqMQo3mzrGKs+TrdFpIssr99bNP/Ij/d89ingyuJ9v/Ms5muP/MvZVan4SLcCA==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-09T18:25:10.811Z"
+    "signedAt": "2026-11-12T17:02:05.435Z"
   }
 }

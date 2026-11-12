@@ -13,9 +13,9 @@
   "description": "Series Update: the series score, each game's result and the series MVP so far (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "b413d6d2a3a7f13c6a0a61b7d95af7c72960eb3b0c2fcb47d47e5cf373803c34",
-    "signature": "MoxY/4Ap7ulbuf17m6eE6Hkzp0tZUnjZz2VSwpnURe5Iqqa3ZYZb081U7jYgvkGSG3z/baCH52bDHZ2Qwl+iCQ==",
+    "contentHash": "84501e1313d3b9cac8878f95874e42b87476f1370ac12252821b5b060c820f4e",
+    "signature": "dXW+Lmfh/igymSiYEQQN13qb/SoVnx5d/hzmWhl9tNLukXo7Pu5iYyfzA0y5sSYq9JxRWU7PqPhzEoh6zKnhBA==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-10T14:27:50.227Z"
+    "signedAt": "2026-11-12T17:02:05.448Z"
   }
 }

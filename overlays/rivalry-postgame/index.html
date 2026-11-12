@@ -19,11 +19,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 
 .pg-boards{position:absolute;left:150px;top:380px;width:1000px;}
 .pg-hdr{display:grid;grid-template-columns:1fr 70px 150px 70px 1fr;align-items:center;column-gap:12px;
-  padding-bottom:14px;border-bottom:1px solid var(--rv-slate);}
+  padding-bottom:20px;border-bottom:1px solid var(--rv-slate);}
 .pg-team{display:flex;align-items:center;gap:14px;min-width:0;}
 .pg-team.a{--rv-side:var(--rv-team-blue);}
 .pg-team.b{justify-content:flex-end;--rv-side:var(--rv-team-orange);}
-.pg-team .rv-tile{width:54px;height:54px;}
+.pg-team .rv-tile{width:54px;height:54px;--rv-tbar-h:5px;}
 .pg-team .nm{min-width:0;font-size:40px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pg-tot{font:700 44px/1 var(--rv-font-mono);font-variant-numeric:tabular-nums;text-align:center;}
 .pg-totlab{text-align:center;}
@@ -42,7 +42,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .pg-potg.a{--rv-side:var(--rv-team-blue);}
 .pg-potg.b{--rv-side:var(--rv-team-orange);}
 .pg-potg .ph{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--rv-slate);}
-.pg-potg .rv-tile{width:48px;height:48px;}
+.pg-potg .rv-tile{width:48px;height:48px;--rv-tbar-h:5px;}
 .pg-potg .pn{padding:22px 22px 18px;}
 .pg-potg .pn .nm{font-size:96px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .pg-potg .pn .rv-lab{margin-top:8px;}
@@ -67,17 +67,17 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 
       <section class="pg-boards">
         <div class="pg-hdr">
-          <span class="pg-team a"><span class="rv-tile" id="tileA"></span><span class="rv-hd nm" data-field="teamA.name">GUARDIANS</span></span>
+          <span class="pg-team a"><span class="rv-tile rv-tbar" id="tileA"></span><span class="rv-hd nm" data-field="teamA.name">GUARDIANS</span></span>
           <span class="pg-tot" data-field="teamA.score">4</span>
           <span class="rv-lab pg-totlab">Team totals</span>
           <span class="pg-tot" data-field="teamB.score">2</span>
-          <span class="pg-team b"><span class="rv-hd nm" data-field="teamB.name">SENTINELS</span><span class="rv-tile r" id="tileB"></span></span>
+          <span class="pg-team b"><span class="rv-hd nm" data-field="teamB.name">SENTINELS</span><span class="rv-tile rv-tbar" id="tileB"></span></span>
         </div>
         <div id="pgRows"></div>
       </section>
 
       <section class="pg-potg a" id="potg">
-        <div class="ph"><span class="rv-tag em">Player of the game</span><span class="rv-tile" id="potgTile"></span></div>
+        <div class="ph"><span class="rv-tag em">Player of the game</span><span class="rv-tile rv-tbar" id="potgTile"></span></div>
         <div class="pn"><div class="rv-hd nm" data-field="mvp.name">VECTOR</div><div class="rv-lab" data-field="mvp.team">GUARDIANS</div></div>
         <div class="pgrid" id="potgGrid"></div>
       </section>

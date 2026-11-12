@@ -99,15 +99,22 @@
 .rv-lockup { position: absolute; left: 124px; top: 64px; height: 120px; width: auto; }
 .rv-tags { position: absolute; right: 124px; top: 92px; display: flex; gap: 8px; max-width: 960px; }
 /* Team / player tile: the league logo first. Without one, the brand symbol as
-   supplied (never recolored: brand rule 04) on a Coal tile whose 4px outer edge
-   carries the team color from --rv-side. Add .has-logo when a logo is set;
-   .r puts the edge on the right for right-hand placements. */
+   supplied (never recolored: brand rule 04) on the same Coal tile. The tile
+   never carries team color, logo or not: a team with a logo and a team without
+   one have to read alike, so the scene puts the team color next to the tile
+   instead. Add .has-logo when a logo is set. */
 .rv-tile { display: inline-block; flex: none; box-sizing: border-box; padding: 6px;
   background-color: var(--rv-coal-raised); background-position: center; background-size: contain;
   background-repeat: no-repeat; background-origin: content-box; border: 1px solid var(--rv-slate); }
-.rv-tile:not(.has-logo) { padding: 2px; background-image: url("logo-emerald-on-dark.svg");
-  border-left: 4px solid var(--rv-side, var(--rv-slate)); }
-.rv-tile.r:not(.has-logo) { border-left: 1px solid var(--rv-slate); border-right: 4px solid var(--rv-side, var(--rv-slate)); }
+.rv-tile:not(.has-logo) { padding: 2px; background-image: url("logo-emerald-on-dark.svg"); }
+/* The team's color: a bar the tile's width, set just below it (Match
+   Preview's bar, on every scene with team tiles). It sits outside the layout,
+   so adding it never moves anything; the scene leaves room under the tile.
+   --rv-side is the color, --rv-tbar-gap / --rv-tbar-h the spacing. */
+.rv-tile.rv-tbar { position: relative; }
+.rv-tile.rv-tbar::after { content: ""; position: absolute; left: -1px; right: -1px;
+  top: calc(100% + 1px + var(--rv-tbar-gap, 6px)); height: var(--rv-tbar-h, 6px);
+  background: var(--rv-side, var(--rv-slate)); }
 
 /* The brand stinger (pick F, "round one + slash, splits back"), shared by the
    chrome's deck wipe and the gameplay replay stinger so both play the same

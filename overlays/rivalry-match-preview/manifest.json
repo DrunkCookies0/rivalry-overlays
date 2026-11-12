@@ -13,9 +13,9 @@
   "description": "Match Preview: the two teams face off with tiles, records and rosters (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "3b99139a4cf01ef1b67b5327f0a1719b38cdce53365666bc8ce15d8866830acb",
-    "signature": "5M4cFgM0ry+Grh2+f3UYu+Ie/Yhr2ByJCEAh0iIKFZxJOCCqtvyXfYhp7fHBxcqu//C3zI3xKTbvoH+nXVvbDg==",
+    "contentHash": "dd4484f94218b1a7a3bf34ed9a3146b8927f97354c1e107f73772e160550a9f4",
+    "signature": "/9Dwab1N1y5AJBz+q1e93dFd9HsK3vooyKPj6FVbHICmwFneHwiDbfIhWWV0+W2n5ZXH8mY9sAUT7Z8u7E3rDg==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-09T18:25:10.818Z"
+    "signedAt": "2026-11-12T17:02:05.439Z"
   }
 }

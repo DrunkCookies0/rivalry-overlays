@@ -39,14 +39,11 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .ss-next .nr.cs{justify-content:space-between;}
 .ss-next .nr.cs b{font:600 22px/1.2 var(--rv-font-body);text-align:right;}
 
-/* Team tiles: the league logo first; without one, two letters on the motif
-   (solid Chalk for the left team, outlined Emerald for the right). */
-.ss .tile{display:flex;align-items:center;justify-content:center;flex:none;width:72px;height:72px;box-sizing:border-box;
-  padding:8px;background-origin:content-box;font:700 26px/1 var(--rv-font-head);text-transform:uppercase;}
-.ss .tile.solid{background-color:var(--rv-chalk);color:var(--rv-coal);}
-.ss .tile.line{border:4px solid var(--rv-emerald);color:var(--rv-emerald);}
-.ss .tile.has-logo{background-color:var(--rv-coal);border:1px solid var(--rv-slate);}
-.ss .tile.has-logo .tx{display:none;}
+/* Team tiles: the shared .rv-tile (the league logo, else the brand symbol),
+   the same tile every other scene uses. */
+.ss-next .rv-tile{width:72px;height:72px;}
+.ss-next .nr.a{--rv-side:var(--rv-team-blue);}
+.ss-next .nr.b{--rv-side:var(--rv-team-orange);}
 </style>
 </head>
 <body>
@@ -67,13 +64,13 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
           <span class="tag em">Up next</span>
           <span class="lab"><span data-field="round">UPPER BRACKET • ROUND 1</span> · Best of <span data-field="bestOf">5</span></span>
         </div>
-        <div class="nr">
-          <span class="tile solid" id="tileA" data-bg="teamA.logo"><span class="tx">GU</span></span>
+        <div class="nr a">
+          <span class="rv-tile rv-tbar" id="tileA" data-bg="teamA.logo"></span>
           <span class="hd ss-name" data-field="teamA.name">GUARDIANS</span>
           <span class="meta"><span data-field="teamA.seed">#1</span><span data-field="teamA.record">12-3</span></span>
         </div>
-        <div class="nr">
-          <span class="tile line" id="tileB" data-bg="teamB.logo"><span class="tx">SE</span></span>
+        <div class="nr b">
+          <span class="rv-tile rv-tbar" id="tileB" data-bg="teamB.logo"></span>
           <span class="hd ss-name" data-field="teamB.name">SENTINELS</span>
           <span class="meta"><span data-field="teamB.seed">#4</span><span data-field="teamB.record">9-6</span></span>
         </div>
@@ -97,17 +94,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
     // Append ?fit=cover to the source URL to fill+crop instead of letterbox on non-16:9.
     RivalryFit(".rv-stage");
 
-    // Letter tile when a team has no logo: "Low Orbit" -> LO, "Vortex" -> VO.
-    function initials(name) {
-      var w = String(name || "").trim().split(/\s+/).filter(Boolean);
-      if (!w.length) return "";
-      return (w.length > 1 ? w[0].charAt(0) + w[1].charAt(0) : w[0].slice(0, 2)).toUpperCase();
-    }
+    // RivalryBind paints the logo; .has-logo swaps out the brand symbol.
     function team(side, t) {
-      t = t || {};
-      var tile = $("tile" + side);
-      tile.classList.toggle("has-logo", !!t.logo);
-      if (t.name) tile.querySelector(".tx").textContent = initials(t.name);
+      $("tile" + side).classList.toggle("has-logo", !!(t && t.logo));
     }
 
     // kickoffAt is the producer's own clock (epoch ms from the panel's "First
