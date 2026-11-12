@@ -34,8 +34,9 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent
 .pg-sr .bar{display:flex;height:22px;}
 .pg-sr .bar.a{justify-content:flex-end;}
 .pg-sr .bar i{display:block;height:100%;box-sizing:border-box;}
-.pg-sr .bar.a i{background:var(--rv-chalk);}
-.pg-sr .bar.b i{border:3px solid var(--rv-emerald);}
+/* Solid team color on both sides, so each bar reads as its team's. */
+.pg-sr .bar.a i{background:var(--rv-team-blue);}
+.pg-sr .bar.b i{background:var(--rv-team-orange);}
 .pg-sr .rv-lab{text-align:center;}
 
 .pg-potg{position:absolute;left:1236px;right:124px;top:380px;background:var(--rv-coal-raised);border:1px solid var(--rv-slate);}

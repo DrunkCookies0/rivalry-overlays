@@ -14,9 +14,9 @@
   "description": "Post-match results: winner headline, team-total comparison and player of the game, latched from the live feed (The Rivalry brand).",
   "approval": {
     "algo": "ed25519",
-    "contentHash": "f1e38f0ca0a845e2f68239b853e8eb3b7504fcfc321db7299cdcb058724fd23f",
-    "signature": "3mB3zykmCSm2smp44BKUuXfkDTnukXabOSas5/j6iltaPMQ2fPhh0XtueUJ2IaRVNZFYvXGclLsbly6ukBO9AA==",
+    "contentHash": "46ba277faec6a1dda9a8aa939a76d913b83cb4c7caf8784a544a7af264b64a1a",
+    "signature": "3WSxyOoBxGBLcn8RJc0pqozSffFidy3BNZDFjDko7Ts3EExo9qx4rOjsyvnQyA0dDpN9d2koZB3JuWUZWvN4Bg==",
     "keyId": "c0a7dcbac0f9b754",
-    "signedAt": "2026-11-12T17:03:30.875Z"
+    "signedAt": "2026-11-12T17:13:01.100Z"
   }
 }
