@@ -27,13 +27,13 @@ test("the browser build exposes the same module as the Node build", () => {
   assert.equal(browser.camCount({ casters: [C("A")] }), 1);
 });
 
-test("auto: one cam per named caster, the designed two before anyone is named", () => {
+test("auto: one cam per named caster, one before anyone is named", () => {
   assert.equal(cams.camCount({ casters: [C("A")] }), 1);
   assert.equal(cams.camCount({ casters: [C("A"), C("B")] }), 2);
   assert.equal(cams.camCount({ casters: [C("A"), C("B"), C("C")] }), 3);
-  assert.equal(cams.camCount({ casters: [] }), 2);
-  assert.equal(cams.camCount({}), 2);
-  assert.equal(cams.camCount(null), 2);
+  assert.equal(cams.camCount({ casters: [] }), 1);
+  assert.equal(cams.camCount({}), 1);
+  assert.equal(cams.camCount(null), 1);
   assert.equal(cams.camCount({ casters: [C(""), C("B")] }), 1, "a blank row never takes a cam");
 });
 
@@ -98,11 +98,11 @@ test("vdoUrl takes VDO.Ninja links and bare stream IDs, nothing else", () => {
   }
 });
 
-test("auto never drops the classic look below its two frames; any other look goes to one", () => {
+test("auto gives a lone caster the one big frame on the house look too", () => {
   const one = { casters: [C("A")] };
-  assert.equal(cams.camCount(one, "rivalry-casters"), 2, "cams placed on the duo holes before cam counts existed stay lined up");
+  assert.equal(cams.camCount(one, "rivalry-casters"), 1, "no blank second frame next to a lone caster");
   assert.equal(cams.camCount(one, "test-alt-casters"), 1);
-  assert.equal(cams.camCount({ ...one, casterCams: 1 }, "rivalry-casters"), 1, "a single big frame is the explicit pick");
+  assert.equal(cams.camCount({ ...one, casterCams: 2 }, "rivalry-casters"), 2, "two frames is still a pick away");
   assert.equal(cams.camCount(one, "toString"), 1, "no prototype keys");
 });
 

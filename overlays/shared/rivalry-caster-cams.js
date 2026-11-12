@@ -10,8 +10,8 @@
  *
  *   camCount(control, id) how many cam frames: control.casterCams (1-3) when
  *                         the producer picked one, else one per named caster
- *                         (none named yet: the designed two-frame look), never
- *                         fewer than the overlay's AUTO_MIN
+ *                         (none named yet: one), never fewer than the
+ *                         overlay's AUTO_MIN
  *   slots(control, n)     one entry per cam: who is in it and its feed. With
  *                         fewer cams than casters, the extra casters share the
  *                         last cam (two casters on one desk camera)
@@ -39,19 +39,21 @@
 
   var MAX_CAMS = 3;
 
+  // rivalry-casters: each layout's frames plus their 68px name plates sit with
+  // the same air above (below the lockup, which ends at y 184) as below (above
+  // the ticker, which starts at y 1008).
   var RECTS = {
     "rivalry-casters": {
-      1: [{ x: 360, y: 250, w: 1200, h: 675 }],
-      2: [{ x: 90, y: 300, w: 853, h: 480 }, { x: 977, y: 300, w: 853, h: 480 }],
-      3: [{ x: 90, y: 383, w: 560, h: 315 }, { x: 680, y: 383, w: 560, h: 315 }, { x: 1270, y: 383, w: 560, h: 315 }],
+      1: [{ x: 384, y: 238, w: 1152, h: 648 }],
+      2: [{ x: 90, y: 322, w: 853, h: 480 }, { x: 977, y: 322, w: 853, h: 480 }],
+      3: [{ x: 90, y: 404, w: 560, h: 315 }, { x: 680, y: 404, w: 560, h: 315 }, { x: 1270, y: 404, w: 560, h: 315 }],
     },
   };
 
-  // Auto never goes below this many frames. rivalry-casters keeps one named
-  // caster on the two-frame layout, as it always has: cams and webcams placed
-  // on its duo holes before cam counts existed stay lined up. A single big
-  // frame is the "1 cam" pick.
-  var AUTO_MIN = { "rivalry-casters": 2 };
+  // Auto never goes below this many frames, for a look whose art needs a
+  // minimum. None does today: rivalry-casters gives a lone caster the one big
+  // frame (it used to keep two, leaving the second blank).
+  var AUTO_MIN = {};
 
   // Named casters only, in order: a blank panel row never takes a cam.
   function named(control) {
@@ -63,7 +65,7 @@
     var picked = Number(control && control.casterCams);
     if (picked >= 1 && picked <= MAX_CAMS && Math.floor(picked) === picked) return picked;
     var min = Object.prototype.hasOwnProperty.call(AUTO_MIN, overlayId) ? AUTO_MIN[overlayId] : 1;
-    return Math.max(named(control).length || 2, min);
+    return Math.max(named(control).length || 1, min);
   }
 
   function join(who, key, sep) {
