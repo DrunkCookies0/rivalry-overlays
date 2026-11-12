@@ -99,16 +99,25 @@ jobs:
 
       # Trim the prerelease backlog so we don't accumulate hundreds of 124MB
       # installers in Releases (GitHub gives free repos ~2GB of release
-      # storage). Keep the 5 most recent prereleases; delete the rest.
+      # storage). Keep the 5 newest betas; delete the rest.
+      #
+      # "Newest" is the beta build number, never createdAt: GitHub dates a
+      # release by its target commit, and electron-builder first creates it on
+      # main (months old). Seconds after the re-anchor above, GitHub can still
+      # report that old date, so a sort by createdAt read the beta just built
+      # as the oldest and deleted it (v0.7.0-beta.68 vanished that way). The
+      # tag this run published is never deleted either way.
       - name: Prune old prereleases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_TAG: v${{ steps.ver.outputs.version }}
         shell: bash
         run: |
-          gh release list --limit 100 --json tagName,isPrerelease,createdAt \
-            --jq 'sort_by(.createdAt) | reverse | map(select(.isPrerelease)) | .[5:] | .[].tagName' \
+          gh release list --limit 100 --json tagName,isPrerelease \
+            --jq '[.[] | select(.isPrerelease) | .tagName | select(test("-beta[.][0-9]+$"))]
+                  | sort_by(capture("-beta[.](?<n>[0-9]+)$").n | tonumber) | reverse | .[5:] | .[]' \
             | while read -r tag; do
-                if [ -n "$tag" ]; then
+                if [ -n "$tag" ] && [ "$tag" != "$CURRENT_TAG" ]; then
                   echo "Deleting old prerelease: $tag"
                   gh release delete "$tag" --yes --cleanup-tag || true
                 fi
