@@ -142,7 +142,9 @@
     50%    {transform:translate(-50%,-50%) scale(1.06);}
   }
 
-  /* Info row under the scorebug: game label, the series boxes, the event title. */
+  /* Info row under the scorebug: game label, the series boxes, the round. The
+     season and circuit are on the chrome's left rail; the full title was too
+     long for this row. */
   .subbar{display:flex;align-items:center;justify-content:space-between;gap:16px;height:30px;padding:0 16px;
     background:var(--rv-coal-raised);border:1px solid var(--rv-slate);border-top:0;
     font:400 12px/1 var(--font-stat);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);}
@@ -174,24 +176,18 @@
   .state-strip.overtime{background:var(--rv-emerald);color:var(--rv-coal);}
 
   /* ===================== PLAYER BOARDS ====================== */
-  /* Top corners of the window: a header with the team name, then one 44px row
-     per player (team stripe, name, CAM tag, boost bar, boost number). The
-     spectated player's row takes the Emerald tint. */
+  /* Top corners of the window: one 44px row per player (team stripe, name,
+     boost bar, boost number). No team-name header (the scorebug names the
+     teams) and no CAM tag: the spectated player's row takes the Emerald tint. */
   .pb{position:absolute;top:22px;width:340px;}
   .pb.left{left:28px;}
   .pb.right{right:28px;}
   .pb.left{--side:var(--blue);}
   .pb.right{--side:var(--red);}
-  .pb-h{display:flex;align-items:center;gap:8px;height:28px;padding:0 12px;box-sizing:border-box;
-    background:var(--rv-coal);border:1px solid var(--rv-slate);
-    font:400 12px/1 var(--font-stat);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
-    white-space:nowrap;overflow:hidden;}
-  .pb.right .pb-h{flex-direction:row-reverse;}
-  .pb-h i{width:9px;height:9px;flex:none;background:var(--side);}
-  .pb-h span{min-width:0;overflow:hidden;text-overflow:ellipsis;}
   .col{display:flex;flex-direction:column;}
   .ptag{position:relative;height:44px;box-sizing:border-box;background:var(--rv-coal);
     border:1px solid var(--rv-slate);border-top:0;transition:background .2s ease-out;}
+  .ptag:first-child{border-top:1px solid var(--rv-slate);}
   .ptag .stripe{position:absolute;top:0;bottom:0;width:4px;background:var(--side);}
   .col.left .ptag .stripe{left:0;}
   .col.right .ptag .stripe{right:0;}
@@ -203,9 +199,7 @@
   .col.right .ptag .bar{order:2;}
   .col.right .ptag .pboost{order:1;text-align:left;}
   .ptag .pname{min-width:0;font:600 17px/1 var(--font-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .ptag .t-cam{display:none;flex:none;font:700 10px/1 var(--font-stat);font-style:normal;letter-spacing:.12em;color:var(--rv-emerald);}
   .ptag.active{background:var(--rv-emerald-tint);}
-  .ptag.active .t-cam{display:inline;}
   .ptag .bar{position:relative;height:8px;background:var(--rv-slate);transition:opacity .15s;}
   .ptag .fill{position:absolute;top:0;bottom:0;left:0;width:0;background:var(--side);transition:width .12s linear;}
   .col.right .ptag .fill{left:auto;right:0;}
@@ -245,8 +239,6 @@
   .pc-top .tile{width:46px;height:46px;font-size:15px;}
   .pc-top .nm{min-width:0;font:700 40px/1 var(--font-display);text-transform:uppercase;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .pc-top .lab{margin-left:auto;flex:none;font:400 13px/1.2 var(--font-stat);letter-spacing:.14em;
-    text-transform:uppercase;color:var(--muted);white-space:nowrap;}
   .pc-stats{display:grid;grid-template-columns:repeat(6,1fr);height:58px;}
   .pc-stats div{display:flex;flex-direction:column;justify-content:center;gap:2px;padding:0 16px;
     border-left:1px solid var(--rv-slate);}
@@ -384,18 +376,18 @@
     <div class="subbar">
       <span class="gameLbl" id="gameLbl">Game 1 · Best of 5</span>
       <div class="pips" id="pips"></div>
-      <span class="eventbar" id="eventbar">RIVALRY</span>
+      <span class="eventbar" id="eventbar"></span>
     </div>
     <div class="state-wrap"><div class="state-strip" id="stateStrip"></div></div>
   </div>
 
   <!-- PLAYER BOARDS -->
-  <div class="pb left"><div class="pb-h"><i></i><span id="pbNameA">BLUE</span></div><div class="col left" id="colA"></div></div>
-  <div class="pb right"><div class="pb-h"><i></i><span id="pbNameB">ORANGE</span></div><div class="col right" id="colB"></div></div>
+  <div class="pb left"><div class="col left" id="colA"></div></div>
+  <div class="pb right"><div class="col right" id="colB"></div></div>
 
   <!-- SPECTATED PLAYER CARD -->
   <div class="pc statbar blue" id="statbar" style="display:none">
-    <div class="pc-top"><i class="stripe"></i><span class="tile" id="pcTile"></span><span class="nm" id="sbWho">PLAYER</span><span class="lab" id="pcLab">Spectating</span></div>
+    <div class="pc-top"><i class="stripe"></i><span class="tile" id="pcTile"></span><span class="nm" id="sbWho">PLAYER</span></div>
     <div class="pc-stats">
       <div><b id="sbScore">0</b><span>SCORE</span></div>
       <div><b id="sbGoals">0</b><span>GOALS</span></div>
@@ -442,7 +434,6 @@
     <div class="cell"><span>Goal</span><b id="rpcName">-</b></div>
     <div class="cell rpc-assist"><span>Assist</span><b id="rpcAssister">-</b></div>
     <div class="cell" id="rpcSpeedCell"><span>Speed</span><b class="m" id="rpcSpeed"></b></div>
-    <div class="cell"><span>Score</span><b class="m" id="rpcScore">0-0</b></div>
   </div>
   </div>
 
@@ -593,10 +584,11 @@ function titleHtml(s){
     .replace(/&lt;(\/?)b&gt;/gi, "<$1b>");
 }
 
-// Eventbar shows the operator-set event title only — match-state takeovers
-// (OVERTIME / KICKOFF) live in the state strip below the pip row.
+// Eventbar shows the round only ("ROUND 6"): "Season | Circuit | Round" ran
+// far past this row, and the season and circuit are on the chrome's left rail.
+// Match-state takeovers (OVERTIME / KICKOFF) live in the state strip below.
 function updateEventBar(){
-  $("eventbar").innerHTML = titleHtml(control.eventTitle || "RIVALRY");
+  $("eventbar").innerHTML = titleHtml(control.round || "");
 }
 
 // State strip — below the pip row. OVERTIME wins over KICKOFF if both apply.
@@ -638,8 +630,6 @@ function applyControl(){
   updateEventBar();
   $("nameA").textContent = control.teamA.name || "BLUE";
   $("nameB").textContent = control.teamB.name || "ORANGE";
-  $("pbNameA").textContent = control.teamA.name || "BLUE";
-  $("pbNameB").textContent = control.teamB.name || "ORANGE";
   setTeamTile($("logoA"), control.teamA);
   setTeamTile($("logoB"), control.teamB);
   renderPips();
@@ -864,7 +854,7 @@ function renderBoost(col, players, cls){
     players.forEach(() => {
       const t = document.createElement("div");
       t.className = "ptag";
-      t.innerHTML = `<i class="stripe"></i><div class="prow"><span class="pn"><span class="pname"></span><em class="t-cam">CAM</em></span><span class="bar"><span class="fill"></span></span><span class="pboost nums"><span class="num"></span><span class="slot"></span></span></div>`;
+      t.innerHTML = `<i class="stripe"></i><div class="prow"><span class="pn"><span class="pname"></span></span><span class="bar"><span class="fill"></span></span><span class="pboost nums"><span class="num"></span><span class="slot"></span></span></div>`;
       col.appendChild(t);
     });
   }
@@ -906,7 +896,6 @@ function updateFocus(p){
   card.classList.toggle("red", !blue);
   setTeamTile($("pcTile"), team);
   setText($("sbWho"), p.Name || "");
-  setText($("pcLab"), (team.name || (blue ? "BLUE" : "ORANGE")) + " · Spectating");
   setText($("sbScore"),   p.Score   ?? 0);
   setText($("sbGoals"),   p.Goals   ?? 0);
   setText($("sbAssists"), p.Assists ?? 0);
@@ -919,7 +908,6 @@ function updateFocus(p){
   const cachedBoost = lastBoostByName[p.Name];
   const boost = typeof p.Boost === "number" ? p.Boost
               : typeof cachedBoost === "number" ? cachedBoost : 0;
-  setText($("bbLbl"), "Boost · " + (p.Name || ""));
   setText($("gaugeLabel"), boost);
   const lit = Math.round(boost / 10);
   const segs = $("segs").children;
@@ -1242,8 +1230,11 @@ function finishKickoffCountdown(){
   kickoffTimers.forEach(clearTimeout);
   kickoffTimers = [];
   kickoffGoShown = false;
+  // Only "show" goes: the count fades out over .4s, and dropping "go" with it
+  // drew GO as a plain Chalk digit for that fade (outlined Emerald, then white).
+  // The next value clears "go" before it shows.
   const el = $("kickoffCount");
-  if (el) el.classList.remove("show", "go");
+  if (el) el.classList.remove("show");
 }
 
 // Populate the goal banner's optional subtitle + badges slots. Data sources:
@@ -1513,7 +1504,6 @@ function showReplayCard(scorerName, teamNum){
   const assister = recentAssister(scorerName);
   $("rpcAssister").textContent = assister;
   card.classList.toggle("has-assist", !!assister);
-  $("rpcScore").textContent = lastScoreA + "-" + lastScoreB;
   setReplayMode(true);
   card.classList.add("show");
 }
