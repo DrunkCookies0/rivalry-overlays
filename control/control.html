@@ -594,17 +594,40 @@ function gatherPlayers(){
 // the top when nothing is on air), so advancing the night updates the Up Next
 // scene in the same push. With no schedule, or the last series on air, this is
 // [] and the Up Next scenes show their own "more matches" line.
+// A queued series' circuit and round on their own. Series queued before the
+// two were stored apart carry only "Season | Circuit | Round N": split it.
+function queueParts(e){
+  const parts = String(e.round || "").split("|").map(s => s.trim()).filter(Boolean);
+  return {
+    circuit: e.circuit || (parts.length >= 3 ? parts[parts.length - 2] : ""),
+    round: e.roundLabel || (parts.length >= 2 ? parts[parts.length - 1] : (e.round || "")),
+  };
+}
+// A queued series' on-air time, re-read from the league time when it has one
+// (series queued before times were zoned stored the PC clock's "22:00").
+function entryTime(e){
+  const t = e.startTimeIso ? Date.parse(e.startTimeIso) : NaN;
+  return Number.isNaN(t) ? (e.startTime || "") : airTime(t, [e.circuit, e.round].join(" "));
+}
 function upNextFromQueue(){
   const idx = state.queue.findIndex(e => e.id === state.queueActive);
   const from = idx >= 0 ? idx + 1 : 0;
-  return state.queue.slice(from, from + 4).map(e => ({
-    // An undecided side reads "TBD", as in the queue list: a blank name is hidden
-    // on air, leaving "VS DRIFT" with nothing left of VS.
-    teamA: (e.teamA && e.teamA.name) || "TBD",
-    teamB: (e.teamB && e.teamB.name) || "TBD",
-    time: e.startTime || "",
-    round: e.round || "",
-  }));
+  return state.queue.slice(from, from + 4).map(e => {
+    const p = queueParts(e);
+    return {
+      // An undecided side reads "TBD", as in the queue list: a blank name is hidden
+      // on air, leaving "VS DRIFT" with nothing left of VS.
+      teamA: (e.teamA && e.teamA.name) || "TBD",
+      teamB: (e.teamB && e.teamB.name) || "TBD",
+      time: entryTime(e),
+      // The night's season is already the scene's top tag, so a row carries
+      // just its circuit and round, stacked.
+      circuit: p.circuit,
+      round: p.round,
+      logoA: (e.teamA && e.teamA.logo) || "",
+      logoB: (e.teamB && e.teamB.logo) || "",
+    };
+  });
 }
 // The schedule contract field (see overlays/CONTRACT.md): the broadcast night
 // as data, driving the chrome ticker and any scene that wants the rundown.
@@ -621,7 +644,7 @@ function gatherSchedule(){
       teamA: e.teamA, teamB: e.teamB,
       bestOf: e.bestOf || 5, round: e.round || "",
       startTimeIso: e.startTimeIso || "",
-      startTimeDisplay: e.startTime || "",
+      startTimeDisplay: entryTime(e),
     })),
   };
 }
@@ -796,8 +819,10 @@ async function queueLoad(i){
   const locked = await useLeagueMatch(e.matchId);
   if (!locked) return; // league unreachable: keep the current match on air
   if (e.bestOf) setVal("bestOf", e.bestOf);
-  if (e.round) setVal("round", e.round);
-  if (e.startTime) setVal("startTime", e.startTime);
+  const p = queueParts(e);
+  if (p.round) setVal("round", p.round.toUpperCase());
+  const when = entryTime(e);
+  if (when) setVal("startTime", when);
   state.queueActive = e.id;
   renderQueue(); push();
 }
@@ -840,7 +865,7 @@ function renderQueue(){
     }
     const info = document.createElement("span");
     info.className = "muted-note"; info.style.flex = "1";
-    info.textContent = a + " vs " + b + [e.bestOf ? "BO" + e.bestOf : "", e.round || "", e.startTime || ""]
+    info.textContent = a + " vs " + b + [e.bestOf ? "BO" + e.bestOf : "", e.round || "", entryTime(e)]
       .filter(Boolean).map(s => "  ·  " + s).join("");
     row.appendChild(info);
     const load = document.createElement("button");
@@ -1319,6 +1344,20 @@ function matchTime(m){
   const t = m.scheduledDate ? Date.parse(m.scheduledDate) : NaN;
   return Number.isNaN(t) ? null : t;
 }
+// On-air times read in the circuit's own zone, 12-hour ("11 PM ET",
+// "9:30 PM PT"), never the producer's PC clock: a Central PC printed a
+// US-East match as "22:00". A circuit name with no region reads as ET.
+const AIR_ZONES = [
+  [/\bus[- ]?east\b/i, "America/New_York", "ET"],
+  [/\bus[- ]?central\b/i, "America/Chicago", "CT"],
+  [/\bus[- ]?west\b/i, "America/Los_Angeles", "PT"],
+];
+function airTime(t, circuit){
+  if (t === null || t === undefined || Number.isNaN(t)) return "";
+  const z = AIR_ZONES.find(([re]) => re.test(circuit || "")) || [null, "America/New_York", "ET"];
+  const s = new Date(t).toLocaleTimeString("en-US", { timeZone: z[1], hour: "numeric", minute: "2-digit" });
+  return s.replace(/\s/g, " ").replace(/:00 /, " ") + " " + z[2];
+}
 function whenLabel(m){
   const t = matchTime(m);
   if (t === null) return m.isBye ? "bye" : "time TBD";
@@ -1429,12 +1468,16 @@ function renderLeagueMatches(){
         // The local logo proxy URL is deterministic per match+side, so a queued
         // series carries working logos without an extra fetch (the proxy
         // re-resolves the expiring upstream URL on demand).
-        teamA: { name: a ? a.name : "", logo: "/league/logo?matchId=" + encodeURIComponent(m.matchId) + "&side=a", tag: "", seed: "", record: a ? a.record : "" },
-        teamB: { name: b.name, logo: "/league/logo?matchId=" + encodeURIComponent(m.matchId) + "&side=b", tag: "", seed: "", record: b.record },
+        // A team the league has no logo for gets none: a proxy URL for it
+        // only 404s, and scenes then show an empty tile, not the brand symbol.
+        teamA: { name: a ? a.name : "", logo: a && a.logoUrl ? "/league/logo?matchId=" + encodeURIComponent(m.matchId) + "&side=a" : "", tag: "", seed: "", record: a ? a.record : "" },
+        teamB: { name: b.name, logo: b.logoUrl ? "/league/logo?matchId=" + encodeURIComponent(m.matchId) + "&side=b" : "", tag: "", seed: "", record: b.record },
         bestOf: parseInt($("bestOf").value, 10) || 5,
         round: m.event.composedTitle,
+        circuit: circuitOf(m) || "",
+        roundLabel: m.event.roundLabel || "",
         startTimeIso: m.scheduledDate || "",
-        startTime: t === null ? "" : new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+        startTime: airTime(t, circuitOf(m)),
       }));
       const useBtn = document.createElement("button");
       useBtn.className = "mini"; useBtn.textContent = "Use now";
@@ -1502,9 +1545,14 @@ async function useLeagueMatch(matchId){
       state.series.a = 0; state.series.b = 0; state.series.games = [];
       $("seriesA").textContent = "0"; $("seriesB").textContent = "0";
       renderGames();
-      if (d.event && d.event.composedTitle) $("eventTitle").value = d.event.composedTitle.toUpperCase();
-      if (d.event && d.event.roundLabel) $("round").value = d.event.roundLabel.toUpperCase();
-      if (d.scheduledDate) $("startTime").value = new Date(d.scheduledDate).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      // Title and round are separate fields because scenes show them as two
+      // tags side by side: a title that also carried the round put "ROUND 6"
+      // on air twice.
+      const ev = d.event || {};
+      const title = [ev.season, ev.circuitShort || ev.circuit].filter(Boolean).join(" | ");
+      if (title) $("eventTitle").value = title.toUpperCase();
+      if (ev.roundLabel) $("round").value = ev.roundLabel.toUpperCase();
+      if (d.scheduledDate) $("startTime").value = airTime(Date.parse(d.scheduledDate), ev.circuitShort || ev.circuit);
     } else {
       // Refresh: update league-owned records in place (respecting a focused
       // field and the swap), leave seeds/series/titles/times alone.
@@ -1513,11 +1561,13 @@ async function useLeagueMatch(matchId){
       if (recA) setVal("recordA", recA);
       if (recB) setVal("recordB", recB);
     }
-    // Seed the once-per-night event fields from the match, but never clobber
-    // what the producer already typed.
-    if (d.event){
-      if (!$("evSeason").value.trim() && d.event.season) $("evSeason").value = d.event.season.toUpperCase();
-      if (!$("evCircuit").value.trim() && d.event.circuitShort) $("evCircuit").value = d.event.circuitShort.toUpperCase();
+    // The event fields (the chrome's left rail) follow the match that was
+    // loaded: kept from an earlier night, they put last season on air. Still
+    // editable after; a refresh of the same match leaves the producer's edits.
+    if (d.event && !isRefresh){
+      if (d.event.season) $("evSeason").value = d.event.season.toUpperCase();
+      const circuit = d.event.circuitShort || d.event.circuit;
+      if (circuit) $("evCircuit").value = circuit.toUpperCase();
     }
     fillPlayerNames(d);
     renderMatchLock();

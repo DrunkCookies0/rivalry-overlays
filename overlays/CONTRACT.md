@@ -141,7 +141,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
     "kickoffAt": 1762736400000,
     "casters": [ { "name": "DrunkCookies", "role": "PLAY-BY-PLAY", "handle": "@cookies", "stream": "vdo-id-or-url", "avatar": "" } ],
     "casterCams": 0,
-    "upNext": [ { "teamA": "NOVA", "teamB": "ECLIPSE", "time": "9:30 ET", "round": "UB R1" } ],
+    "upNext": [ { "teamA": "NOVA", "teamB": "ECLIPSE", "time": "9:30 PM ET", "circuit": "3v3 US-East", "round": "Round 4", "logoA": "", "logoB": "" } ],
     "brand": { "leagueName": "RIVALRY", "logo": "" },
     "bracket": { "rounds": [ { "name": "QUARTERFINALS", "matchups": [ { "teamA": "GUARDIANS", "teamB": "DRIFT", "scoreA": 3, "scoreB": 1 } ] } ], "champion": "" }
   }
@@ -159,7 +159,7 @@ Listen only for `type: "control"`. Other traffic exists on this bus
 | `kickoffAt` | epoch ms of the first kickoff, set by the producer in the panel (its own clock, not the league's match time). Starting Soon counts down to it; `0` or absent means no countdown, and the scene shows `startTime` instead. Additive, optional |
 | `casters` | array of `{ name, role, handle, stream, avatar }` — `stream` = VDO.Ninja view link or stream ID for that caster's cam. The scene does not embed it: the app loads it into an OBS browser source behind the matching cam hole (`overlays/shared/rivalry-caster-cams.js` holds the layout both sides use) |
 | `casterCams` | how many cam frames the casters scene shows: `1`-`3`, or `0`/absent for one per named caster (two before anyone is named). With fewer cams than casters, the extra casters share the last cam's name plate (`"A & B"`) and it shows the first of their feeds that is a VDO.Ninja link; the app keeps the others' feeds loaded in OBS, hidden (heard, not shown). Auto never drops `rivalry-casters` below its two designed frames, and `?layout=solo\|duo\|trio` on that scene pins the count whatever this says |
-| `upNext` | array of `{ teamA, teamB, time, round }` (up-next scene) |
+| `upNext` | array of `{ teamA, teamB, time, round, circuit, logoA, logoB }` (up-next scene). `round` is the round alone ("Round 6"); `circuit` ("3v3 US-East") and the two logo URLs were **added (v1, additive)** and are `""` when unknown. `time` is 12-hour in the circuit's zone ("11 PM ET") |
 | `brand` | `{ leagueName, logo }` — optional; scenes default to "RIVALRY" |
 | `bracket` | `{ rounds:[{ name, matchups:[{ teamA, teamB, scoreA, scoreB }] }], champion }` — winner = higher score. **No shipped scene consumes this in v1.0** (the bracket scene returns for playoffs); the field stays documented because the contract is additive-only |
 | `players` | array of `{ name, title, badges[] }` — per-player caption data keyed by in-game name (gameplay overlay shows title/badges on the goal banner). Sent by the panel's Player Titles card. Loading a match fills each player's `title` with their active title on therivalry.gg, or blank when they have none (the operator can edit it until the next load); badges are typed by hand. The goal banner keeps a long title to one line, ending in an ellipsis |
