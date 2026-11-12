@@ -173,14 +173,14 @@ test("two casters at one desk sharing one feed: one cam, nothing extra loaded", 
   assert.equal(cam(v, 2), undefined);
 });
 
-test("auto with one caster: the classic look keeps its two frames, another look shows one", async () => {
+test("auto with one caster: one frame on the house look and on another look", async () => {
   const classic = setup();
   classic.set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam")] });
   const r = await classic.sync.syncNow();
-  assert.equal(r.frames, 2);
-  assert.deepEqual(r.noCaster, [2], "the second frame has nobody in it");
+  assert.equal(r.frames, 1);
+  assert.deepEqual(r.noCaster, [], "no empty frame next to a lone caster");
   assert.deepEqual(r.waiting, []);
-  assert.deepEqual(rectOf(cam(classic.obs.view(), 1).t), RECTS["rivalry-casters"][2][0]);
+  assert.deepEqual(rectOf(cam(classic.obs.view(), 1).t), RECTS["rivalry-casters"][1][0]);
   const alt = setup({ overlayUrl: ALT });
   alt.set({ casters: [caster("DRUNKCOOKIES", "drunkcookiescam")] });
   assert.equal((await alt.sync.syncNow()).frames, 1);

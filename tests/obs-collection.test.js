@@ -403,9 +403,9 @@ test("one cam picked: a single cam in the solo hole", () => {
 });
 
 test("cams with no feed yet are placed but hidden, ready for a link", () => {
-  const items = castersScene(build()); // no control state at all: the designed two-cam look
+  const items = castersScene(build()); // no control state at all: one cam, as for a lone caster
   const cams = items.filter((x) => x.src.name.startsWith("Caster Cam "));
-  assert.equal(cams.length, 2);
+  assert.equal(cams.length, 1);
   assert.ok(cams.every((x) => x.it.visible === false && x.src.settings.url === ""));
 });
 
