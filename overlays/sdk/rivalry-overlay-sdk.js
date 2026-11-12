@@ -4,6 +4,7 @@
  * The runtime every RIVALRY overlay codes against. Drop this one file in,
  * include it with a <script> tag, and you get:
  *   - one clean connection to the game feed + control bus (auto-reconnect)
+ *   - a reload after an app update, so OBS never keeps an old build on air
  *   - a normalized view that hides the raw feed's quirks (IsOT vs isOT, etc.)
  *   - a built-in mock so you can design with NO Rocket League and NO app running
  *   - small format helpers (clock, ball speed) so every overlay agrees
@@ -100,6 +101,29 @@
       },
       close: function () { closed = true; if (ws) try { ws.close(); } catch (e) {} },
     };
+  }
+
+  // ---- reload after an app update ----------------------------------------
+  // OBS keeps overlay pages loaded (the app builds its sources with shutdown
+  // off), so after an app update a page reconnects to the new app still
+  // running the old build's HTML and CSS: old scenes on air until someone
+  // refreshes every source by hand. Each time the control bus (re)opens, ask
+  // the app which build it is. The first answer is the build this page came
+  // from; a different one later means the app was updated, so reload once.
+  // Only when served by the app (http); file:// and other hosts skip it.
+  var pageBuild = null;
+  function checkBuild() {
+    var loc = global.location;
+    if (!global.fetch || !loc || !/^https?:$/.test(loc.protocol)) return;
+    global.fetch("/version", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (m) {
+        if (!m || !m.version) return;
+        var build = m.version + " " + (m.sha || "");
+        if (pageBuild === null) pageBuild = build;
+        else if (build !== pageBuild) loc.reload();
+      })
+      .catch(function () { /* app restarting: the next reconnect asks again */ });
   }
 
   // ---- the SDK instance ---------------------------------------------------
@@ -296,7 +320,10 @@
           if (msg.type === "control") self._emitControl(msg.payload);
           else self._emitBus(msg.type, msg.payload);
         },
-        function (st) { self._setStatus("control", st); });
+        function (st) {
+          self._setStatus("control", st);
+          if (st === "open") checkBuild();
+        });
     }
 
     // Stamp the preview badge unless this overlay was loaded as an approved one.
@@ -460,6 +487,9 @@
     connect: function (opts) { return new Overlay().connect(opts); },
     // create() if you want the instance before connecting (e.g. wire handlers first).
     create: function () { return new Overlay(); },
+    // For an overlay with its own control socket: call on every open, and it
+    // reloads the page once the app behind it is a different build.
+    checkBuild: checkBuild,
   };
 
   global.RivalryOverlay = api;

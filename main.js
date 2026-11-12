@@ -219,11 +219,15 @@ function startHttpServer(rootDir) {
         return res.end("not found");
       }
       const type = MIME[path.extname(filePath)] || "application/octet-stream";
+      // no-cache: OBS's browser keeps what it loads, so a page reloaded after
+      // an app update must re-fetch its CSS and scripts, never reuse the old
+      // build's copies.
+      const headers = { "Content-Type": type, "Cache-Control": "no-cache" };
       if (injectFlag && type.indexOf("text/html") === 0) {
-        res.writeHead(200, { "Content-Type": type });
+        res.writeHead(200, headers);
         return res.end(overlayRegistry.injectSignedFlag(data.toString("utf8")));
       }
-      res.writeHead(200, { "Content-Type": type });
+      res.writeHead(200, headers);
       res.end(data);
     });
   });

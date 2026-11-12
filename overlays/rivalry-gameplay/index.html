@@ -451,6 +451,7 @@
 
   </div>
   <script src="../shared/rivalry-geometry.js"></script>
+  <script src="../sdk/rivalry-overlay-sdk.js"></script>
   <script src="../sdk/rivalry-fit.js"></script>
   <script>
 const GAME_WS = "ws://localhost:49124";
@@ -1786,6 +1787,9 @@ function connectGame(){
 
 function connectControl(){
   const ws = new WebSocket(CONTROL_WS);
+  // Reload once the app behind this page is a new build (the SDK's check: OBS
+  // keeps this page loaded across an app update).
+  ws.onopen = () => RivalryOverlay.checkBuild();
   ws.onclose = () => setTimeout(connectControl, 1500);
   ws.onerror = () => ws.close();
   ws.onmessage = (e) => {
